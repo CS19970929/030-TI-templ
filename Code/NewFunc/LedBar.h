@@ -1,0 +1,24 @@
+#ifndef LEDBAR_H
+#define LEDBAR_H
+
+typedef enum _LEDBAR_COMMAND {
+	LED_BAR_STARTUP = 0,
+    LED_BAR_NORMAL,
+    LED_BAR_CHG,
+    LED_BAR_DSG,
+	LED_BAR_FAULT,
+}LEDBAR_COMMAND;
+
+
+#define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
+
+#define MCUO_SOC_20 		(PORT_OUT_GPIOB->bit7)
+#define MCUO_SOC_40 		(PORT_OUT_GPIOB->bit8)
+#define MCUO_SOC_60 		(PORT_OUT_GPIOB->bit13)
+#define MCUO_SOC_80 		(PORT_OUT_GPIOB->bit12)
+#define MCUO_SOC_100 		(PORT_OUT_GPIOB->bit5)
+
+#define MCUO_SOC_RUN 		(PORT_OUT_GPIOA->bit5)
+#define MCUO_SOC_ALARM 		(PORT_OUT_GPIOA->bit6)
+
+#endif	/* LEDBAR_H */
