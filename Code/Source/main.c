@@ -112,7 +112,7 @@ void InitDevice(void)
 
 	InitAFE1();
 
-	Init_IWDG();
+	// Init_IWDG();
 #endif
 }
 
@@ -187,20 +187,7 @@ void App_WakeUpAFE(void)
 
 void InitSystemWakeUp(void)
 {
-	// MCUO_SD_DRV_CHG = 0;
-
-	// MCUO_PWSV_STB = 0;
-
-	// MCUO_PWSV_LDO = 1;
-	// MCUO_PWSV_CTR = 1;
-
 	App_WakeUpAFE();
-	MCUO_BEL_EN = 1;
-
-	MCUO_AFE_ALARM = 1;
-
-	// MCUO_PW_RS485_EN = 1;
-
 	__delay_ms(20);
 }
 

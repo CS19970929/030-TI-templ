@@ -1,7 +1,7 @@
 #ifndef SOC_H
 #define SOC_H
 
-#include "SocIntegral_030.h"
+#include "SocEnhance.h"
 
 #define SOC_TABLE_SIZE 		42
 #define SOC_VOL_MIN   		((UINT16)0)

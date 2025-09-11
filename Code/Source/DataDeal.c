@@ -356,6 +356,13 @@ void DataLoad_Current(void)
 	{
 		g_stCellInfoReport.u16IDischg = 0;
 	}
+#ifdef __VIRTURE_CURRENT__
+	if (sys_time.isdebugenable == 1)
+	{
+		g_stCellInfoReport.u16Ichg = sys_time.CHG;
+		g_stCellInfoReport.u16IDischg = sys_time.DSG;
+	}
+#endif
 }
 
 void MonitorAFE(UINT8 num, UINT8 Result)
@@ -484,11 +491,57 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 	}
 }
 
+void test_Autocurrent_cycle(void)
+{
+	static uint8_t step = 0;
+#if 1
+	static uint16_t CHG_current = 2000;
+	static uint16_t DSG_current = 4000;
+#else
+	static uint16_t CHG_current = 200;
+	static uint16_t DSG_current = 400;
+#endif
+
+	switch (step)
+	{
+	case 0:
+		if (g_stCellInfoReport.SocElement.u16Soc < 99)
+		{
+			step = 1;
+			g_stCellInfoReport.u16Ichg = CHG_current;
+			g_stCellInfoReport.u16IDischg = 0;
+		}
+		else
+		{
+			step = 1;
+		}
+		break;
+	case 1:
+	{
+		if (g_stCellInfoReport.SocElement.u16Soc >= 99)
+		{
+			step = 2;
+			g_stCellInfoReport.u16Ichg = 0;
+			g_stCellInfoReport.u16IDischg = DSG_current;
+		}
+		break;
+	}
+	case 2:
+		if (g_stCellInfoReport.SocElement.u16Soc <= 1)
+		{
+			step = 0;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 void App_AFEGet(void)
 {
 	static UINT8 ts_u8TempSel = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag || 1 == gu8_TxEnable_SCI1 || 1 == gu8_TxEnable_SCI2)
+	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
 	{
 		return;
 	}
@@ -513,4 +566,5 @@ void App_AFEGet(void)
 	DataLoad_Temperature();
 	DataLoad_TemperatureMaxMinFind();
 	DataLoad_Current();
+	test_Autocurrent_cycle();
 }

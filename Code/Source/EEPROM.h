@@ -2,19 +2,19 @@
 #define EEPROM_H
 
 
-//IO·½ÏòÉèÖÃ
-//¸ÄÀ¨ºÅÀïÃæÄÇ¸öÊýX<<1
-#define SDA_IN_SEE()  {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)0<<(4<<1);}		//Ä¬ÈÏÖµÎª00£¬¼È²»ÉÏÀ­Ò²²»ÏÂÀ­ÊäÈë¡£
-#define SDA_OUT_SEE() {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)1<<(4<<1);}		//¹ØÓÚÊä³öÀàÐÍºÍÊä³öËÙ¶È£¬ÔÚÄ¬ÈÏÖµµÄInitº¯ÊýÅäºÃ£¬»ØÀ´Á¢¿ÌÉúÐ§
+//IOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½X<<1
+#define SDA_IN_SEE()  {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)0<<(4<<1);}		//Ä¬ï¿½ï¿½ÖµÎª00ï¿½ï¿½ï¿½È²ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë¡£
+#define SDA_OUT_SEE() {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)1<<(4<<1);}		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Íºï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½Öµï¿½ï¿½Initï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§
 
-//IO²Ù×÷º¯Êý	 
+//IOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½	 
 #define IIC_SCL_SEE    PORT_OUT_GPIOB->bit3 	//SCL
 #define IIC_SDA_SEE    PORT_OUT_GPIOB->bit4		//SDA
-#define READ_SDA_SEE   (uint16_t)(GPIOB->IDR&GPIO_Pin_4)  //ÊäÈëSDA 
+#define READ_SDA_SEE   (uint16_t)(GPIOB->IDR&GPIO_Pin_4)  //ï¿½ï¿½ï¿½ï¿½SDA 
 
 
 #define sEE_OK         			  ((INT8)0)
-#define sEE_FAIL           		  ((INT8)-1) 		//¸ºÊý¿ÉÒÔÂð£¬¿ÉÒÔµÄ£¡
+#define sEE_FAIL           		  ((INT8)-1) 		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ð£¬¿ï¿½ï¿½ÔµÄ£ï¿½
 #define sEE_I2C        			  I2C2
 #define sEE_I2C_RW_W				0
 #define sEE_I2C_RW_R				1
@@ -24,29 +24,29 @@
 #define sEE_MAX_TRIALS_NUMBER     300
 
 
-//Mini STM32¿ª·¢°åÊ¹ÓÃµÄÊÇ24c02
+//Mini STM32ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ãµï¿½ï¿½ï¿½24c02
 //#define AT24C02
-#define DELAY_US_IIC_EEPROM		2	//4Îª100KHz£¬2Îª150KHz
+#define DELAY_US_IIC_EEPROM		2	//4Îª100KHzï¿½ï¿½2Îª150KHz
 
 #define sEEAddress   0xA0			//E2 = E1 = E0 = 0
 
-#define AZONE				0x0000              // AÇø: 0x0000~0x0799		//2KÒ»¸öÇø¼ä
-#define BZONE				0x0800				// BÇø: 0x0800~0x0999
-#define CZONE				0x1000				// CÇø: 0x1000~0x1800
+#define AZONE				0x0000              // Aï¿½ï¿½: 0x0000~0x0799		//2KÒ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define BZONE				0x0800				// Bï¿½ï¿½: 0x0800~0x0999
+#define CZONE				0x1000				// Cï¿½ï¿½: 0x1000~0x1800
 
 
 #define EEPROM_ADDR_PASS           			((UINT16)0x3FFC)
 #define EEPROM_ADDR_SLEEP           		((UINT16)0x3FFA)
 #define EEPROM_ADDR_FLASHUPDATE     		((UINT16)0x3FFE)
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x1138		//Ä¬ÈÏ0x1133£¬Èç¹û×Ô¼ºÐèÒªË¢Ò»±é£¬Ôò×Ô¼º¸ÄÍêÔÙ¸Ä»Ø0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x3338		//Ä¬ï¿½ï¿½0x1133ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ÒªË¢Ò»ï¿½é£¬ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¸Ä»ï¿½0x1133
 #define EEPROM_VALUE_SLEEP    				((UINT16)0xABCD)
 #define EEPROM_VALUE_SLEEP_RESET    		((UINT16)0xFFFF)
 #define EEPROM_VALUE_FLASHUPDATE    		((UINT16)0xABCD)
 #define EEPROM_VALUE_FLASHUPDATE_RESET    	((UINT16)0xFFFF)
 
 
-//#define EEPROM_ADDR_SLEEPMODE     			2036	//È¡Ïû£¬¸ÄÎªFLASH
+//#define EEPROM_ADDR_SLEEPMODE     			2036	//È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFLASH
 #define EEPROM_ADDR_SWITCH_ONOFF     		2040
 #define EEPROM_ADDR_SYS_FUNC_SELECT     	2044
 
@@ -55,12 +55,12 @@
 #define E2P_PARA_NUM_TEM_PROTECT 			25
 #define E2P_PARA_NUM_OTHER_PROTECT			10
 
-#define E2P_PARA_ALL_VOLCUR_PROTECT 		0x3FFFFFFF		//30¸ö
-#define E2P_PARA_ALL_TEM_PROTECT 			0x01FFFFFF		//25¸ö
-#define E2P_PARA_ALL_OTHER_PROTECT			0x000003FF		//10¸ö
-#define E2P_PARA_ALL_RTC_ELEMENT 			0x00000FFF		//12¸ö
-#define E2P_PARA_ALL_OTHER_ELEMENT1 		0xFFFFFFFF		//32¸ö
-#define E2P_PARA_ALL_HEAT_COOL_ELE 			0x00FFFFFF		//24¸ö£¬ºÍRTCÒ»Ñù²»ÐèÒªÒÔÏÂµÄ·Ö¿ª
+#define E2P_PARA_ALL_VOLCUR_PROTECT 		0x3FFFFFFF		//30ï¿½ï¿½
+#define E2P_PARA_ALL_TEM_PROTECT 			0x01FFFFFF		//25ï¿½ï¿½
+#define E2P_PARA_ALL_OTHER_PROTECT			0x000003FF		//10ï¿½ï¿½
+#define E2P_PARA_ALL_RTC_ELEMENT 			0x00000FFF		//12ï¿½ï¿½
+#define E2P_PARA_ALL_OTHER_ELEMENT1 		0xFFFFFFFF		//32ï¿½ï¿½
+#define E2P_PARA_ALL_HEAT_COOL_ELE 			0x00FFFFFF		//24ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½RTCÒ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ÂµÄ·Ö¿ï¿½
 
 //VolCur_Protect_WriteFlag
 #define	EE_FLAG_VCELL_OVP_FIRST				0x00000001
@@ -186,7 +186,7 @@
 #define	EE_FLAG_OTHER1_SYS_PRECHG_TIME		0x80000000
 
 
-#if 0	//Õâ¸ö²»ÓÃ£¬ÒòÎªÊÇÒ»´ÎÐÔÐ´µÄ
+#if 0	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½Îªï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½
 //HeatCool_WriteFlag
 #define	EE_FLAG_HEAT_DSG_HIGH				0x00000001
 #define	EE_FLAG_HEAT_DSG_LOW				0x00000002
@@ -220,20 +220,20 @@
 #endif
 
 
-//ÒÔÏÂÎªEEPROM±£´æÊý¾ÝµÄË³ÐòºÍ¸öÊýÒ»ÀÀ±í
-#define E2P_PARA_NUM_PROTECT 		 		65				//ÎªÒÔÉÏÈý¸öÏà¼Ó£¬ÎªºÎÒª·Ö¿ª£¬ÒòÎª×î¸ß32Î»µÄÎÊÌâ£¬¿´º¯ÊýÔõÃ´ÊµÏÖ
+//ï¿½ï¿½ï¿½ï¿½ÎªEEPROMï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½Ë³ï¿½ï¿½Í¸ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½
+#define E2P_PARA_NUM_PROTECT 		 		65				//Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó£ï¿½Îªï¿½ï¿½Òªï¿½Ö¿ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½32Î»ï¿½ï¿½ï¿½ï¿½ï¿½â£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã´Êµï¿½ï¿½
 #define E2P_PARA_NUM_RTC		 			12
 #define E2P_PARA_NUM_CALIB_K 		 		KB_NUM			//47
 #define E2P_PARA_NUM_CALIB_B 		 		KB_NUM
-#define E2P_PARA_NUM_SOC_TABLE 		 		SOC_TABLE_SIZE	//42£¬ÒòGetEndValueµÄÔµ¹ÊÖ»ÄÜºÏÔÚÒ»Æð
+#define E2P_PARA_NUM_SOC_TABLE 		 		SOC_TABLE_SIZE	//42ï¿½ï¿½ï¿½ï¿½GetEndValueï¿½ï¿½Ôµï¿½ï¿½Ö»ï¿½Üºï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 #define E2P_PARA_NUM_COPPERLOSS 		 	CompensateNUM	//16
 #define E2P_PARA_NUM_COPPERLOSS_NUM 		CompensateNUM
-#define E2P_PARA_NUM_FAULT_RECORD 		 	(3*Record_len+ 3 +Record_len*6)//ÎªÊ²Ã´defineÖÐÓÐÔËËã·ûºÏÊ±Òª¼ÓÀ¨ºÅÄØ£¬ÒòÎªÈç¹ûÍâÃæÓÐÔËËã·û±ÈdefineµÄÓÅÏÈ¼¶¸ß¾Í»á³ö´í
-#define E2P_PARA_NUM_OTHER_ELEMENT1 		32				//¿ÉÌí¼Ó£¬ÔÙ´ÎÌí¼Ó±¸×¢¡ª¡ª²»¿ÉÌí¼Ó
+#define E2P_PARA_NUM_FAULT_RECORD 		 	(3*Record_len+ 3 +Record_len*6)//ÎªÊ²Ã´defineï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø£ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½defineï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ï¿½ß¾Í»ï¿½ï¿½ï¿½ï¿½
+#define E2P_PARA_NUM_OTHER_ELEMENT1 		32				//ï¿½ï¿½ï¿½ï¿½ï¿½Ó£ï¿½ï¿½Ù´ï¿½ï¿½ï¿½ï¿½Ó±ï¿½×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 #define E2P_PARA_NUM_HEAT_COOL				24
 
 
-//½á¹¹ÌåÀàÐÍ±£´æ·ÅÕâÀï
+//ï¿½á¹¹ï¿½ï¿½ï¿½ï¿½ï¿½Í±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 #define E2P_ADDR_E2POS_PROTECT 			{0,  2,  4,  6,  8,  10, 12, 14, 16, 18,\
 						 				 20, 22, 24, 26, 28, 30, 32, 34, 36, 38,\
 						 				 40, 42, 44, 46, 48, 50, 52, 54, 56, 58,\
@@ -248,21 +248,21 @@
 						   				 142,144,146,148,150,152}
 
 
-#define	E2P_ADDR_START_CALIB_K		    154    	//47¸ö×Ö
-#define	E2P_ADDR_START_CALIB_B		    248		//47¸ö×Ö
-#define	E2P_ADDR_START_SOC_TABLE		342    	//42¸ö×Ö
-#define	E2P_ADDR_START_COPPERLOSS		426    	//16¸ö×Ö
-#define	E2P_ADDR_START_COPPERLOSS_NUM	458    	//16¸ö×Ö
+#define	E2P_ADDR_START_CALIB_K		    154    	//47ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_CALIB_B		    248		//47ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_SOC_TABLE		342    	//42ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_COPPERLOSS		426    	//16ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_COPPERLOSS_NUM	458    	//16ï¿½ï¿½ï¿½ï¿½
 
 #define E2P_ADDR_START_FAULT_RECORD 	490
-#define	E2P_ADDR_START_FR_FIRST 		E2P_ADDR_START_FAULT_RECORD				//10¸ö×Ö
-#define	E2P_ADDR_START_FR_SECOND  		(E2P_ADDR_START_FAULT_RECORD+20)		//10¸ö×Ö
-#define	E2P_ADDR_START_FR_THIRD  		(E2P_ADDR_START_FAULT_RECORD+40)		//10¸ö×Ö
-//¼ÓÉÏ2¸ö×Ö½ÚµÄÖ¸Õë±£´æ
-#define E2P_ADDR_E2POS_FR_TEMP_FIRST	(E2P_ADDR_START_FAULT_RECORD+60)		//2¸ö×Ö
-#define E2P_ADDR_E2POS_FR_TEMP_SECOND  	(E2P_ADDR_START_FAULT_RECORD+62)		//2¸ö×Ö
-#define E2P_ADDR_E2POS_FR_TEMP_THIRD	(E2P_ADDR_START_FAULT_RECORD+64)		//2¸ö×Ö
-#define E2P_ADDR_START_FR_THIRD_RTC 	(E2P_ADDR_START_FAULT_RECORD+66)		//ºÚºÐ¼ÇÂ¼£¬60¸ö×Ö
+#define	E2P_ADDR_START_FR_FIRST 		E2P_ADDR_START_FAULT_RECORD				//10ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_FR_SECOND  		(E2P_ADDR_START_FAULT_RECORD+20)		//10ï¿½ï¿½ï¿½ï¿½
+#define	E2P_ADDR_START_FR_THIRD  		(E2P_ADDR_START_FAULT_RECORD+40)		//10ï¿½ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½2ï¿½ï¿½ï¿½Ö½Úµï¿½Ö¸ï¿½ë±£ï¿½ï¿½
+#define E2P_ADDR_E2POS_FR_TEMP_FIRST	(E2P_ADDR_START_FAULT_RECORD+60)		//2ï¿½ï¿½ï¿½ï¿½
+#define E2P_ADDR_E2POS_FR_TEMP_SECOND  	(E2P_ADDR_START_FAULT_RECORD+62)		//2ï¿½ï¿½ï¿½ï¿½
+#define E2P_ADDR_E2POS_FR_TEMP_THIRD	(E2P_ADDR_START_FAULT_RECORD+64)		//2ï¿½ï¿½ï¿½ï¿½
+#define E2P_ADDR_START_FR_THIRD_RTC 	(E2P_ADDR_START_FAULT_RECORD+66)		//ï¿½ÚºÐ¼ï¿½Â¼ï¿½ï¿½60ï¿½ï¿½ï¿½ï¿½
 
 #define E2P_ADDR_START_OTHER_ELEMENT1	676		//E2P_ADDR_START_FR_THIRD_RTC + 120 = E2P_ADDR_START_FAULT_RECORD+66+120
 
@@ -276,19 +276,19 @@
 										 766,768,770,772,774,776,778,780,782,784,788}
 #if 0
 #define E2P_ADDR_E2POS_ENHANCE_SOC 		{790,792,794,796,798,800,802,804,\
-										 806,808,810,812,814,816,818,820} 		//Õâ¸öÊÇ²»ÄÜÔÚÉÏÎ»»ú¸ÄµÄ
+										 806,808,810,812,814,816,818,820} 		//ï¿½ï¿½ï¿½ï¿½Ç²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½Äµï¿½
 #endif
 
-#define E2P_ADDR_E2POS_ENHANCE_SOC		790		//µ½820
+#define E2P_ADDR_E2POS_ENHANCE_SOC		790		//ï¿½ï¿½820
 
-#define E2P_ADDR_E2POS_SERIAL_NUM		830		//µ½868
-#define E2P_ADDR_E2POS_HAEDWARE_VER		870		//µ½908
-#define E2P_ADDR_E2POS_SOFTWARE_VER		910		//µ½948
+#define E2P_ADDR_E2POS_SERIAL_NUM		830		//ï¿½ï¿½868
+#define E2P_ADDR_E2POS_HAEDWARE_VER		870		//ï¿½ï¿½908
+#define E2P_ADDR_E2POS_SOFTWARE_VER		910		//ï¿½ï¿½948
 
-#define E2P_ADDR_START_EVENT_RECORD 	1000	//µ½1198		//100¸ö×Ö
-#define E2P_ADDR_E2POS_EVENT_POINT		1200	//ÏÂÒ»¸ö1202
+#define E2P_ADDR_START_EVENT_RECORD 	1000	//ï¿½ï¿½1198		//100ï¿½ï¿½ï¿½ï¿½
+#define E2P_ADDR_E2POS_EVENT_POINT		1200	//ï¿½ï¿½Ò»ï¿½ï¿½1202
 
-#define E2P_ADDR_SOC_RTC_CNT          	1202		//RTC´ÎÊýÍ³¼Æ£¬ÓÃÓÚÊÇ·ñ¸üÐÂSOC
+#define E2P_ADDR_SOC_RTC_CNT          	1202		//RTCï¿½ï¿½ï¿½ï¿½Í³ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½SOC
 
 
 extern UINT32 u32E2P_Pro_VolCur_WriteFlag;
@@ -307,7 +307,7 @@ UINT8 ReadEEPROM_Byte(UINT16 addr);
 UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val);
 UINT16 ReadEEPROM_Word_NoZone(UINT16 addr);
 UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data);
-UINT16 ReadEEPROM_Word_WithZone(UINT16 addr);						//Ô­ÔòÉÏ²»·µ»Ø
+UINT16 ReadEEPROM_Word_WithZone(UINT16 addr);						//Ô­ï¿½ï¿½ï¿½Ï²ï¿½ï¿½ï¿½ï¿½ï¿½
 void WriteEEPROM_Word_WithZone(UINT16 addr, UINT16 data);
 
 void InitE2PROM(void);

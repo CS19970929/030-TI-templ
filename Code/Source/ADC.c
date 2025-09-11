@@ -111,7 +111,6 @@ void InitADC_GPIO(void)
 
 void InitADC_TIMER(void)
 {
-
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	// NVIC_InitTypeDef  		 NVIC_InitStructure;
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM15, ENABLE); // Ê±ÖÓ15Ê¹ÄÜ

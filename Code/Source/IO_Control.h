@@ -75,18 +75,18 @@ union Switch_OnOFF_Function {
 };
 
 
-#define PreRelayCloseT 			10			//´ò¿ªÖ÷½Ó´¥Æ÷ºó£¬Ô¤³ä¼ÌµçÆ÷¹Ø±ÕÊ±¼ä
-#define PreDsgMOSCloseT 		10			//´ò¿ªÖ÷·Åµç¹Üºó£¬Ô¤³ä·Åµç¹Ü¹Ø±ÕÊ±¼ä
+#define PreRelayCloseT 			10			//ï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½Ø±ï¿½Ê±ï¿½ï¿½
+#define PreDsgMOSCloseT 		10			//ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½Üºï¿½Ô¤ï¿½ï¿½Åµï¿½Ü¹Ø±ï¿½Ê±ï¿½ï¿½
 
 
 /*
-ÒÔÏÂÇý¶¯Ñ¡Ò»¸ö
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡Ò»ï¿½ï¿½
 */
 #define _MOS_SAME_DOOR_NO_PRECHG
 //#define _MOS_SAME_DOOR_HAVE_PRECHG
 //#define _MOS_BOOTSTRAP_CIR
 
-//#define _RELAY_SAME_DOOR_NO_PRECHG
+// #define _RELAY_SAME_DOOR_NO_PRECHG
 //#define _RELAY_SAME_DOOR_HAVE_PRECHG
 //#define _RELAY_DIFF_DOOR_NO_PRECHG
 //#define _RELAY_DIFF_DOOR_HAVE_PRECHG

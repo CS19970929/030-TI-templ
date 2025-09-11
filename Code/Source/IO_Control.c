@@ -221,22 +221,8 @@ void Drivers_External_Ctrl(void)
 
 void InitMosRelay_DOx(void)
 {
-	// 都是悬空引脚，问题不大
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	// PA8_MCUO_RELAY_PRE，PA8_MCUO_MOS_PRE
-	InitDrivers_GPIO(GPIOA, GPIO_Pin_8, GPIO_PreCHG);
-
-	// PB13_MCUO_RELAY_CHG，PB13_MCUO_MOS_CHG
-	InitDrivers_GPIO(GPIOB, GPIO_Pin_13, GPIO_CHG);
-
-	// PB14_MCUO_RELAY_DSG，PB14_MCUO_MOS_DSG
-	InitDrivers_GPIO(GPIOB, GPIO_Pin_14, GPIO_DSG);
-
-	// PB14_MCUO_RELAY_MAIN，约定放电管为主接触器
-	InitDrivers_GPIO(GPIOB, GPIO_Pin_14, GPIO_MAIN);
-
-	// PC13_DI1_ENI
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
@@ -245,18 +231,18 @@ void InitMosRelay_DOx(void)
 	InitData_Drivers();
 }
 
-#if defined(_MOS)
 void App_MOS_Relay_Ctrl(void)
 {
+#if defined(_MOS)
 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_MOS))
 	{
 		return;
 	}
 #elif defined(_RELAY) // 同口分口问题，TODO
-if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
-{
-	return;
-}
+	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
+	{
+		return;
+	}
 #endif
 
 	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
@@ -264,30 +250,27 @@ if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
 		return;
 	}
 
+	MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
+
 	App_DI1_Switch();
 	RefreshData_Drivers();
 	GetData_Drivers();
-	Drivers_External_Ctrl();
 
 #if (defined _RELAY_SAME_DOOR_NO_PRECHG)
 	Drivers_RelaySameDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _RELAY_SAME_DOOR_HAVE_PRECHG)
-Drivers_RelaySameDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_RelaySameDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _RELAY_DIFF_DOOR_NO_PRECHG)
-Drivers_RelayDiffDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_RelayDiffDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _RELAY_DIFF_DOOR_HAVE_PRECHG)
-Drivers_RelayDiffDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_RelayDiffDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_SAME_DOOR_NO_PRECHG)
-Drivers_MosSameDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_MosSameDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_SAME_DOOR_HAVE_PRECHG)
-Drivers_MosSameDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_MosSameDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_BOOTSTRAP_CIR)
-Drivers_MosBootStrap_Cir(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_MosBootStrap_Cir(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #endif
 
-	/*
-	if(SystemStatus.bits.b1Status_MOS_PRE) {
-		MCUO_DEBUG_LED1 = 1;
-	}
-	*/
+	Drivers_External_Ctrl();
 }

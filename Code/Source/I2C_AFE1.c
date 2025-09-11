@@ -8,8 +8,8 @@ struct stBq769x0_Read g_stBq769x0_Read_AFE1;
 unsigned char startData_[80]; // 局部，全局变量
 unsigned char BufferCRCC[30];
 
-const unsigned int OVPThreshold = 4500;
-const unsigned int UVPThreshold = 2000;
+const unsigned int OVPThreshold = 3800;
+const unsigned int UVPThreshold = 2100;
 const unsigned char SCDDelay = SCD_DELAY_400us;
 // const unsigned char SCDThresh = SCD_THRESH_178mV_89mV;
 const unsigned char SCDThresh = SCD_THRESH_200mV_100mV;

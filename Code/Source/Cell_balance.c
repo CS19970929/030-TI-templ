@@ -177,7 +177,7 @@ void CellBalance_Monitor(UINT8 OnOFF_Ctrl)
 	static UINT16 su16_Silence_Tcnt = 0;
 
 	if ((g_stCellInfoReport.u16Ichg > 10 || g_stCellInfoReport.u16IDischg > 10)		// 静置均衡，有电流不均衡
-		|| (g_stCellInfoReport.u16VCellMax < OtherElement.u16Balance_OpenVoltage)	// 最大电压没超过开启电压
+		|| (g_stCellInfoReport.u16VCellMin < OtherElement.u16Balance_OpenVoltage)	// 最大电压没超过开启电压
 		|| (g_stCellInfoReport.u16VCellDelta < OtherElement.u16Balance_CloseWindow) // 压差均在关闭窗口以内
 		|| !OnOFF_Ctrl)
 	{
@@ -339,7 +339,7 @@ void CellBalance_StateOFF(UINT8 OnOFF_Ctrl)
 	case 0:
 		if (0 == Balance_OpenT_MOS)
 		{
-			if (0 == g_u8CBnMonitor)
+			// if (0 == g_u8CBnMonitor)
 			{ // 循环持续到检测到不要均衡才关闭。
 				if (!CB_AFERegistersCtrl(CELL_BALANCE_COLSE))
 				{

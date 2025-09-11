@@ -3,7 +3,7 @@
 
 #include "stm32f0xx.h"
 #include "bqMaximo_Ctrl_G2553.h"
-#include "stm32f0xx_it.h"			//ÀïÃæÓĞÒ»Ğ©Ó²¼ş´íÎóÖ®ÀàµÄÖĞ¶Ï£¬»¹ÊÇĞèÒªµÄ
+#include "stm32f0xx_it.h"			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»Ğ©Ó²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®ï¿½ï¿½ï¿½ï¿½Ğ¶Ï£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½
 #include "string.h"
 
 #include "DataDeal.h"
@@ -33,12 +33,14 @@
 #include "LedBar.h"
 #include "ShortFunc.h"
 
+#include "conf_gpio.h"
+
 
 #define APPLICATION_ADDRESS     (uint32_t)0x08001C00
 #define UPDNLMT16(Var,Max,Min)	{(Var)=((Var)>=(Max))?(Max):(Var);(Var)=((Var)<=(Min))?(Min):(Var);}
 #define S2U(x)   (*((volatile UINT16*)(&(x))))
 
-//10msÊ±»ù¼ÆÊıÆ÷
+//10msÊ±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 #define DELAYB10MS_0MS       ((UINT16)0)            //0ms
 #define DELAYB10MS_30MS      ((UINT16)3)            //30ms
 #define DELAYB10MS_50MS      ((UINT16)5)            //50ms
@@ -58,15 +60,15 @@
 
 
 //#define _DEBUG_CODE
-#define _IAP					//Èç¹û¹¤³ÌÎÄ¼şµØÖ·±äµÄ»°£¬¼ÓÉÏÕâ¸öºÍÉÕIAPµÄproject²ÅĞĞ
+#define _IAP					//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½Ö·ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IAPï¿½ï¿½projectï¿½ï¿½ï¿½ï¿½
 
-//#define _DI_SWITCH_SYS_ONOFF	//DI¿ª¹ØÓÃ×÷ĞİÃß
-//#define _DI_SWITCH_DSG_ONOFF	//DI¿ª¹ØÓÃ×÷¿ØÖÆ·Åµç½Ó´¥Æ÷»òÕßMOS
+//#define _DI_SWITCH_SYS_ONOFF	//DIï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//#define _DI_SWITCH_DSG_ONOFF	//DIï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·Åµï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½MOS
 
 
 
 /*============Sci===========*/
-//Ã¿¸ö´®¿ÚÖ»ÄÜÑ¡Ò»ÖÖÍ¨Ñ¶
+//Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½Ñ¡Ò»ï¿½ï¿½Í¨Ñ¶
 #define _COMMOM_UPPER_SCI1
 //#define _CLIENT_SCI1
 

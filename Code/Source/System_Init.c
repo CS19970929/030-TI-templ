@@ -103,7 +103,31 @@ void InitIO(void)
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_Init(GPIOF, &GPIO_InitStructure);
 
-	// MCUO_DEBUG_LED1 = 1;
+	{
+		MCUO_BEL_EN = 1;
+		MCUO_AFE_ALARM = 1;
+		
+		GPIO_WriteBit(M_STB_PORT, M_STB_PIN, 1);
+		GPIO_InitStructure.GPIO_Pin = M_STB_PIN;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_Init(M_STB_PORT, &GPIO_InitStructure);
+
+		GPIO_WriteBit(M_CTR_PORT, M_CTR_PIN, 1);
+		GPIO_InitStructure.GPIO_Pin = M_CTR_PIN;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_Init(M_CTR_PORT, &GPIO_InitStructure);
+
+		GPIO_WriteBit(M_BLE_EN_PORT, M_BLE_EN_PIN, 1);
+		GPIO_InitStructure.GPIO_Pin = M_BLE_EN_PIN;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_Init(M_BLE_EN_PORT, &GPIO_InitStructure);
+	}
 }
 
 void InitTimer(void)
@@ -254,12 +278,6 @@ void App_SysTime(void)
 	{
 		s_u8Cnt200ms4 = 0;
 		g_st_SysTimeFlag.bits.b1Sys200msFlag4 = 1; // 200ms定时标志
-#if 0
-		if(!MCUI_SLEEP_DET) {
-			MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
-		}
-#endif
-		MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 	}
 	if (s_u8Cnt200ms5 >= 20)
 	{

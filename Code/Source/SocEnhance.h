@@ -1,7 +1,9 @@
-#ifndef SOCINTEGRAL_030_H
-#define SOCINTEGRAL_030_H
+#ifndef SOCENHANCE_H
+#define SOCENHANCE_H
 
+// #include "stm32f10x.h"
 #include "stm32f0xx.h"
+
 
 #define SOC_Size_TableCanSet 	(UINT16)42
 #define SOC_Size_LiFePO 		(UINT16)42
@@ -70,6 +72,12 @@ struct SOC_ENHANCE_ELEMENT {
 
 extern struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;
 
+extern UINT16 ChgValue;
+extern UINT16 DsgValue;
+
+UINT16 InverterChgCurve(void);
+UINT16 InverterDsgCurve(void);
+
 void SOC_OCV_Ctrl(UINT8 TimeBase_200ms);
 void SOC_IntEnhance_Ctrl(UINT8 TimeBase_200ms);
 
@@ -77,5 +85,5 @@ void SOC_IntEnhance_Ctrl(UINT8 TimeBase_200ms);
 extern UINT16 ReadEEPROM_Word_WithZone(UINT16 addr);						//原则上不返回
 extern void WriteEEPROM_Word_WithZone(UINT16 addr, UINT16 data);
 
-#endif	/* SOCINTEGRAL_030_H */
+#endif	/* SOCENHANCE_H */
 

@@ -339,18 +339,16 @@ void App_BQ769X0_Monitor(void)
 		System_ERROR_UserCallback(ERROR_UPPER);
 	}
 
-	// 影响没有用的保护。
 	if (Registers_AFE1.SysStatus.StatusBit.OV)
 	{
+		// todo
 		if (g_stCellInfoReport.u16VCellMax < OVPThreshold)
 		{
 			Registers_AFE1.SysStatus.StatusBit.OV = 1;
 			u8_Change = 1;
-			// System_ERROR_UserCallback(ERROR_BLUETOOTH);
 		}
-		// System_ERROR_UserCallback(ERROR_WIFI);
+		System_ERROR_UserCallback(ERROR_WIFI);
 	}
-	// 没有用的保护。
 	if (Registers_AFE1.SysStatus.StatusBit.UV)
 	{
 		if (g_stCellInfoReport.u16VCellMin > UVPThreshold)
@@ -358,6 +356,7 @@ void App_BQ769X0_Monitor(void)
 			Registers_AFE1.SysStatus.StatusBit.UV = 1;
 			u8_Change = 1;
 		}
+		System_ERROR_UserCallback(ERROR_BLUETOOTH);
 	}
 
 	BQ769X0_Deal_OC_SC();
