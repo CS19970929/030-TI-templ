@@ -44,8 +44,8 @@ void LogEvent_EEPROM(LogEventArray event, UINT32 *Time_S_Cnt)
 
 	temp = BMS_LOG_RECORD[BMS_LOG_POINT - 1][0] + (BMS_LOG_RECORD[BMS_LOG_POINT - 1][1] << 8);
 
-	WriteEEPROM_Word_WithZone(E2P_ADDR_START_EVENT_RECORD + ((BMS_LOG_POINT - 1) << 1), temp);
-	WriteEEPROM_Word_WithZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
+	WriteEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + ((BMS_LOG_POINT - 1) << 1), temp);
+	WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
 }
 
 void LogEvent_Record(UINT8 temp, LogEventArray event, UINT32 *Time_S_Cnt)
@@ -121,9 +121,9 @@ void App_LogRecord(void)
 
 	++su32_Interval_S_Tcnt;
 
-	// LogEvent_Record(LogRecord_Flag.bits.Log_StartUp, BMS_START_UP, &su32_Interval_S_Tcnt);
-	// LogEvent_Record(LogRecord_Flag.bits.Log_Sleep, BMS_SLEEP, &su32_Interval_S_Tcnt);
-	LogEvent_Record(g_stCellInfoReport.u16BalanceFlag1, BALANCE_OPEN, &su32_Interval_S_Tcnt);
+	LogEvent_Record(LogRecord_Flag.bits.Log_StartUp, BMS_START_UP, &su32_Interval_S_Tcnt);
+	LogEvent_Record(LogRecord_Flag.bits.Log_Sleep, BMS_SLEEP, &su32_Interval_S_Tcnt);
+	// LogEvent_Record(g_stCellInfoReport.u16BalanceFlag1, BALANCE_OPEN, &su32_Interval_S_Tcnt);
 
 	LogEvent_Record(SystemStatus.bits.b1Status_Heat, HEAT_OPEN, &su32_Interval_S_Tcnt);
 	LogEvent_Record(SystemStatus.bits.b1Status_Cool, COOL_OPEN, &su32_Interval_S_Tcnt);
@@ -234,9 +234,9 @@ void EEPROM_ResetData_EventRecord_ToDefault(void)
 
 	for (i = 0; i < EVENT_RECORD_LENGTH; ++i)
 	{
-		WriteEEPROM_Word_WithZone(E2P_ADDR_START_EVENT_RECORD + (i << 1), 0);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + (i << 1), 0);
 	}
-	WriteEEPROM_Word_WithZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
+	WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
 }
 
 /*
@@ -256,7 +256,7 @@ void ReadEEPROM_EventRecord_Parameters(void)
 	UINT8 i;
 	UINT16 t_u16RdTemp;
 
-	BMS_LOG_POINT = ReadEEPROM_Word_WithZone(E2P_ADDR_E2POS_EVENT_POINT);
+	BMS_LOG_POINT = ReadEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT);
 	if (BMS_LOG_POINT >= 101)
 	{ // 如果指针出问题，全部Reset
 		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
@@ -265,7 +265,7 @@ void ReadEEPROM_EventRecord_Parameters(void)
 
 	for (i = 0; i < EVENT_RECORD_LENGTH; ++i)
 	{
-		t_u16RdTemp = ReadEEPROM_Word_WithZone(E2P_ADDR_START_EVENT_RECORD + (i << 1));
+		t_u16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + (i << 1));
 		if (((t_u16RdTemp & 0x00FF) <= EVENT_NUM) && (t_u16RdTemp >> 8) <= 171)
 		{														  // NULL的值有两个，0和255，255是为了别的板子不需要再刷一次EEPROM
 			BMS_LOG_RECORD[i][0] = (UINT8)(t_u16RdTemp & 0x00FF); // 基于上面那个全部reset，255位NULL值取消
@@ -279,7 +279,7 @@ void ReadEEPROM_EventRecord_Parameters(void)
 			}
 			BMS_LOG_RECORD[i][0] = 0;
 			BMS_LOG_RECORD[i][1] = 0;
-			WriteEEPROM_Word_WithZone(E2P_ADDR_START_EVENT_RECORD + (i << 1), 0); // 出现错误，日志可以偷偷尝试修改为默认值。别的绝对不可以。
+			WriteEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + (i << 1), 0); // 出现错误，日志可以偷偷尝试修改为默认值。别的绝对不可以。
 		}
 	}
 }

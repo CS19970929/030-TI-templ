@@ -128,7 +128,7 @@ void SOC_OCV_Fix(void)
 
 	case 1:
 		// 开机统计+1
-		gu16_RTC_TimeCnt = ReadEEPROM_Word_WithZone(E2P_ADDR_SOC_RTC_CNT);
+		gu16_RTC_TimeCnt = ReadEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT);
 		if (gu8_WakeUp_Type == FLASH_VALUE_WAKE_RTC)
 		{
 			gu16_RTC_TimeCnt++;
@@ -140,7 +140,7 @@ void SOC_OCV_Fix(void)
 			// 因为在深度休眠的时候，大概率RTC已经校准为0了。
 			gu16_RTC_TimeCnt = 0;
 		}
-		WriteEEPROM_Word_WithZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
 		su8_OCV_Cali_Flag = 2;
 		break;
 
@@ -152,7 +152,7 @@ void SOC_OCV_Fix(void)
 			gu16_RTC_TimeCnt = 0;
 
 			// 校准后更新次数
-			WriteEEPROM_Word_WithZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
+			WriteEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
 
 			SOC_Enhance_Element.u16_RefreshData_Flag = 1;
 		}
@@ -189,7 +189,7 @@ void App_SOC(void)
 		return;
 	}
 
-	// SOC lib处理
+	MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 	SOC_OCV_Fix();
 	RefreshData_SOC();
 	GetData_SOC();

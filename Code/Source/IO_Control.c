@@ -250,7 +250,6 @@ void App_MOS_Relay_Ctrl(void)
 		return;
 	}
 
-	MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 
 	App_DI1_Switch();
 	RefreshData_Drivers();

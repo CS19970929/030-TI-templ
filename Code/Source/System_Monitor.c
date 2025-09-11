@@ -49,8 +49,8 @@ void InitSystemMonitorData_EEPROM(void)
 	// 总感觉，这个存在很麻烦，如果板子以前烧了代码，则这个关闭加热冷凝功能则没法处理。
 	// 但是屏蔽了，假设均衡关掉，再次启动又打开很麻烦(但是基本都是要求均衡的)
 	// 综上所述，先屏蔽观察一下
-	// System_OnOFF_Func.all = (UINT32)ReadEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT);
-	// System_OnOFF_Func.all |= ((UINT32)ReadEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2)<<16);		//先扩大为32位再移位
+	// System_OnOFF_Func.all = (UINT32)ReadEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT);
+	// System_OnOFF_Func.all |= ((UINT32)ReadEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2)<<16);		//先扩大为32位再移位
 
 	System_OnOFF_Func_StartUpRec.all = System_OnOFF_Func.all; // 如果某功能开机不打开，后续运行中途打开，则需要初始化，该位为记录位
 	if (!System_OnOFF_Func.bits.b1OnOFF_Balance)
@@ -85,8 +85,8 @@ void SystemMonitorResetData_EEPROM(void)
 	System_OnOFF_Func.bits.b1OnOFF_Cool = 1;
 	System_OnOFF_Func.bits.b1OnOFF_SOC_Fixed = 0;
 
-	WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
-	WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
+	WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
+	WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
 }
 
 UINT16 Sys_FindProtectFilterMax(void)

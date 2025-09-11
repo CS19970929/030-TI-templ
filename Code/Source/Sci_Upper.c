@@ -1441,7 +1441,7 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 		else
 		{
 			u32E2P_Pro_VolCur_WriteFlag = (EE_FLAG_VCELL_OVP_FIRST | EE_FLAG_VCELL_OVP_SECOND | EE_FLAG_VCELL_OVP_THIRD | EE_FLAG_VCELL_OVP_RCV | EE_FLAG_VCELL_OVP_FILTER) << (t_u16Temp);
-			InitData_SOC();
+			// InitData_SOC();
 		}
 	}
 	else
@@ -1455,60 +1455,14 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 // 但是上位机会有EEPROM写失败标志位弥补
 void Sci_WrRegs_0x10_SocTable(struct RS485MSG *s)
 {
-	/*
-	UINT8 i;
-	UINT16  u16WrRegNum;
-	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
-	if(u16WrRegNum == E2P_PARA_NUM_SOC_TABLE) {
-		for(i = 0; i < E2P_PARA_NUM_SOC_TABLE; ++i) {
-			SOC_Table_Set[i] = (UINT16)(s->u16Buffer[2*i+8] + (s->u16Buffer[2*i+7] << 8));
-		}
-		u8E2P_SocTable_WriteFlag = E2P_PARA_NUM_SOC_TABLE;
-	}
-	else {
-		s ->AckType = RS485_ACK_NEG;
-		s ->ErrorType = RS485_ERROR_CMD_INVALID;
-	}
-	*/
 }
 
 void Sci_WrRegs_0x10_CopperLoss(struct RS485MSG *s)
 {
-	/*
-	UINT8 i;
-	UINT16  u16WrRegNum;
-	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
-	if(u16WrRegNum == E2P_PARA_NUM_COPPERLOSS*2) {
-		for(i = 0; i < E2P_PARA_NUM_COPPERLOSS; ++i) {
-			CopperLoss[i] = (UINT16)(s->u16Buffer[2*i+8] + (s->u16Buffer[2*i+7] << 8));
-			CopperLoss_Num[i] = (UINT16)(s->u16Buffer[2*(i+16)+8] + (s->u16Buffer[2*(i+16)+7] << 8));
-		}
-		u8E2P_CopperLoss_WriteFlag = E2P_PARA_NUM_COPPERLOSS;
-	}
-	else {
-		s ->AckType = RS485_ACK_NEG;
-		s ->ErrorType = RS485_ERROR_CMD_INVALID;
-	}
-	*/
 }
 
 void Sci_WrRegs_0x10_RTC(struct RS485MSG *s)
 {
-	/*
-	UINT8 i;
-	UINT16  u16WrRegNum;
-	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
-	if(u16WrRegNum == E2P_PARA_NUM_RTC) {
-		for(i = 0; i < E2P_PARA_NUM_RTC; ++i) {
-			*(&RTC_time.RTC_Time_Year+i) = (UINT16)(s->u16Buffer[2*i+8] + (s->u16Buffer[2*i+7] << 8));
-		}
-		u32E2P_RTC_Element_WriteFlag = E2P_PARA_ALL_RTC_ELEMENT;
-	}
-	else {
-		s ->AckType = RS485_ACK_NEG;
-		s ->ErrorType = RS485_ERROR_CMD_INVALID;
-	}
-	*/
 }
 
 void Sci_WrRegs_0x10_Balance(struct RS485MSG *s)
@@ -1771,49 +1725,49 @@ void Sci_WrReg_0x06_Reset_CalibCoef(struct RS485MSG *s)
 		{
 			g_u16CalibCoefK[i] = SYSKDEFAULT;
 			g_i16CalibCoefB[i] = SYSBDEFAULT;
-			WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (i << 1)), g_u16CalibCoefK[i]);
-			WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (i << 1)), g_i16CalibCoefB[i]);
+			WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (i << 1)), g_u16CalibCoefK[i]);
+			WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (i << 1)), g_i16CalibCoefB[i]);
 		}
 		break;
 	case 0x55AB:
 
 		g_u16CalibCoefK[VOLT_AFE1] = SYSKDEFAULT;
 		g_i16CalibCoefB[VOLT_AFE1] = SYSBDEFAULT;
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (VOLT_AFE1 << 1)), g_u16CalibCoefK[VOLT_AFE1]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (VOLT_AFE1 << 1)), g_i16CalibCoefB[VOLT_AFE1]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (VOLT_AFE1 << 1)), g_u16CalibCoefK[VOLT_AFE1]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (VOLT_AFE1 << 1)), g_i16CalibCoefB[VOLT_AFE1]);
 		break;
 	case 0x55AC:
 		g_u16CalibCoefK[VOLT_AFE2] = SYSKDEFAULT;
 		g_i16CalibCoefB[VOLT_AFE2] = SYSBDEFAULT;
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (VOLT_AFE2 << 1)), g_u16CalibCoefK[VOLT_AFE2]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (VOLT_AFE2 << 1)), g_i16CalibCoefB[VOLT_AFE2]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (VOLT_AFE2 << 1)), g_u16CalibCoefK[VOLT_AFE2]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (VOLT_AFE2 << 1)), g_i16CalibCoefB[VOLT_AFE2]);
 		break;
 	case 0x55AD:
 		g_u16CalibCoefK[VOLT_VBUS] = SYSKDEFAULT;
 		g_i16CalibCoefB[VOLT_VBUS] = SYSBDEFAULT;
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (VOLT_VBUS << 1)), g_u16CalibCoefK[VOLT_VBUS]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (VOLT_VBUS << 1)), g_i16CalibCoefB[VOLT_VBUS]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (VOLT_VBUS << 1)), g_u16CalibCoefK[VOLT_VBUS]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (VOLT_VBUS << 1)), g_i16CalibCoefB[VOLT_VBUS]);
 		break;
 	case 0x55AE:
 		for (i = 0; i < 10; i++)
 		{
 			g_u16CalibCoefK[MDL_TEMP1 + i] = SYSKDEFAULT;
 			g_i16CalibCoefB[MDL_TEMP1 + i] = SYSBDEFAULT;
-			WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + ((MDL_TEMP1 + i) << 1)), g_u16CalibCoefK[i]);
-			WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + ((MDL_TEMP1 + i) << 1)), g_i16CalibCoefB[i]);
+			WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + ((MDL_TEMP1 + i) << 1)), g_u16CalibCoefK[i]);
+			WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + ((MDL_TEMP1 + i) << 1)), g_i16CalibCoefB[i]);
 		}
 		break;
 	case 0x55AF:
 		g_u16CalibCoefK[MDL_IDSG] = SYSKDEFAULT;
 		g_i16CalibCoefB[MDL_IDSG] = SYSBDEFAULT;
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (MDL_IDSG << 1)), g_u16CalibCoefK[MDL_IDSG]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (MDL_IDSG << 1)), g_i16CalibCoefB[MDL_IDSG]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (MDL_IDSG << 1)), g_u16CalibCoefK[MDL_IDSG]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (MDL_IDSG << 1)), g_i16CalibCoefB[MDL_IDSG]);
 		break;
 	case 0x55B0:
 		g_u16CalibCoefK[MDL_ICHG] = SYSKDEFAULT;
 		g_i16CalibCoefB[MDL_ICHG] = SYSBDEFAULT;
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (MDL_ICHG << 1)), g_u16CalibCoefK[MDL_ICHG]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (MDL_ICHG << 1)), g_i16CalibCoefB[MDL_ICHG]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (MDL_ICHG << 1)), g_u16CalibCoefK[MDL_ICHG]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (MDL_ICHG << 1)), g_i16CalibCoefB[MDL_ICHG]);
 		break;
 	default:
 		s->AckType = RS485_ACK_NEG;
@@ -1864,7 +1818,7 @@ void Sci_WrReg_0x06_Reset_ProtectElement(struct RS485MSG *s)
 		u32E2P_Pro_VolCur_WriteFlag = E2P_PARA_ALL_VOLCUR_PROTECT;
 		u32E2P_Pro_Temp_WriteFlag = E2P_PARA_ALL_TEM_PROTECT;
 		u32E2P_Pro_Other_WriteFlag = E2P_PARA_ALL_OTHER_PROTECT;
-		InitData_SOC();
+		// InitData_SOC();
 	}
 	else
 	{
@@ -1998,8 +1952,8 @@ void Sci_WrReg_0x06_BMS_FunctionON(struct RS485MSG *s)
 		}
 		else
 		{
-			WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
-			WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
+			WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
+			WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
 		}
 
 		if (System_OnOFF_Func.bits.b1OnOFF_SOC_Fixed)
@@ -2034,8 +1988,8 @@ void Sci_WrReg_0x06_BMS_FunctionOFF(struct RS485MSG *s)
 		}
 		else
 		{
-			WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
-			WriteEEPROM_Word_WithZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
+			WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT, (UINT16)(System_OnOFF_Func.all & 0x0000FFFF));
+			WriteEEPROM_Word_NoZone(EEPROM_ADDR_SYS_FUNC_SELECT + 2, (UINT16)(System_OnOFF_Func.all >> 16));
 		}
 	}
 	else

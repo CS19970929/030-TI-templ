@@ -34,6 +34,7 @@
 #include "ShortFunc.h"
 
 #include "conf_gpio.h"
+#include "conf.h"
 
 
 #define APPLICATION_ADDRESS     (uint32_t)0x08001C00

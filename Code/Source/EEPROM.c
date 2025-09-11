@@ -17,165 +17,7 @@ UINT8 u8E2P_KB_WritePos = 0;
 
 void InitData_E2prom(void);
 
-// HD系列芯片地址是32位，别的是16位
-// 地址是0x1000开始到0x13FF结束
-UINT8 WriteEEPROM_Byte_Hardware(UINT16 addr, UINT8 val)
-{
-	Feed_IWatchDog; // 看门狗定时器清零
-	/*
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while(I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BUSY) != RESET) {	//等待总线不忙
-		if((sEETimeout--) == 0) {
-			return sEE_TIMEOUT_UserCallback();
-		}
-	}
-	*/
-	//__delay_ms(5);
-	// sEE_WaitEepromStandbyState();			//写必须要这个，读可以不用，但为了保险起见，加上，后续观察这个函数的耗时，对别的通讯动作，时序影响
-	I2C_TransferHandling(sEE_I2C, sEEAddress, 2, I2C_Reload_Mode, I2C_Generate_Start_Write); // I2C_Reload_Mode，传完两个地址能继续传
 
-	/* Send MSB of memory address */
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TXIS) == RESET)
-	{ // I2Cx_TXDR寄存器为空置1，跳出循环，则写
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_SendData(sEE_I2C, (uint8_t)((addr & 0xFF00) >> 8));
-
-	/* Send LSB of memory address  */
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TXIS) == RESET)
-	{
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_SendData(sEE_I2C, (uint8_t)(addr & 0x00FF));
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TCR) == RESET)
-	{ // 等待发送完成标志，由硬件清0，I2C_Reload_Mode才会产生TC，但是不会带stop信号，能继续传
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	/* Update CR2 : set Slave Address , set write request, generate Start and set end mode */
-	// 不产生起始或者开始信号，在Reload_Mode为1时，Start也没用，也即不会产生起始信号和发送地址，只是更新某些功能
-	I2C_TransferHandling(sEE_I2C, sEEAddress, 1, I2C_AutoEnd_Mode, I2C_No_StartStop); // 自动结束，产生stop信号
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TXIS) == RESET)
-	{ // 出现在发送中断，则发
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_SendData(sEE_I2C, val);
-
-	/* Wait until STOPF flag is set */
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_STOPF) == RESET)
-	{
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_ClearFlag(sEE_I2C, I2C_ICR_STOPCF);
-
-	__delay_ms(5); // 到处想，直接这里一加完美了，巧妙得一匹
-	return sEE_OK;
-}
-
-UINT8 ReadEEPROM_Byte_Hardware(UINT16 addr)
-{
-	UINT8 u8tmp = 0xff;
-
-	/*
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while(I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BUSY) != RESET) {	//等待总线不忙
-		if((sEETimeout--) == 0) {
-			return sEE_TIMEOUT_UserCallback();
-		}
-	}
-	*/
-
-	// sEE_WaitEepromStandbyState();
-	// I2C_SoftEnd_Mode，是在地址数据发送以后产生一个restart信号，以表示用来读取E2的数据
-	I2C_TransferHandling(sEE_I2C, sEEAddress, 2, I2C_SoftEnd_Mode, I2C_Generate_Start_Write);
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TXIS) == RESET)
-	{ // I2Cx_TXDR寄存器为空置1，跳出循环，则写
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_SendData(sEE_I2C, (UINT8)((addr & 0xFF00) >> 8));
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TXIS) == RESET)
-	{
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_SendData(sEE_I2C, (UINT8)(addr & 0x00FF));
-
-	/*	//去掉了反而变好了.....哪里return点哪里，无语了
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while(I2C_GetFlagStatus(sEE_I2C, I2C_ISR_TC) == RESET) {		//等待发送完成标志，由硬件清0
-		if((sEETimeout--) == 0) {
-			return sEE_TIMEOUT_UserCallback();
-		}
-	}
-	*/
-	/* Update CR2 : set Slave Address , set read request, generate Start and set end mode */
-	// I2C_AutoEnd_Mode，NBYTES 个数据传输完后，会自动发送一个停止条件。
-	// I2C_Generate_Start_Read应该会再次发送读地址 0xA0 + 0x01 = 0xA1
-	I2C_TransferHandling(sEE_I2C, sEEAddress, 1, I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_RXNE) == RESET)
-	{ // 收到非空，则读
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	u8tmp = I2C_ReceiveData(sEE_I2C);
-
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C, I2C_ISR_STOPF) == RESET)
-	{
-		if ((sEETimeout--) == 0)
-		{
-			System_ERROR_UserCallback(ERROR_EEPROM_COM);
-			return 0;
-		}
-	}
-	I2C_ClearFlag(sEE_I2C, I2C_ICR_STOPCF);
-
-	return u8tmp; // 返回EEDATA存储的数据
-}
-
-// 产生IIC起始信号
 void IIC_Start_SEE(void)
 {
 	SDA_OUT_SEE(); // sda线输出
@@ -418,80 +260,6 @@ UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data)
 	return result;
 }
 
-/*
-=================以下进入第二层应用阶段=================
-*/
-
-UINT16 ReadEEPROM_Word_WithZone(UINT16 addr)
-{
-
-	UINT16 tmp16a, tmp16b, tmp16c;
-	UINT8 tmp8a, tmp8b;
-	UINT16 addrB, addrC;
-
-	addrB = addr + BZONE;
-	addrC = addr + CZONE;
-
-	tmp8a = ReadEEPROM_Byte(addr);	   // 读取低位地址A对应的数据
-	tmp8b = ReadEEPROM_Byte(addr + 1); // 读取高位地址A+1对应的数据
-	tmp16a = tmp8b;
-	tmp16a = (tmp16a << 8) | tmp8a; // 数据存储
-
-	tmp8a = ReadEEPROM_Byte(addrB);		// 读取低位地址B对应的数据
-	tmp8b = ReadEEPROM_Byte(addrB + 1); // 读取高位地址B+1对应的数据
-	tmp16b = tmp8b;
-	tmp16b = (tmp16b << 8) | tmp8a; // 数据存储
-
-	tmp8a = ReadEEPROM_Byte(addrC);		// 读取低位地址C对应的数据
-	tmp8b = ReadEEPROM_Byte(addrC + 1); // 读取高位地址C+1对应的数据
-	tmp16c = tmp8b;
-	tmp16c = (tmp16c << 8) | tmp8a; // 数据存储
-
-	if (tmp16a == tmp16b)
-	{ // a == b
-		if (tmp16a != tmp16c)
-		{ // a != c
-			WriteEEPROM_Word_NoZone(addrC, tmp16a);
-		}
-		return tmp16a;
-	}
-	else
-	{
-		if (tmp16b == tmp16c)
-		{ // b==c  a != b
-			WriteEEPROM_Word_NoZone(addr, tmp16b);
-			return tmp16b;
-		}
-		else
-		{
-			if (tmp16a == tmp16c)
-			{ // a == c, a != b
-				WriteEEPROM_Word_NoZone(addrB, tmp16a);
-				return tmp16a;
-			}
-			else
-			{ // a != b, b != c, c != a
-				WriteEEPROM_Word_NoZone(addr, tmp16a);
-				WriteEEPROM_Word_NoZone(addrB, tmp16a);
-				WriteEEPROM_Word_NoZone(addrC, tmp16a);
-				return tmp16a; // tmp16a,tmp16b,tmp16c返回默认值，返回第一个值？
-			}
-		}
-	}
-}
-
-// 主要调这个，加了几句话
-void WriteEEPROM_Word_WithZone(UINT16 addr, UINT16 data)
-{
-	UINT8 result = 0;
-	result += WriteEEPROM_Word_NoZone(addr, data);
-	result += WriteEEPROM_Word_NoZone(addr + BZONE, data);
-	result += WriteEEPROM_Word_NoZone(addr + CZONE, data);
-	if (result != 0)
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-	}
-}
 
 void ReadEEPROM_ByteData_StartUp(void)
 {
@@ -518,7 +286,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 
 	for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
 	{ // 保护点
-		t_u16RdTemp = ReadEEPROM_Word_WithZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i));
+		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i));
 		t_u16TempMax = (*(&PrtE2paras_Max.u16VcellOvp_First + i));
 		t_u16TempMin = (*(&PrtE2paras_Min.u16VcellOvp_First + i));
 		*(&PRT_E2ROMParas.u16VcellOvp_First + i) = t_u16RdTemp;
@@ -537,7 +305,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 
 	for (i = 0; i < E2P_PARA_NUM_CALIB_K; ++i)
 	{ // K值
-		t_u16RdTemp = ReadEEPROM_Word_WithZone(E2P_ADDR_START_CALIB_K + (i << 1));
+		t_u16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_K + (i << 1));
 		g_u16CalibCoefK[i] = t_u16RdTemp;
 		if ((t_u16RdTemp >= SYSKMIN) && (t_u16RdTemp <= SYSKMAX))
 		{
@@ -550,7 +318,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 			}
 		}
 
-		t_i16RdTemp = ReadEEPROM_Word_WithZone(E2P_ADDR_START_CALIB_B + (i << 1));
+		t_i16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_B + (i << 1));
 		g_i16CalibCoefB[i] = t_i16RdTemp; // B值
 		if ((t_i16RdTemp >= SYSBMIN) && (t_i16RdTemp <= SYSBMAX))
 		{
@@ -566,7 +334,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 
 	for (i = 0; i < E2P_PARA_NUM_OTHER_ELEMENT1; ++i)
 	{ // Other_CanAdd
-		t_u16RdTemp = ReadEEPROM_Word_WithZone((UINT16) * (&OtherElement_to_Pos.u16Balance_OpenVoltage + i));
+		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&OtherElement_to_Pos.u16Balance_OpenVoltage + i));
 		t_u16TempMax = (*(&OtherElement_to_Max.u16Balance_OpenVoltage + i));
 		t_u16TempMin = (*(&OtherElement_to_Min.u16Balance_OpenVoltage + i));
 		*(&OtherElement.u16Balance_OpenVoltage + i) = t_u16RdTemp;
@@ -585,7 +353,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 
 	for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
 	{ // HeatCool_element
-		t_u16RdTemp = ReadEEPROM_Word_WithZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i));
+		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i));
 		t_u16TempMax = (*(&HeatCoolEle_Max.u16Heat_OpenTemp + i));
 		t_u16TempMin = (*(&HeatCoolEle_Min.u16Heat_OpenTemp + i));
 		*(&Heat_Cool_Element.u16Heat_OpenTemp + i) = t_u16RdTemp;
@@ -667,8 +435,8 @@ void WriteEEPROM_ByteData_Circle(void)
 
 	if (u8E2P_KB_WriteFlag)
 	{ // 完美KB值操作，既可全部写一遍，也可以单独写其中一对KB值
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_K + (u8E2P_KB_WritePos << 1)), g_u16CalibCoefK[u8E2P_KB_WritePos]);
-		WriteEEPROM_Word_WithZone((E2P_ADDR_START_CALIB_B + (u8E2P_KB_WritePos << 1)), g_i16CalibCoefB[u8E2P_KB_WritePos]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (u8E2P_KB_WritePos << 1)), g_u16CalibCoefK[u8E2P_KB_WritePos]);
+		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (u8E2P_KB_WritePos << 1)), g_i16CalibCoefB[u8E2P_KB_WritePos]);
 		++u8E2P_KB_WritePos; // 如果u8E2P_KB_WriteFlag=0，则Pos就算错也没用，别的地方想修改KB值的话，这两者必须同时操作。
 		--u8E2P_KB_WriteFlag;
 	}
@@ -678,7 +446,7 @@ void WriteEEPROM_ByteData_Circle(void)
 		{
 			if ((u32E2P_Pro_VolCur_WriteFlag >> i) & 1)
 			{
-				WriteEEPROM_Word_WithZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i),
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i),
 										  *(&PRT_E2ROMParas.u16VcellOvp_First + i));
 				u32E2P_Pro_VolCur_WriteFlag -= ((long)1 << i); // 按位操作，有一个减一个。
 				break;
@@ -692,7 +460,7 @@ void WriteEEPROM_ByteData_Circle(void)
 		{
 			if ((u32E2P_Pro_Temp_WriteFlag >> i) & 1)
 			{
-				WriteEEPROM_Word_WithZone((UINT16) * (&PrtE2paras_Pos.u16TChgOTp_First + i),
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16TChgOTp_First + i),
 										  *(&PRT_E2ROMParas.u16TChgOTp_First + i));
 				u32E2P_Pro_Temp_WriteFlag -= ((long)1 << i);
 				break;
@@ -706,7 +474,7 @@ void WriteEEPROM_ByteData_Circle(void)
 		{
 			if ((u32E2P_Pro_Other_WriteFlag >> i) & 1)
 			{
-				WriteEEPROM_Word_WithZone((UINT16) * (&PrtE2paras_Pos.u16VdeltaOvp_First + i),
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VdeltaOvp_First + i),
 										  *(&PRT_E2ROMParas.u16VdeltaOvp_First + i));
 				u32E2P_Pro_Other_WriteFlag -= ((long)1 << i);
 				break;
@@ -720,7 +488,7 @@ void WriteEEPROM_ByteData_Circle(void)
 		{
 			if ((u32E2P_OtherElement1_WriteFlag >> i) & 1)
 			{
-				WriteEEPROM_Word_WithZone((UINT16) * (&OtherCanAdd_Pos.u16Balance_OpenVoltage + i),
+				WriteEEPROM_Word_NoZone((UINT16) * (&OtherCanAdd_Pos.u16Balance_OpenVoltage + i),
 										  *(&OtherElement.u16Balance_OpenVoltage + i));
 				u32E2P_OtherElement1_WriteFlag -= ((long)1 << i);
 				break;
@@ -734,7 +502,7 @@ void WriteEEPROM_ByteData_Circle(void)
 		{
 			if ((u32E2P_HeatCool_WriteFlag >> i) & 1)
 			{
-				WriteEEPROM_Word_WithZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i), *(&Heat_Cool_Element.u16Heat_OpenTemp + i));
+				WriteEEPROM_Word_NoZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i), *(&Heat_Cool_Element.u16Heat_OpenTemp + i));
 				u32E2P_HeatCool_WriteFlag -= ((long)1 << i);
 				break;
 			}
@@ -743,11 +511,11 @@ void WriteEEPROM_ByteData_Circle(void)
 	else if (gu8_Reset_EventRecord)
 	{
 		u8temp = 100 - gu8_Reset_EventRecord;
-		WriteEEPROM_Word_WithZone(E2P_ADDR_START_EVENT_RECORD + (u8temp << 1), 0);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + (u8temp << 1), 0);
 		gu8_Reset_EventRecord--;
 		if (gu8_Reset_EventRecord == 1)
 		{
-			WriteEEPROM_Word_WithZone(E2P_ADDR_E2POS_EVENT_POINT, 0);
+			WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, 0);
 		}
 	}
 }
@@ -792,7 +560,7 @@ void InitData_E2prom(void)
 										   // 如果有别的添加，可以往这个函数写，目前加了保护记录初始化
 		WriteProID_Default();
 		
-		WriteEEPROM_Word_WithZone(812, 0xffff); // 第一次上电初始化完成
+		WriteEEPROM_Word_NoZone(812, 0xffff); // 第一次上电初始化完成
 		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG); // 第一次上电初始化完成
 	}
 }

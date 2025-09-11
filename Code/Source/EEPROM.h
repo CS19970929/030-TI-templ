@@ -39,7 +39,7 @@
 #define EEPROM_ADDR_SLEEP           		((UINT16)0x3FFA)
 #define EEPROM_ADDR_FLASHUPDATE     		((UINT16)0x3FFE)
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x3338		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x1444		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
 #define EEPROM_VALUE_SLEEP    				((UINT16)0xABCD)
 #define EEPROM_VALUE_SLEEP_RESET    		((UINT16)0xFFFF)
 #define EEPROM_VALUE_FLASHUPDATE    		((UINT16)0xABCD)
@@ -307,8 +307,6 @@ UINT8 ReadEEPROM_Byte(UINT16 addr);
 UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val);
 UINT16 ReadEEPROM_Word_NoZone(UINT16 addr);
 UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data);
-UINT16 ReadEEPROM_Word_WithZone(UINT16 addr);						//ԭ���ϲ�����
-void WriteEEPROM_Word_WithZone(UINT16 addr, UINT16 data);
 
 void InitE2PROM(void);
 void App_E2promDeal(void);

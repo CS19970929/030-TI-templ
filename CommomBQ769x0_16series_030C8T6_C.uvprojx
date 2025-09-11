@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER STM32F0XX</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Code\Drivers;.\Code\Lib;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source</IncludePath>
+              <IncludePath>.\Code\Drivers;.\Code\Lib;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source;.\Code\Source\conf</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -583,16 +583,6 @@
               <FileType>4</FileType>
               <FilePath>.\Code\Lib\IODrivers_030.lib</FilePath>
             </File>
-            <File>
-              <FileName>SocIntegral_030.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Lib\SocIntegral_030.h</FilePath>
-            </File>
-            <File>
-              <FileName>SocIntegral_030.lib</FileName>
-              <FileType>4</FileType>
-              <FilePath>.\Code\Lib\SocIntegral_030.lib</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -722,6 +712,11 @@
               <FileName>BQ769X0_Func.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\BQ769X0_Func.c</FilePath>
+            </File>
+            <File>
+              <FileName>SocEnhance.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\SocEnhance.c</FilePath>
             </File>
           </Files>
         </Group>

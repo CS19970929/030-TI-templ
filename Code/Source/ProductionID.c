@@ -10,21 +10,21 @@ void InitProID(void)
 	ProductionInfor.BMS_HardWareVersionHeadAdress = E2P_ADDR_E2POS_HAEDWARE_VER;
 	ProductionInfor.BMS_SoftWareVersionHeadAdress = E2P_ADDR_E2POS_SOFTWARE_VER;
 
-	ProductionInfor.BMS_SerialNumberLength = ReadEEPROM_Word_WithZone(ProductionInfor.BMS_SerialNumberHeadAdress);
-	ProductionInfor.BMS_HardWareVersionLength = ReadEEPROM_Word_WithZone(ProductionInfor.BMS_HardWareVersionHeadAdress);
-	ProductionInfor.BMS_SoftWareVersionLength = ReadEEPROM_Word_WithZone(ProductionInfor.BMS_SoftWareVersionHeadAdress);
+	ProductionInfor.BMS_SerialNumberLength = ReadEEPROM_Word_NoZone(ProductionInfor.BMS_SerialNumberHeadAdress);
+	ProductionInfor.BMS_HardWareVersionLength = ReadEEPROM_Word_NoZone(ProductionInfor.BMS_HardWareVersionHeadAdress);
+	ProductionInfor.BMS_SoftWareVersionLength = ReadEEPROM_Word_NoZone(ProductionInfor.BMS_SoftWareVersionHeadAdress);
 
 	// 这样写可以吗？
 	for (i = 0; i < (PRODUCT_ID_LENGTH_MAX >> 1); i++)
 	{
 		*((UINT16 *)(&ProductionInfor.BMS_SerialNumber[i * 2])) =
-			ReadEEPROM_Word_WithZone(ProductionInfor.BMS_SerialNumberHeadAdress + 2 + i * 2); // 往后挪一位
+			ReadEEPROM_Word_NoZone(ProductionInfor.BMS_SerialNumberHeadAdress + 2 + i * 2); // 往后挪一位
 
 		*((UINT16 *)(&ProductionInfor.BMS_HardWareVersion[i * 2])) =
-			ReadEEPROM_Word_WithZone(ProductionInfor.BMS_HardWareVersionHeadAdress + 2 + i * 2);
+			ReadEEPROM_Word_NoZone(ProductionInfor.BMS_HardWareVersionHeadAdress + 2 + i * 2);
 
 		*((UINT16 *)(&ProductionInfor.BMS_SoftWareVersion[i * 2])) =
-			ReadEEPROM_Word_WithZone(ProductionInfor.BMS_SoftWareVersionHeadAdress + 2 + i * 2);
+			ReadEEPROM_Word_NoZone(ProductionInfor.BMS_SoftWareVersionHeadAdress + 2 + i * 2);
 	}
 }
 
@@ -34,10 +34,10 @@ void WriteProID(void)
 
 	if (ProductionInfor.BMS_SerialNumber_WriteFlag)
 	{
-		WriteEEPROM_Word_WithZone(ProductionInfor.BMS_SerialNumberHeadAdress, ProductionInfor.BMS_SerialNumberLength);
+		WriteEEPROM_Word_NoZone(ProductionInfor.BMS_SerialNumberHeadAdress, ProductionInfor.BMS_SerialNumberLength);
 		for (i = 0; i < (PRODUCT_ID_LENGTH_MAX >> 1); i++)
 		{
-			WriteEEPROM_Word_WithZone(ProductionInfor.BMS_SerialNumberHeadAdress + 2 + i * 2,
+			WriteEEPROM_Word_NoZone(ProductionInfor.BMS_SerialNumberHeadAdress + 2 + i * 2,
 									  *((UINT16 *)(&ProductionInfor.BMS_SerialNumber[i * 2])));
 		}
 		ProductionInfor.BMS_SerialNumber_WriteFlag = 0;
@@ -45,10 +45,10 @@ void WriteProID(void)
 
 	if (ProductionInfor.BMS_HardWareVersion_WriteFlag)
 	{
-		WriteEEPROM_Word_WithZone(ProductionInfor.BMS_HardWareVersionHeadAdress, ProductionInfor.BMS_HardWareVersionLength);
+		WriteEEPROM_Word_NoZone(ProductionInfor.BMS_HardWareVersionHeadAdress, ProductionInfor.BMS_HardWareVersionLength);
 		for (i = 0; i < (PRODUCT_ID_LENGTH_MAX >> 1); i++)
 		{
-			WriteEEPROM_Word_WithZone(ProductionInfor.BMS_HardWareVersionHeadAdress + 2 + i * 2,
+			WriteEEPROM_Word_NoZone(ProductionInfor.BMS_HardWareVersionHeadAdress + 2 + i * 2,
 									  *((UINT16 *)(&ProductionInfor.BMS_HardWareVersion[i * 2])));
 		}
 		ProductionInfor.BMS_HardWareVersion_WriteFlag = 0;
@@ -56,10 +56,10 @@ void WriteProID(void)
 
 	if (ProductionInfor.BMS_SoftWareVersion_WriteFlag)
 	{
-		WriteEEPROM_Word_WithZone(ProductionInfor.BMS_SoftWareVersionHeadAdress, ProductionInfor.BMS_SoftWareVersionLength);
+		WriteEEPROM_Word_NoZone(ProductionInfor.BMS_SoftWareVersionHeadAdress, ProductionInfor.BMS_SoftWareVersionLength);
 		for (i = 0; i < (PRODUCT_ID_LENGTH_MAX >> 1); i++)
 		{
-			WriteEEPROM_Word_WithZone(ProductionInfor.BMS_SoftWareVersionHeadAdress + 2 + i * 2,
+			WriteEEPROM_Word_NoZone(ProductionInfor.BMS_SoftWareVersionHeadAdress + 2 + i * 2,
 									  *((UINT16 *)(&ProductionInfor.BMS_SoftWareVersion[i * 2])));
 		}
 		ProductionInfor.BMS_SoftWareVersion_WriteFlag = 0;
