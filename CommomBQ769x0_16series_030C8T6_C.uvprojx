@@ -189,7 +189,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>0</useUlib>
+            <useUlib>1</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -322,7 +322,7 @@
             <PlainCh>0</PlainCh>
             <Ropi>0</Ropi>
             <Rwpi>0</Rwpi>
-            <wLevel>2</wLevel>
+            <wLevel>1</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
             <uC99>0</uC99>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER STM32F0XX</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Code\Drivers;.\Code\Lib;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source;.\Code\Source\conf</IncludePath>
+              <IncludePath>.\Code\Drivers;.\Code\Lib;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source;.\Code\Source\conf;.\Code\Source\easyflash\inc;.\Code\Source\easyflash\port</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -432,141 +432,6 @@
               <FileName>system_stm32f0xx.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Code\Drivers\system_stm32f0xx.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Include</GroupName>
-          <Files>
-            <File>
-              <FileName>ADC.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\ADC.h</FilePath>
-            </File>
-            <File>
-              <FileName>bqMaximo_Ctrl_G2553.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\bqMaximo_Ctrl_G2553.h</FilePath>
-            </File>
-            <File>
-              <FileName>Cell_balance.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Cell_balance.h</FilePath>
-            </File>
-            <File>
-              <FileName>ChargerLoadFunc.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\ChargerLoadFunc.h</FilePath>
-            </File>
-            <File>
-              <FileName>DataDeal.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\DataDeal.h</FilePath>
-            </File>
-            <File>
-              <FileName>EEPROM.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\EEPROM.h</FilePath>
-            </File>
-            <File>
-              <FileName>Fault.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Fault.h</FilePath>
-            </File>
-            <File>
-              <FileName>Flash.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Flash.h</FilePath>
-            </File>
-            <File>
-              <FileName>Heat_Cool.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Heat_Cool.h</FilePath>
-            </File>
-            <File>
-              <FileName>I2C_AFE1.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\I2C_AFE1.h</FilePath>
-            </File>
-            <File>
-              <FileName>I2C_Slave.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\I2C_Slave.h</FilePath>
-            </File>
-            <File>
-              <FileName>IO_Control.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\IO_Control.h</FilePath>
-            </File>
-            <File>
-              <FileName>LED_Buzzer.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\LED_Buzzer.h</FilePath>
-            </File>
-            <File>
-              <FileName>LogRecord.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\LogRecord.h</FilePath>
-            </File>
-            <File>
-              <FileName>main.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\main.h</FilePath>
-            </File>
-            <File>
-              <FileName>ProductionID.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\ProductionID.h</FilePath>
-            </File>
-            <File>
-              <FileName>PubFunc.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\PubFunc.h</FilePath>
-            </File>
-            <File>
-              <FileName>PWM.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\PWM.h</FilePath>
-            </File>
-            <File>
-              <FileName>RTC.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\RTC.h</FilePath>
-            </File>
-            <File>
-              <FileName>Sci_Upper.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Sci_Upper.h</FilePath>
-            </File>
-            <File>
-              <FileName>SleepDeal.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\SleepDeal.h</FilePath>
-            </File>
-            <File>
-              <FileName>SOC.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\SOC.h</FilePath>
-            </File>
-            <File>
-              <FileName>System_Init.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\System_Init.h</FilePath>
-            </File>
-            <File>
-              <FileName>System_Monitor.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\System_Monitor.h</FilePath>
-            </File>
-            <File>
-              <FileName>Uart_Client.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\Uart_Client.h</FilePath>
-            </File>
-            <File>
-              <FileName>BQ769X0_Func.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\Include\BQ769X0_Func.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -980,6 +845,97 @@
             </File>
           </Files>
         </Group>
+        <Group>
+          <GroupName>conf</GroupName>
+          <Files>
+            <File>
+              <FileName>conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\conf\conf.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>flash</GroupName>
+          <Files>
+            <File>
+              <FileName>easyflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\easyflash\src\easyflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>ef_env.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\easyflash\src\ef_env.c</FilePath>
+            </File>
+            <File>
+              <FileName>ef_utils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\easyflash\src\ef_utils.c</FilePath>
+            </File>
+            <File>
+              <FileName>ef_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\easyflash\port\ef_port.c</FilePath>
+            </File>
+            <File>
+              <FileName>test_easyflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\easyflash\port\test_easyflash.c</FilePath>
+              <FileOption>
+                <CommonProperty>
+                  <UseCPPCompiler>2</UseCPPCompiler>
+                  <RVCTCodeConst>0</RVCTCodeConst>
+                  <RVCTZI>0</RVCTZI>
+                  <RVCTOtherData>0</RVCTOtherData>
+                  <ModuleSelection>0</ModuleSelection>
+                  <IncludeInBuild>1</IncludeInBuild>
+                  <AlwaysBuild>2</AlwaysBuild>
+                  <GenerateAssemblyFile>2</GenerateAssemblyFile>
+                  <AssembleAssemblyFile>2</AssembleAssemblyFile>
+                  <PublicsOnly>2</PublicsOnly>
+                  <StopOnExitCode>11</StopOnExitCode>
+                  <CustomArgument></CustomArgument>
+                  <IncludeLibraryModules></IncludeLibraryModules>
+                  <ComprImg>1</ComprImg>
+                </CommonProperty>
+                <FileArmAds>
+                  <Cads>
+                    <interw>2</interw>
+                    <Optim>0</Optim>
+                    <oTime>2</oTime>
+                    <SplitLS>2</SplitLS>
+                    <OneElfS>2</OneElfS>
+                    <Strict>2</Strict>
+                    <EnumInt>2</EnumInt>
+                    <PlainCh>2</PlainCh>
+                    <Ropi>2</Ropi>
+                    <Rwpi>2</Rwpi>
+                    <wLevel>0</wLevel>
+                    <uThumb>2</uThumb>
+                    <uSurpInc>2</uSurpInc>
+                    <uC99>2</uC99>
+                    <uGnu>2</uGnu>
+                    <useXO>2</useXO>
+                    <v6Lang>0</v6Lang>
+                    <v6LangP>0</v6LangP>
+                    <vShortEn>2</vShortEn>
+                    <vShortWch>2</vShortWch>
+                    <v6Lto>2</v6Lto>
+                    <v6WtE>2</v6WtE>
+                    <v6Rtti>2</v6Rtti>
+                    <VariousControls>
+                      <MiscControls></MiscControls>
+                      <Define></Define>
+                      <Undefine></Undefine>
+                      <IncludePath></IncludePath>
+                    </VariousControls>
+                  </Cads>
+                </FileArmAds>
+              </FileOption>
+            </File>
+          </Files>
+        </Group>
       </Groups>
     </Target>
   </Targets>
@@ -989,5 +945,14 @@
     <components/>
     <files/>
   </RTE>
+
+  <LayerInfo>
+    <Layers>
+      <Layer>
+        <LayName>CommomBQ769x0_16series_030C8T6_C</LayName>
+        <LayPrjMark>1</LayPrjMark>
+      </Layer>
+    </Layers>
+  </LayerInfo>
 
 </Project>

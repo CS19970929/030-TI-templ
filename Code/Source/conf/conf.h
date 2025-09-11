@@ -4,6 +4,11 @@
 #include "stdio.h"
 #include "stdint.h"
 
+#define BSP_Printf		printf
+// #define BSP_Printf(...)
+
+#define VERSION         (4)
+
 #define __VIRTURE_CURRENT__
 
 typedef struct 

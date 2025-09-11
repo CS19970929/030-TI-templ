@@ -32,6 +32,7 @@ int main(void)
 {
 	InitDevice(); // 初始化外设，这两个函数的位置需要斟酌一下，现在换回去先
 	InitVar();	  // 初始化变量
+	SOC_Enhance_Element.u16_SOC_InitOver = 1; // Soc初始化完毕
 
 	while (1)
 	{
@@ -94,9 +95,10 @@ void InitDevice(void)
 	InitSystemWakeUp();
 	InitE2PROM(); // 内部EEPROM，不需要初始化
 	InitSci();
+	// printf()
 	InitADC();
 
-	InitData_SOC();
+	// InitData_SOC();
 	Init_RTC(); // 必须放在EEPROM读完数据后面！
 				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 	// Init_I2CSlaver();
@@ -107,6 +109,17 @@ void InitDevice(void)
 	// InitPWM();			//关于CBC的输出
 
 	InitAFE1();
+
+#if 1
+	if (easyflash_init() == EF_NO_ERR)
+	{
+		test_env();
+		get_soc_easyflash();
+	}
+	else
+	{
+	}
+#endif
 
 	// Init_IWDG();
 #endif

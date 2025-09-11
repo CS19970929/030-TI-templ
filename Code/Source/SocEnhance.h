@@ -70,7 +70,35 @@ struct SOC_ENHANCE_ELEMENT {
 									//���ܱ��档
 };
 
+
+struct SOC_CALCULATE_ELEMENT {	
+	//InitSOC_IntEnhance赋值类型
+	UINT32  u32CapFactory;  	//电池初始总容量(出厂容量)As*10 =        Ah*3600*10
+	UINT32  u32CycleT_Limit;    //可循环次数
+	//以下置零
+	UINT32	u32CapChange;		//电池容量变化	   As*10，叠加类型
+	UINT8   u8OCV_Cali_Flag;    //开路电压法可使用标志
+	UINT8   u8CHG_AHCalcu_Flag;	//充电安时积分可使用标志
+	UINT8   u8DSG_AHCalcu_Flag;	//放电安时积分可使用标志
+	
+	//InitSOC_IntEnhance赋值，其后SOC_Update_StartUp再次赋值类型
+	UINT8   u8SOC_Now;          //当前电池SOC     0—100 为相对容量百分比
+	UINT32  u32CapNow;		 	//电池剩余总容量As*10
+	UINT8	u8DSG_SOC_Int;		//循环次数只算放电量，已放电量积累量百分比，90%算一个循环		
+	UINT32  u32Cycle_times;     //循环次数*100，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
+	UINT32  u32CapFull;	 		//电池衰减后总容量As*10(SOH)，我的显示SOH要改一改，算错了
+
+	//运行过程长期修改类型
+	UINT8   u8SOC_Old;          //初始SOC    0-100 为相对容量百分比
+	//UINT8   u8a_BurnIn;         //老化因素α的修正系数，系数乘以100
+	//UINT8   u8b_CapC;      		//电池容量修正因子δ，与充放电循环次数相关δ = f(Cycle_times)
+	UINT8	u8_DataUpdateOK;	//更新记录
+	UINT32  u32CapFull_Cal_As;	//长期运行，更新容量，As*10
+};
+
 extern struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;
+extern struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element_flash; // 内部计算结构体
+extern struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element;			//内部计算结构体
 
 extern UINT16 ChgValue;
 extern UINT16 DsgValue;

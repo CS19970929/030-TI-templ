@@ -33,6 +33,8 @@
 #include "LedBar.h"
 #include "ShortFunc.h"
 
+#include "easyflash.h"
+
 #include "conf_gpio.h"
 #include "conf.h"
 
