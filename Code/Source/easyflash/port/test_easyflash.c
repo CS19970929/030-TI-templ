@@ -199,7 +199,7 @@ void get_soc_easyflash(void)
 			SOC_Calculate_Element_flash.u8DSG_SOC_Int = 0;
 			ef_set_env_blob("bms_DSG_SOC_Int", &SOC_Calculate_Element_flash.u8DSG_SOC_Int, sizeof(SOC_Calculate_Element_flash.u8DSG_SOC_Int));
 
-			SOC_Calculate_Element_flash.u32Cycle_times = 3;
+			SOC_Calculate_Element_flash.u32Cycle_times = 1;
 			ef_set_env_blob("bms_Cycle_times", &SOC_Calculate_Element_flash.u32Cycle_times, sizeof(SOC_Calculate_Element_flash.u32Cycle_times));
 
 			SOC_Calculate_Element_flash.u32CapFactory = OtherElement.u16Soc_Ah * 3600;

@@ -199,6 +199,22 @@ void App_DI1_Switch(void)
 		// SleepElement.Sleep_Mode.bits.b1ForceToSleep_L2_L2 = 0;
 	}
 #endif
+
+#ifdef _DI_SWITCH_longKEY_ONOFF
+	static UINT16 su16_AntiShake_Cnt2 = 0;
+
+	if (0 == MCUI_ENI_DI1)
+	{
+		if (++su16_AntiShake_Cnt2 >= 300)
+		{
+			su16_AntiShake_Cnt2 = 0;
+			Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+		}
+	}
+	else
+		su16_AntiShake_Cnt2 = 0;
+
+#endif // _DI_SWITCH_longKEY_ONOFF
 }
 
 void Drivers_External_Ctrl(void)
@@ -249,7 +265,6 @@ void App_MOS_Relay_Ctrl(void)
 	{
 		return;
 	}
-
 
 	App_DI1_Switch();
 	RefreshData_Drivers();

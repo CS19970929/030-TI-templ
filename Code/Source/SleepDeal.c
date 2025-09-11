@@ -145,38 +145,6 @@ void IOstatus_Base(void)
 	GPIOF->PUPDR = 0;
 	GPIOF->MODER = 0XFFFFFFFF;
 
-	/* 有些板子关闭模拟前�??�? 配置 �?029，注�?018不需�?*/
-	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	// GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	// GPIO_Init(GPIOB, &GPIO_InitStructure);
-	// GPIO_SetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
-
-	// //PB5_PWSV_LDO
-	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
-	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	// GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	// GPIO_Init(GPIOB, &GPIO_InitStructure);
-	// GPIO_ResetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
-	// delay(1500000);
-
-	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
-	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	// GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	// GPIO_Init(GPIOB, &GPIO_InitStructure);
-	// GPIO_SetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
-
-	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
-	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	// GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	// GPIO_Init(GPIOB, &GPIO_InitStructure);
-	// GPIO_ResetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
-
-	// 需要蓝牙唤�?
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -190,6 +158,7 @@ void IOstatus_Base(void)
 void IOstatus_NormalMode(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
+
 	IOstatus_Base();
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
@@ -199,17 +168,12 @@ void IOstatus_NormalMode(void)
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_ResetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
 
-	// 驱动停�??供电
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	GPIO_SetBits(GPIOA, GPIO_InitStructure.GPIO_Pin);
-
-	//	/* 让AFE1进入ship模式 */
-	InitAFE1();
-	App_AFEshutdown();
 }
 
 void IOstatus_RTCMode(void)
@@ -230,17 +194,12 @@ void IOstatus_DeepMode(void)
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_ResetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
 
-	// 驱动停�??供电
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	GPIO_SetBits(GPIOA, GPIO_InitStructure.GPIO_Pin);
-
-	//	/* 让AFE1进入ship模式 */
-	InitAFE1();
-	App_AFEshutdown();
 }
 
 void IORecover_RTCMode(void)
@@ -376,12 +335,12 @@ void SleepDeal_Continue(void)
 		}
 		break;
 	default:
-		// 不调整引脚进入休眠，功耗会很大
 		break;
 	}
 
 	if (u8FlashWriteOK_flag)
 	{
+		App_AFEshutdown();
 		MCU_RESET();
 	}
 }
@@ -936,10 +895,6 @@ void IsSleepStartUp(void)
 	case FLASH_HICCUP_SLEEP_VALUE:
 		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
 		{
-			InitIO();
-			InitDelay();
-			InitSystemWakeUp();
-			InitE2PROM(); // 内部EEPROM，不需要初始化
 			Init_RTC();
 
 			IOstatus_RTCMode();
@@ -953,10 +908,6 @@ void IsSleepStartUp(void)
 	case FLASH_NORMAL_SLEEP_VALUE:
 		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
 		{
-			InitIO();
-			InitDelay();
-			InitSystemWakeUp(); // 手动关闭AFE需要做�?
-
 			IOstatus_NormalMode();
 			InitWakeUp_NormalMode();
 			Sys_StopMode();
@@ -966,10 +917,6 @@ void IsSleepStartUp(void)
 	case FLASH_DEEP_SLEEP_VALUE:
 		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
 		{
-			InitIO();
-			InitDelay();
-			InitSystemWakeUp(); // 手动关闭AFE需要做�?
-
 			IOstatus_DeepMode();
 			InitWakeUp_DeepMode();
 			// Sys_StandbyMode();		//不能掌控外部IO，弃�?

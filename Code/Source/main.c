@@ -87,15 +87,14 @@ void InitDevice(void)
 	InitSystemWakeUp();
 	// Init_IWDG();
 #else
+	InitDelay();
 	IsSleepStartUp();
 	InitIO();
-	InitDelay();
 	//__delay_ms(1000);
 	InitTimer();
 	InitSystemWakeUp();
 	InitE2PROM(); // 内部EEPROM，不需要初始化
 	InitSci();
-	// printf()
 	InitADC();
 
 	// InitData_SOC();

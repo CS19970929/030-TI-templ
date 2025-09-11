@@ -39,7 +39,6 @@
 #define EEPROM_ADDR_SLEEP           		((UINT16)0x3FFA)
 #define EEPROM_ADDR_FLASHUPDATE     		((UINT16)0x3FFE)
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x1444		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
 #define EEPROM_VALUE_SLEEP    				((UINT16)0xABCD)
 #define EEPROM_VALUE_SLEEP_RESET    		((UINT16)0xFFFF)
 #define EEPROM_VALUE_FLASHUPDATE    		((UINT16)0xABCD)

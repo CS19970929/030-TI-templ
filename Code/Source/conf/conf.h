@@ -4,12 +4,28 @@
 #include "stdio.h"
 #include "stdint.h"
 
-#define BSP_Printf		printf
-// #define BSP_Printf(...)
+#define EEPROM_VALUE_BEGIN_FLAG				0x1234		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
 
-#define VERSION         (4)
+//#define _DI_SWITCH_SYS_ONOFF	//DI������������
+//#define _DI_SWITCH_DSG_ONOFF	//DI�����������Ʒŵ�Ӵ�������MOS
+#define _DI_SWITCH_longKEY_ONOFF
+
+
+// #define BSP_Printf		printf
+#define BSP_Printf(...)
+
+#define VERSION         (5)
 
 #define __VIRTURE_CURRENT__
+
+#define   CURR_80A      0
+#define   CURR_100A     1
+#define   CURR_150A     2
+#define   CURR_200A     3
+#define   CURR_250A     4
+
+
+#define   LEVEL_CURR     CURR_150A
 
 typedef struct 
 {

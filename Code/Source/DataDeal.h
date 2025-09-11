@@ -94,22 +94,22 @@ enum tagInfoForKBArray {
 
 
 struct OTHER_ELEMENT {
-    UINT16 u16Balance_OpenVoltage;	//mV£¬¾ùºâ¿ªÆôµçÑ¹
-    UINT16 u16Balance_OpenWindow;	//mV£¬¾ùºâ¿ªÆôÑ¹²î
-    UINT16 u16Balance_CloseWindow;	//mV£¬¾ùºâ¹Ø±ÕÑ¹²î
-    UINT16 u16Balance_Res1;			//±£ÁôÎ»
-    UINT16 u16Balance_Res2;			//±£ÁôÎ»
-    UINT16 u16Balance_Res3;			//±£ÁôÎ»
-    UINT16 u16Balance_Res4;			//±£ÁôÎ»
-    UINT16 u16Balance_Res5;			//±£ÁôÎ»
+    UINT16 u16Balance_OpenVoltage;	//mVï¿½ï¿½ï¿½ï¿½ï¿½â¿ªï¿½ï¿½ï¿½ï¿½Ñ¹
+    UINT16 u16Balance_OpenWindow;	//mVï¿½ï¿½ï¿½ï¿½ï¿½â¿ªï¿½ï¿½Ñ¹ï¿½ï¿½
+    UINT16 u16Balance_CloseWindow;	//mVï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½Ñ¹ï¿½ï¿½
+    UINT16 u16Balance_Res1;			//ï¿½ï¿½ï¿½ï¿½Î»
+    UINT16 u16Balance_Res2;			//ï¿½ï¿½ï¿½ï¿½Î»
+    UINT16 u16Balance_Res3;			//ï¿½ï¿½ï¿½ï¿½Î»
+    UINT16 u16Balance_Res4;			//ï¿½ï¿½ï¿½ï¿½Î»
+    UINT16 u16Balance_Res5;			//ï¿½ï¿½ï¿½ï¿½Î»
 
 	UINT16 u16CS_Cur_CHGmax;		//A*10
 	UINT16 u16CS_Cur_DSGmax;		//A*10
 	UINT16 u16CBC_DelayT;			//us*10
 	UINT16 u16CBC_Cur_DSG;			//A*10
 	
-	UINT16 u16Soc_TableSelect;		//Ô­À´ÊÇu16Password_Once
-	UINT16 u16Password_Always;		//Ã»ÓÃ
+	UINT16 u16Soc_TableSelect;		//Ô­ï¿½ï¿½ï¿½ï¿½u16Password_Once
+	UINT16 u16Password_Always;		//Ã»ï¿½ï¿½
 	UINT16 u16CurLimit_Vdelta;		//mV
 	UINT16 u16CurLimit_Cur;			//A*10
 
@@ -119,18 +119,18 @@ struct OTHER_ELEMENT {
 	UINT16 u16Sleep_TimeVlow;		//min
 	UINT16 u16Sleep_VirCur_Chg;     //A *10
     UINT16 u16Sleep_VirCur_Dsg;    	//A *10
-	UINT16 u16Sleep_RTC_WakeUpTime;	//min£¬RTC»½ÐÑÊ±¼ä
-	UINT16 u16Sleep_TimeRTC;		//min£¬½øÈëRTCÐÝÃßÊ±¼ä
+	UINT16 u16Sleep_RTC_WakeUpTime;	//minï¿½ï¿½RTCï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
+	UINT16 u16Sleep_TimeRTC;		//minï¿½ï¿½ï¿½ï¿½ï¿½ï¿½RTCï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
 
 	UINT16 u16Soc_Ah;               //10*Ah
-	UINT16 u16Soc_Cycle_times;		//Ñ­»·´ÎÊý*1
-	UINT16 u16Soc_V_100;			//SOCÎª100µÄµçÑ¹µã
-	UINT16 u16Soc_V_0;				//SOCÎª0µÄµçÑ¹µã
+	UINT16 u16Soc_Cycle_times;		//Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*1
+	UINT16 u16Soc_V_100;			//SOCÎª100ï¿½Äµï¿½Ñ¹ï¿½ï¿½
+	UINT16 u16Soc_V_0;				//SOCÎª0ï¿½Äµï¿½Ñ¹ï¿½ï¿½
 
 	UINT16 u16Sys_SeriesNum;		//N
-	UINT16 u16Sys_CS_Res;			//m¦¸
+	UINT16 u16Sys_CS_Res;			//mï¿½ï¿½
 	UINT16 u16Sys_CS_Res_Num;		//N
-	UINT16 u16Sys_PreChg_Time;		//s£¬Ô¤³äÊ±¼ä
+	UINT16 u16Sys_PreChg_Time;		//sï¿½ï¿½Ô¤ï¿½ï¿½Ê±ï¿½ï¿½
 };
 
 
@@ -140,8 +140,8 @@ struct OTHER_ELEMENT {
 
 #define SNum 			4
 
-//#define TERNARYLI		//ÈýÔªï®µç³Ø£¬¶þÑ¡Ò»
-#define LIFEPO			//Á×ËáÌúï®µç³Ø£¬¶þÑ¡Ò»
+// #define TERNARYLI		//ï¿½ï¿½Ôªï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò»
+#define LIFEPO			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò»
 
 
 #define CS_Res			1

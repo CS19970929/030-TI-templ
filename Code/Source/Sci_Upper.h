@@ -4,7 +4,7 @@
 #define	RS485_BROADCAST_ADDR		(( UINT8 ) 0x00 )
 #define	RS485_SLAVE_ADDR			(( UINT8 ) 0x01 )
 
-#define	SCI_TX_BUF_LEN			251   	//ÈÕÖ¾¼ÇÂ¼µ¼ÖÂÌáÉýÎª250
+#define	SCI_TX_BUF_LEN			251   	//ï¿½ï¿½Ö¾ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª250
 #define RS485_MAX_BUFFER_SIZE 	251		//
 
 //485 cmd type
@@ -13,18 +13,18 @@ enum RS485_CMD_E {
 	RS485_CMD_WRITE_REG = 6,
 	RS485_CMD_WRITE_REGS = 16,
 	
-	UART_CLIENT_CMD_0x01 = 0xA1,	//¿Í»§µÄ
+	UART_CLIENT_CMD_0x01 = 0xA1,	//ï¿½Í»ï¿½ï¿½ï¿½
 	UART_CLIENT_CMD_0x02 = 0xA2,	
 };
 
 
 struct SOC_CAL_ELEMENT_UPPER {
-	UINT16 u16Soc;                 	//µ±Ç°µç³ØSOC     0¡ª100 ÎªÏà¶ÔÈÝÁ¿°Ù·Ö±È
-	UINT16 u16Soh;                 	//Îª¾ø¶ÔÈÝÁ¿°Ù·Ö±È0¡ª¡ª100
-	UINT16 u16CapacityNow;        	//µ±Ç°ÈÝÁ¿	Ah*100
-	UINT16 u16CapacityFull;        	//µ±Ç°ÂúµçÈÝÁ¿	Ah*100		//ÎªÊ²Ã´*100Îªµ¥Î»ÄØ£¬ÒòÎªÉÏÎ»»úÊÇmAh£¬ËùÒÔÄÜÌá¸ßÏÔÊ¾¾«¶È
-	UINT16 u16CapacityFactory;     	//³ö³§ÂúµçÈÝÁ¿	Ah*100		//´øÀ´µÄ½á¹ûÊÇ650Ah×î´ó
-	UINT16 u16Cycle_times;     		//Ñ­»·´ÎÊý
+	UINT16 u16Soc;                 	//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½SOC     0ï¿½ï¿½100 Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù·Ö±ï¿½
+	UINT16 u16Soh;                 	//Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù·Ö±ï¿½0ï¿½ï¿½ï¿½ï¿½100
+	UINT16 u16CapacityNow;        	//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½	Ah*100
+	UINT16 u16CapacityFull;        	//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½	Ah*100		//ÎªÊ²Ã´*100Îªï¿½ï¿½Î»ï¿½Ø£ï¿½ï¿½ï¿½Îªï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½mAhï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½
+	UINT16 u16CapacityFactory;     	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½	Ah*100		//ï¿½ï¿½ï¿½ï¿½ï¿½Ä½ï¿½ï¿½ï¿½ï¿½650Ahï¿½ï¿½ï¿½
+	UINT16 u16Cycle_times;     		//Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 };
 
 
@@ -42,7 +42,7 @@ struct MDLCHGFAULT_BITS     {    	// bits  description
 	UINT8 b1CellChgUtp		:1;   	//
 	UINT8 b1CellDischgUtp 	:1;   	//
 	UINT8 b1VcellDeltaBig	:1;   	//
-	UINT8 b1TempDeltaBig 	:1;   	//Õâ¸öÃ»ÓÐ£¬Res¿ÉÓÃ
+	UINT8 b1TempDeltaBig 	:1;   	//ï¿½ï¿½ï¿½Ã»ï¿½Ð£ï¿½Resï¿½ï¿½ï¿½ï¿½
 
 	UINT8 b1SocLow			:1;   	//
 	UINT8 b1TmosOtp			:1;   	//
@@ -66,9 +66,9 @@ struct stCell_Info {
     UINT16	u16VCellMinPosition;
 	UINT16	u16VCellDelta;                  // mv
 	UINT16	u16VCellTotle;                  // v *100
-    UINT16	u16Temperature[TEMP_NUM];       // +40¡ãC *10
-    UINT16	u16TempMax;                     // +40¡ãC *10
-	UINT16	u16TempMin;                     // +40¡ãC *10
+    UINT16	u16Temperature[TEMP_NUM];       // +40ï¿½ï¿½C *10
+    UINT16	u16TempMax;                     // +40ï¿½ï¿½C *10
+	UINT16	u16TempMin;                     // +40ï¿½ï¿½C *10
 	UINT16	u16Ichg;                        // A *10
     UINT16	u16IDischg;                     // A *10
     //UINT16	u16Soc;							// %
@@ -76,37 +76,39 @@ struct stCell_Info {
     union MDLCHGFAULT_REG unMdlFault_First;
     union MDLCHGFAULT_REG unMdlFault_Second;
 	union MDLCHGFAULT_REG unMdlFault_Third;
-	UINT16	u16BalanceFlag1;                 //µç³Ø¾ùºâ±êÖ¾Î»1
-	UINT16	u16BalanceFlag2;                 //µç³Ø¾ùºâ±êÖ¾Î»2
+	UINT16	u16BalanceFlag1;                 //ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½ï¿½Ö¾Î»1
+	UINT16	u16BalanceFlag2;                 //ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½ï¿½Ö¾Î»2
 };
 
 
-//RS485×´Ì¬»ú×´Ì¬
+//RS485×´Ì¬ï¿½ï¿½×´Ì¬
 #define	RS485_STA_IDLE				0
 #define	RS485_STA_RX_COMPLETE		1
 #define	RS485_STA_RX_OK				2
 #define	RS485_STA_TX_COMPLETE		3
 
 
-#define	RS485_ACK_POS			        0x00	// ÕýÏìÓ¦
-#define	RS485_ACK_NEG			        0x01	// ¸ºÏìÓ¦
+#define	RS485_ACK_POS			        0x00	// ï¿½ï¿½ï¿½ï¿½Ó¦
+#define	RS485_ACK_NEG			        0x01	// ï¿½ï¿½ï¿½ï¿½Ó¦
 //Error type
-#define	RS485_ERROR_ADDR_INVALID	    0x01	// µØÖ·²»ºÏ·¨
-#define	RS485_ERROR_CRC_ERROR			0x02	// CRCÐ£Ñé´íÎó
-#define	RS485_ERROR_DATA_INVALID	    0x03	// ²ÎÊý²»ºÏ·¨
-#define	RS485_ERROR_CMD_INVALID			0x04	// µ±Ç°×´Ì¬ÏÂÃüÁîÎÞÐ§
-#define	RS485_ERROR_RONLY_NO_W			0x05	// Ö»¶Á²ÎÊý¾Ü¾øÐ´Èë
-#define	RS485_ERROR_WONLY_NO_R			0x06	// Ö»Ð´²ÎÊý¾Ü¾ø¶ÁÈ¡
-#define	RS485_ERROR_NO_PERMISSION		0x07	// ÎÞÈ¨ÏÞ
-#define	RS485_ERROR_NULL			    0x08	// Î´Öª´íÎó
+#define	RS485_ERROR_ADDR_INVALID	    0x01	// ï¿½ï¿½Ö·ï¿½ï¿½ï¿½Ï·ï¿½
+#define	RS485_ERROR_CRC_ERROR			0x02	// CRCÐ£ï¿½ï¿½ï¿½ï¿½ï¿½
+#define	RS485_ERROR_DATA_INVALID	    0x03	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½
+#define	RS485_ERROR_CMD_INVALID			0x04	// ï¿½ï¿½Ç°×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§
+#define	RS485_ERROR_RONLY_NO_W			0x05	// Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¾ï¿½Ð´ï¿½ï¿½
+#define	RS485_ERROR_WONLY_NO_R			0x06	// Ö»Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ü¾ï¿½ï¿½ï¿½È¡
+#define	RS485_ERROR_NO_PERMISSION		0x07	// ï¿½ï¿½È¨ï¿½ï¿½
+#define	RS485_ERROR_NULL			    0x08	// Î´Öªï¿½ï¿½ï¿½ï¿½
 
 
 // SCI_485 Message Structure
 struct RS485MSG {
+	USART_TypeDef *uart;		
+	UINT16 gu16_CommuErrCnt; // SCIé€šä¿¡å¼‚å¸¸è®¡æ•°
 	UINT8	ptr_no;          	// Word stating what state msg is in
 	UINT8	csr;          		// I2C address of slave msg is intended for
 	UINT16	u16RdRegStartAddr;	// read reg start addr
-	UINT16	u16RdRegStartAddrActure;	//×Ô¶¨ÒåµØÖ·±£´æ
+	UINT16	u16RdRegStartAddrActure;	//ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½
 	UINT8	u16RdRegByteNum;    // read byte lenth
 	UINT8	AckLenth;			// ack byte lenth
 	UINT8	AckType;			// ack type
@@ -116,7 +118,7 @@ struct RS485MSG {
 };
 
 
-//¿É¶Á¿ÉÐ´£¬½øenum´óµ¥
+//ï¿½É¶ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½enumï¿½ï¿½
 //#define RS485_ADDR_RW_ORDER		0x1000
 #define RS485_ADDR_RW_CALIB				0x2000
 #define RS485_ADDR_RW_PORTECT			0x2100
@@ -124,9 +126,9 @@ struct RS485MSG {
 #define RS485_ADDR_RW_OTHER_CANADD		0x2300
 
 
-//×Ô¼º¸ø×Ô¼ºÂñµÄ¿Ó£¬±ä³ÉÁË²»ÊÇ±ê×¼MODBUSÐ­ÒéÁË
+//ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½Ä¿Ó£ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½Ç±ï¿½×¼MODBUSÐ­ï¿½ï¿½ï¿½ï¿½
 #if 0
-//Ñ­»·Ö»¶Á£¬ÒªÇó1sÄÚÉÏ´«Íê±Ï
+//Ñ­ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½1sï¿½ï¿½ï¿½Ï´ï¿½ï¿½ï¿½ï¿½
 #define RS485_ADDR_RO_START0			0xD000
 #define RS485_ADDR_RO_START1			0xD001
 #define RS485_ADDR_RO_START2			0xD002
@@ -134,18 +136,18 @@ struct RS485MSG {
 #define RS485_ADDR_RO_START4			0xD004
 #endif
 
-//0xD000Ö÷ÒªÊÇg_stCellInfoReportµÄ¶«Î÷£¬Ä¿Ç°¹²63¸ö×Ö
+//0xD000ï¿½ï¿½Òªï¿½ï¿½g_stCellInfoReportï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Ç°ï¿½ï¿½63ï¿½ï¿½ï¿½ï¿½
 #define RS485_ADDR_RO_START0			(UINT16)0xD000
 
-//0xD100ÊÇ´ÓRTC¿ªÊ¼µ½½áÎ²¼¸¸ö±£ÁôÎ»£¬¹²21+12=33¸ö×Ö
+//0xD100ï¿½Ç´ï¿½RTCï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Î²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½21+12=33ï¿½ï¿½ï¿½ï¿½
 #define RS485_ADDR_RO_START1			(UINT16)0xD100
 
-//0xD100ÊÇÒ»¸ö±£ÁôÎ»£¬Ä¿Ç°Ö»ÓÐÒ»¸ö
+//0xD100ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½Ä¿Ç°Ö»ï¿½ï¿½Ò»ï¿½ï¿½
 #define RS485_ADDR_RO_START2			(UINT16)0xD200
 
 
 
-//ÒÔÏÂÊÇÖ»¶ÁÒ»´Î£¬ÎÞ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½Ò»ï¿½Î£ï¿½ï¿½ï¿½
 #define RS485_ADDR_RO_LCD       		0xC000
 #define RS485_ADDR_RO_FA_RTC    		0xC001
 #define RS485_ADDR_SN_READ				0xC002
@@ -157,7 +159,7 @@ struct RS485MSG {
 #define RS485_ADDR_SN_HAEDWARE_VER		0xFFF1
 #define RS485_ADDR_SN_SOFTWARE_VER		0xFFF2
 
-#define RS485_CMD_ADDR_FLASH_CONNECT	0xFFFD		//MCUÔÚÏßÉý¼¶Á¬½ÓÃüÁî
+#define RS485_CMD_ADDR_FLASH_CONNECT	0xFFFD		//MCUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 
 enum RS485_CMD_RW_E {
@@ -171,7 +173,7 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_RESET_EVENT_RECORD,
 
 
-	#if 0	//ÂèµÄ£¬²»ÊÇÁ¬ÐøÑÐ·¢£¬ÖÐ¶ÏÔÙ¿ªÊ¼ºÜÈÝÒ××öÎÞÓÃ¹¦£¬¶øÇÒÏµÍ³ºÍÊµÏÖÃ»ÄÇÃ´ÇÉÃîÍêÕû¡£
+	#if 0	//ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð·ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½Ù¿ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½Êµï¿½ï¿½Ã»ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	RS485_CMD_ADDR_SYSFUNC_ONOFF_BALANCE = 0x1100,
 	RS485_CMD_ADDR_SYSFUNC_ONOFF_BMS_SOURCE,
 	RS485_CMD_ADDR_SYSFUNC_ONOFF_MOS,
@@ -184,13 +186,13 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_SYSFUNC_ONOFF_SLEEP,
 	#endif
 	
-	RS485_CMD_ADDR_SWITCH_ON = 0x1100,		//ÇÉÃî£¡
+	RS485_CMD_ADDR_SWITCH_ON = 0x1100,		//ï¿½ï¿½ï¿½î£¡
 	RS485_CMD_ADDR_SWITCH_OFF,
 	RS485_CMD_ADDR_SYSTEM_FUNCTION_ON,
 	RS485_CMD_ADDR_SYSTEM_FUNCTION_OFF,
 
 
-	RS485_CMD_ADDR_VC1CALIB_K = 0x2000,		//¶ÁÈ¡
+	RS485_CMD_ADDR_VC1CALIB_K = 0x2000,		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_VC1CALIB_B,
 	RS485_CMD_ADDR_VC2CALIB_K,
 	RS485_CMD_ADDR_VC2CALIB_B,
@@ -254,7 +256,7 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_VC31CALIB_B,
 	RS485_CMD_ADDR_VC32CALIB_K,
 	RS485_CMD_ADDR_VC32CALIB_B,
-	RS485_CMD_ADDR_AFE1CALIB_K,			//¶ÁÈ¡
+	RS485_CMD_ADDR_AFE1CALIB_K,			//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_AFE1CALIB_B,
 	RS485_CMD_ADDR_AFE2CALIB_K,
 	RS485_CMD_ADDR_AFE2CALIB_B,
@@ -262,11 +264,11 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_VBUSCALIB_B,
 
 	//RS485_CMD_ADDR_ICHGCALIB_K = 0x2100,
-	RS485_CMD_ADDR_ICHGCALIB_K,		//µÚ¶þÒ³		//¶ÁÈ¡
+	RS485_CMD_ADDR_ICHGCALIB_K,		//ï¿½Ú¶ï¿½Ò³		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_ICHGCALIB_B,
 	RS485_CMD_ADDR_IDISCHGCALIB_K,
 	RS485_CMD_ADDR_IDISCHGCALIB_B,
-	RS485_CMD_ADDR_TEMP1_CALIB_K,		//¶ÁÈ¡
+	RS485_CMD_ADDR_TEMP1_CALIB_K,		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_TEMP1_CALIB_B,
 	RS485_CMD_ADDR_TEMP2_CALIB_K,
 	RS485_CMD_ADDR_TEMP2_CALIB_B,
@@ -410,7 +412,7 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_SOC_VALUE21,
 
 
-	RS485_CMD_ADDR_COPPERLOSS1,		//¶ÁÈ¡
+	RS485_CMD_ADDR_COPPERLOSS1,		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_COPPERLOSS2,
 	RS485_CMD_ADDR_COPPERLOSS3,
 	RS485_CMD_ADDR_COPPERLOSS4,
@@ -443,7 +445,7 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_CELLNUM15,
 	RS485_CMD_ADDR_CELLNUM16,
 
-	RS485_CMD_ADDR_RTC_TIME_YEAR,		//¶ÁÈ¡
+	RS485_CMD_ADDR_RTC_TIME_YEAR,		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_RTC_TIME_MONTH,
 	RS485_CMD_ADDR_RTC_TIME_DAY,
 	RS485_CMD_ADDR_RTC_TIME_HOUR,
@@ -456,7 +458,7 @@ enum RS485_CMD_RW_E {
 	RS485_CMD_ADDR_RTC_ALARM_MINUTE,
 	RS485_CMD_ADDR_RTC_ALARM_SECOND,
 
-	RS485_CMD_ADDR_BALANCE_OV = 0x2300,		//¶ÁÈ¡
+	RS485_CMD_ADDR_BALANCE_OV = 0x2300,		//ï¿½ï¿½È¡
 	RS485_CMD_ADDR_BALANCE_OW,
 	RS485_CMD_ADDR_BALANCE_CW1,	
 	RS485_CMD_ADDR_BALANCE_CW2,
@@ -533,13 +535,12 @@ extern struct stCell_Info g_stCellInfoReport;
 
 
 void Sci1_CommonUpper_FaultChk(void);
-void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s);
 void Sci2_CommonUpper_FaultChk(void);
-void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s);
 
 
 void InitUSART_CommonUpper(void);
 void App_CommonUpper(void);
+void CommonUpper_irq(struct RS485MSG *s);
 
 #endif	/* SCI_H */
 
