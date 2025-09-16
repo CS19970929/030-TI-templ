@@ -14,16 +14,18 @@
 #ifndef __PARAM_H
 #define __PARAM_H
 
+#include "Flash.h"
+
 /* 下面2行宏只能选择其一 */
-#define PARAM_SAVE_TO_EEPROM			/* 参数存储到外部的EEPROM (AT24C128) */
-//#define PARAM_SAVE_TO_FLASH		/* 参数存储到CPU内部Flash */
+// #define PARAM_SAVE_TO_EEPROM			/* 参数存储到外部的EEPROM (AT24C128) */
+#define PARAM_SAVE_TO_FLASH		/* 参数存储到CPU内部Flash */
 
 #ifdef PARAM_SAVE_TO_EEPROM
 	#define PARAM_ADDR		0			/* 参数区地址 */
 #endif
 
 #ifdef PARAM_SAVE_TO_FLASH
-	#define PARAM_ADDR		ADDR_FLASH_SECTOR_3			/* 0x0800C000 中间的16KB扇区用来存放参数 */
+	#define PARAM_ADDR		FLASH_ADDR_TEST_BMS_PARAM			/* 0x0800C000 中间的16KB扇区用来存放参数 */
 	//#define PARAM_ADDR	 ADDR_FLASH_SECTOR_11		/* 0x080E0000 Flash最后128K扇区用来存放参数 */
 #endif
 

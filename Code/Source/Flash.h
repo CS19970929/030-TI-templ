@@ -7,8 +7,7 @@
 #define FLASH_ADDR_APP_START 			0x08001C00		//APP=64-7-1-1=55K
 
 
-// #define FLASH_ADDR_SOC_RTC_CNT          0x0800F000		//RTC次数统计，用于是否更新SOC
-
+#define FLASH_ADDR_TEST_BMS_PARAM       0x0800F000		//唤醒方式的记录
 #define FLASH_ADDR_WAKE_TYPE            0x0800F400		//唤醒方式的记录
 #define FLASH_ADDR_UPDATE_FLAG 			0x0800F800		//升级标志位，1K
 #define FLASH_ADDR_SLEEP_FLAG           0x0800FC00		//休眠关键指令，1K

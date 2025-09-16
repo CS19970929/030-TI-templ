@@ -581,15 +581,6 @@ int ConfigureBqMaximo(unsigned char I2CSlaveAddress)
 int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 {
 	int result = 0;
-	// 休眠带电，RTC唤醒不需要操作，不然会关管子
-	// 必须要刚开机的时候，拿出标志位之后，要改回来，不然扛着RTC的标志位，还没进入休眠，别的地方就断电，或者另外的途径进入休眠
-	// 这里就出问题了。采集不到电压电流
-	gu8_WakeUp_Type = FlashReadOneHalfWord(FLASH_ADDR_WAKE_TYPE);
-	if (gu8_WakeUp_Type == FLASH_VALUE_WAKE_RTC)
-	{
-		FlashWriteOneHalfWord(FLASH_ADDR_WAKE_TYPE, FLASH_VALUE_WAKE_OTHER);
-		// return result;
-	}
 
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte));
 
@@ -670,7 +661,6 @@ void InitAFE1_F6F7(void)
 	InitialisebqMaximo(DEVICE_ADDR_AFE1);
 }
 
-// 初始化IIC
 void InitAFE1(void)
 {
 	I2C_InitTypeDef I2C_InitStruct;

@@ -14,7 +14,7 @@
 #define _BSP_CPU_FLASH_H_
 
 #define FLASH_BASE_ADDR	0x08000000			/* Flash基地址 */
-#define	FLASH_SIZE		(1*1024*1024)		/* Flash 容量 */
+#define	FLASH_SIZE		(1*1024*64)		/* Flash 容量 */
 
 /* Base address of the Flash sectors */
 #define ADDR_FLASH_SECTOR_0     ((uint32_t)0x08000000) /* Base @ of Sector 0, 16 Kbytes */
@@ -35,8 +35,10 @@
 #define FLASH_REQ_ERASE		2	/* Flash需要先擦除,再写 */
 #define FLASH_PARAM_ERR		3	/* 函数参数错误 */
 
-uint8_t bsp_ReadCpuFlash(uint32_t _ulFlashAddr, uint8_t *_ucpDst, uint32_t _ulSize);
-uint8_t bsp_WriteCpuFlash(uint32_t _ulFlashAddr, uint8_t *_ucpSrc, uint32_t _ulSize);
+uint8_t bsp_ReadCpuFlash(uint32_t _ulFlashAddr, uint16_t *_ucpDst, uint32_t _ulSize);
+// uint8_t bsp_ReadCpuFlash(uint32_t _ulFlashAddr, uint8_t *_ucpDst, uint32_t _ulSize);
+// uint8_t bsp_WriteCpuFlash(uint32_t _ulFlashAddr, uint8_t *_ucpSrc, uint32_t _ulSize);
+uint8_t bsp_WriteCpuFlash(uint32_t _ulFlashAddr, uint16_t *_ucpSrc, uint32_t _ulSize);
 uint8_t bsp_CmpCpuFlash(uint32_t _ulFlashAddr, uint8_t *_ucpBuf, uint32_t _ulSize);
 
 #endif

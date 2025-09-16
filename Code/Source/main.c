@@ -110,6 +110,7 @@ void InitDevice(void)
 	InitAFE1();
 
 	MCU_GetResetType();
+	LoadParam();
 
 #ifdef wdog_enable
 	Init_IWDG();

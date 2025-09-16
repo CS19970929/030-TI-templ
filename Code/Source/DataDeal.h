@@ -1,6 +1,8 @@
 #ifndef DATADEAL_SYS_H
 #define DATADEAL_SYS_H
 
+#include "conf.h"
+
 #define CompensateNUM 			16
 
 #define CopperLoss_Min 			(UINT16)0
@@ -149,8 +151,14 @@ struct OTHER_ELEMENT {
 
 #define CS_Cur_CHGmax	((INT32)CS_Res_Num*1250/CS_Res-10)
 #define CS_Cur_DSGmax	CS_Cur_CHGmax
-#define CBC_DelayT		0
-#define CBC_Cur_DSG		((CS_Cur_CHGmax<<2)/5)
+
+#if (LEVEL_CURR == CURR_80A)
+#define CBC_DelayT		4000
+#define CBC_Cur_DSG		5000	
+#else
+#define CBC_DelayT		4000
+#define CBC_Cur_DSG		11000	
+#endif
 
 
 #define OtherElement_min		{1000,	1,		0,		0,		0,	0,	0,	0,\
