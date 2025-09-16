@@ -67,6 +67,7 @@ void __delay_ms(UINT16 ms)
 	do
 	{
 		temp = SysTick->CTRL;
+		Feed_IWatchDog;
 	} while (temp & 0x01 && !(temp & (1 << 16))); // 等待时间到达
 
 	SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk; // 关闭计数器
@@ -83,51 +84,40 @@ void InitIO(void)
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE); // 开启GPIOB的外设时钟
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 开启GPIOF的外设时钟
 
-	// PB2_LED1
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_15;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	// PF7_WAKEUP_AFE
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOF, &GPIO_InitStructure);
-
 	{
-		MCUO_BEL_EN = 1;
-		MCUO_AFE_ALARM = 1;
-		
-		GPIO_WriteBit(M_STB_PORT, M_STB_PIN, 1);
-		GPIO_InitStructure.GPIO_Pin = M_STB_PIN;
+		GPIO_WriteBit(GPIO_M_CTR, PIN_M_CTR, 1);
+		GPIO_InitStructure.GPIO_Pin = PIN_M_CTR;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_Init(M_STB_PORT, &GPIO_InitStructure);
+		GPIO_Init(GPIO_M_CTR, &GPIO_InitStructure);
 
-		GPIO_WriteBit(M_CTR_PORT, M_CTR_PIN, 1);
-		GPIO_InitStructure.GPIO_Pin = M_CTR_PIN;
+		GPIO_WriteBit(GPIO_AD_EN, PIN_AD_EN, 1);
+		GPIO_InitStructure.GPIO_Pin = PIN_AD_EN;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_Init(M_CTR_PORT, &GPIO_InitStructure);
-
-		GPIO_WriteBit(M_BLE_EN_PORT, M_BLE_EN_PIN, 1);
-		GPIO_InitStructure.GPIO_Pin = M_BLE_EN_PIN;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_Init(M_BLE_EN_PORT, &GPIO_InitStructure);
+		GPIO_Init(GPIO_AD_EN, &GPIO_InitStructure);
 	}
+	GPIO_InitStructure.GPIO_Pin = PIN_WK_AFE;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_WK_AFE, &GPIO_InitStructure);
+
+	GPIO_WriteBit(GPIO_DB_LED1, PIN_DB_LED1, 0);
+	GPIO_InitStructure.GPIO_Pin = PIN_DB_LED1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_DB_LED1, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PIN_KEY1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_KEY1, &GPIO_InitStructure);
+
+	lk8625_init();
 }
 
 void InitTimer(void)
@@ -302,7 +292,6 @@ void App_SysTime(void)
 	{
 		s_u8Cnt1000ms3 = 0;
 		g_st_SysTimeFlag.bits.b1Sys1000msFlag3 = 1; // 1000ms定时标志
-													// MCUO_DEBUG_LED2 = !MCUO_DEBUG_LED2;
 	}
 }
 
@@ -322,6 +311,7 @@ void TIM17_IRQHandler(void)
 				g_u810msClockCnt++;
 				if (g_u810msClockCnt >= 5)
 				{ // 10ms
+					sys_time.cnt_10ms++;
 					g_u810msClockCnt = 0;
 				}
 			}

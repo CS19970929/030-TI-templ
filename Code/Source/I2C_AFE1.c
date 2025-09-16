@@ -581,7 +581,6 @@ int ConfigureBqMaximo(unsigned char I2CSlaveAddress)
 int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 {
 	int result = 0;
-
 	// 休眠带电，RTC唤醒不需要操作，不然会关管子
 	// 必须要刚开机的时候，拿出标志位之后，要改回来，不然扛着RTC的标志位，还没进入休眠，别的地方就断电，或者另外的途径进入休眠
 	// 这里就出问题了。采集不到电压电流
@@ -592,7 +591,6 @@ int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 		// return result;
 	}
 
-	// MOS状态不能变
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte));
 
 	Registers_AFE1.SysCtrl1.SysCtrl1Byte = 0;
@@ -620,8 +618,8 @@ int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 
 	g_stBq769x0_Read_AFE1.f32Gain = (365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5)) / 1000.0;
 	g_stBq769x0_Read_AFE1.i16Gain = 365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5);
-	Registers_AFE1.OVTrip = (unsigned char)((((unsigned short)((OVPThreshold - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - OV_THRESH_BASE) >> 4) & 0xFF);
-	Registers_AFE1.UVTrip = (unsigned char)((((unsigned short)((UVPThreshold - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - UV_THRESH_BASE) >> 4) & 0xFF);
+	Registers_AFE1.OVTrip = (unsigned char)((((unsigned short)((AFE_COV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - OV_THRESH_BASE) >> 4) & 0xFF);
+	Registers_AFE1.UVTrip = (unsigned char)((((unsigned short)((AFE_CUV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - UV_THRESH_BASE) >> 4) & 0xFF);
 	result = ConfigureBqMaximo(I2CSlaveAddress);
 
 	return result;

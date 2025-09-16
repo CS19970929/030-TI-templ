@@ -113,6 +113,7 @@ UINT16 Sys_FindProtectFilterMax(void)
 // 加起来大概6s
 StartUp_Status System_FUNC_StartUp(enum SYSTEM_FUNC_STARTUP_COMMAND SystemFunction)
 {
+#if 0
 	static UINT16 s_u16SysStartUpCnt_ADC = 0, s_u16SysStartUpCnt_Protect = 0, s_u16SysStartUpCnt_Mos = 0;
 	static UINT16 s_u16SysStartUpCnt_Relay = 0;
 	StartUp_Status result = STARTUP_CONT; // 直接一刀切，全部返回待初始化值，后续自己判断是否是已经初始化
@@ -295,6 +296,8 @@ StartUp_Status System_FUNC_StartUp(enum SYSTEM_FUNC_STARTUP_COMMAND SystemFuncti
 	}
 
 	return result;
+#endif
+	return STARTUP_OVER;
 }
 
 // 0:没错误，X：有错误

@@ -58,7 +58,7 @@
 
 #define CRC_KEY 7
 
-#define DISABLE_INT asm(" BIC #8,SR")
+// #define DISABLE_INT asm(" BIC #8,SR")
 
 #define DELAY_LIMIT 0xffff
 

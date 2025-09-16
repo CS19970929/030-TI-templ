@@ -1541,6 +1541,25 @@ void MosCtrl_SameDoor_NoPreChg(UINT8 OnOFF_Ctrl)
 		Driver_Element.MosRelay_Status.bits.b1_FuncOFF_Vdelta = 1;
 	}
 
+	if (Driver_Element.DriverForceExt.bits.b2_Force_MOS_DSG == FORCE_CLOSE_MODE)
+	{
+		if (Driver_Element.u16_CurChg > CHG_MOS_OPEN_CUR)
+		{
+			su8_FR_IdsgOcp_RecTimes = 0;
+			Driver_Element.DriverForceExt.bits.b2_Force_MOS_DSG = FORCE_KEEP_MODE;
+			// s_MosDSG_Status_DsgOcp = OPEN_MODE;
+		}
+	}
+	if (Driver_Element.DriverForceExt.bits.b2_Force_MOS_CHG == FORCE_CLOSE_MODE)
+	{
+		if (Driver_Element.u16_CurDsg > DSG_MOS_OPEN_CUR)
+		{ // 如果电流大于2A，则必须立刻打开充电MOS
+			// s_MosCHG_Status_ChgOcp = OPEN_MODE; // 即使目前还在30s的过流保护状态
+			su8_FR_IchgOcp_RecTimes = 0;
+			Driver_Element.DriverForceExt.bits.b2_Force_MOS_CHG = FORCE_KEEP_MODE;
+		}
+	}
+
 	switch (Driver_Element.Fault_Flag.bits.b1IchgOcp)
 	{
 	case 1:
@@ -1558,7 +1577,8 @@ void MosCtrl_SameDoor_NoPreChg(UINT8 OnOFF_Ctrl)
 			if (++su8_FR_IchgOcp_RecTimes >= 3)
 			{
 				su8_FR_IchgOcp_RecTimes = 0;
-				Driver_Element.u8_FuncOFF_Flag = 1;
+				// Driver_Element.u8_FuncOFF_Flag = 1;
+				Driver_Element.DriverForceExt.bits.b2_Force_MOS_CHG = FORCE_CLOSE_MODE;
 				Driver_Element.MosRelay_Status.bits.b1_FuncOFF_Ocp_Ichg = 1;
 				su8_FR_IchgOcp_Flag = 0;
 				return; // 不用再执行下面的代码
@@ -1600,7 +1620,8 @@ void MosCtrl_SameDoor_NoPreChg(UINT8 OnOFF_Ctrl)
 			if (++su8_FR_IdsgOcp_RecTimes >= 3)
 			{
 				su8_FR_IdsgOcp_RecTimes = 0;
-				Driver_Element.u8_FuncOFF_Flag = 1;
+				// Driver_Element.u8_FuncOFF_Flag = 1;
+				Driver_Element.DriverForceExt.bits.b2_Force_MOS_DSG = FORCE_CLOSE_MODE;
 				Driver_Element.MosRelay_Status.bits.b1_FuncOFF_Ocp_Idsg = 1;
 				su8_FR_IdsgOcp_Flag = 0;
 				return;

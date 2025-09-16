@@ -23,10 +23,19 @@ void AllSeriesDeal_Charger_ON(void)
 				ChargerLoad_Func.bits.b1ON_Charger_AllSeries = 0;
 				su8_ChargerON_All_WakeFlag = 2;
 			}
+
+#if defined(__LOAD_REMOVE_SHORT_FUNC__)
+			if (GPIO_ReadInputDataBit(GPIO_LOAD_RM, PIN_LOAD_RM))
+			{
+				su8_ChargerON_All_WakeFlag = 2;
+			}
+#endif
 			break;
 
 		case 2:
 			// 作出操作，使能驱动功能
+			System_ERROR_UserCallback(ERROR_REMOVE_CBC_DSG);
+
 			System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1;
 			ChargerLoad_Func.bits.b1OFFDriver_Uvp = 0;
 			ChargerLoad_Func.bits.b1OFFDriver_DsgOcp = 0;
@@ -224,6 +233,13 @@ void Init_Charger_AllSeries(void)
 	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00; // 抢占优先级0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	   // 使能外部中断通道
 	NVIC_Init(&NVIC_InitStructure);
+
+#if defined(__LOAD_REMOVE_SHORT_FUNC__)
+	GPIO_InitStructure.GPIO_Pin = PIN_LOAD_RM;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_LOAD_RM, &GPIO_InitStructure);
+#endif
 }
 
 // 第一个，第二个不一定有没有时屏蔽

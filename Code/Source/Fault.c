@@ -153,6 +153,8 @@ void App_CellUvp_ThirdCheck(void)
 
 	if (1 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
 	{
+		sys_time.cnt_10ms1++;
+
 		t_sPubOPUPChk.u16ChkVal = g_stCellInfoReport.u16VCellMin;
 		t_sPubOPUPChk.u16OPValB = PRT_E2ROMParas.u16VcellUvp_Rcv;
 		t_sPubOPUPChk.u16OPValS = PRT_E2ROMParas.u16VcellUvp_Third;
@@ -297,6 +299,8 @@ void App_BatUvp_ThirdCheck(void)
 
 	if (1 == g_st_SysTimeFlag.bits.b1Sys10msFlag2)
 	{
+		sys_time.cnt_10ms2++;
+
 		t_sPubOPUPChk.u16ChkVal = g_stCellInfoReport.u16VCellTotle;
 		t_sPubOPUPChk.u16OPValB = PRT_E2ROMParas.u16VbusUvp_Rcv;
 		t_sPubOPUPChk.u16OPValS = PRT_E2ROMParas.u16VbusUvp_Third;
@@ -481,6 +485,7 @@ void App_IdischgOcp_ThirdCheck(void)
 
 	if (1 == g_st_SysTimeFlag.bits.b1Sys10msFlag3)
 	{
+		sys_time.cnt_10ms3++;
 		// if(0 == g_stCellInfoReport.unMdlFault_Third.bits.b1IdischgOcp) {
 		t_sPubOPUPChk.u16ChkVal = g_stCellInfoReport.u16IDischg;
 		t_sPubOPUPChk.u16OPValB = PRT_E2ROMParas.u16IdsgOcp_Third; // 过流判断
@@ -1173,6 +1178,7 @@ void App_CellSocUp_ThirdCheck(void)
 
 	if (1 == g_st_SysTimeFlag.bits.b1Sys10msFlag4)
 	{
+		sys_time.cnt_10ms4++;
 		t_sPubOPUPChk.u16ChkVal = g_stCellInfoReport.SocElement.u16Soc;
 		t_sPubOPUPChk.u16OPValB = PRT_E2ROMParas.u16SocUp_Rcv;
 		t_sPubOPUPChk.u16OPValS = PRT_E2ROMParas.u16SocUp_Third;
@@ -1209,6 +1215,8 @@ void App_VdeltaOp_SecondCheck(void)
 
 	if (1 == g_st_SysTimeFlag.bits.b1Sys10msFlag5)
 	{
+		sys_time.cnt_10ms5++;
+
 		t_sPubOPUPChk.u16ChkVal = g_stCellInfoReport.u16VCellDelta;
 		t_sPubOPUPChk.u16OPValB = PRT_E2ROMParas.u16VdeltaOvp_Second;
 		t_sPubOPUPChk.u16OPValS = PRT_E2ROMParas.u16VdeltaOvp_First;
@@ -1285,16 +1293,10 @@ void App_VdeltaOp_ThirdCheck(void)
  ******************************************************************************/
 void App_WarnCtrl(void)
 {
-#if 0 // 原来函数时基被内置了，懒得改了。
-	if(0 == g_st_SysTimeFlag.bits.b1Sys10msFlag3) {
-		return STARTUP_CONT;
-	}
-#endif
-
-	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_PROTECT))
-	{
-		return;
-	}
+	// if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_PROTECT))
+	// {
+	// 	return;
+	// }
 
 	App_CellOvp_SecondCheck();
 	App_CellOvp_ThirdCheck();
@@ -1335,6 +1337,7 @@ void App_WarnCtrl(void)
 // 记录是按顺序记录下去，上传则是最新的在顶部
 void FaultWarnRecord(enum FaultFlag num)
 {
+#if 0
 	if (num >= 1 && num <= 13)
 	{
 		if (FaultPoint_First >= Record_len)
@@ -1367,8 +1370,6 @@ void FaultWarnRecord(enum FaultFlag num)
 		*/
 		Fault_record_Third[FaultPoint_Third++] = num;
 	}
-#ifdef _FAULT_RECORD
-	PwrMag_Protect_Record(num);
 #endif
 }
 

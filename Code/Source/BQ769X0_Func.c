@@ -156,12 +156,8 @@ UINT16 Sys_FindProtectFilterMax_Real(void)
 	return s_u16ProtectFilterMax + 2; // ÍÆ³Ù20ms
 }
 
-UINT16 aaaaaa1 = 0;
-UINT16 aaaaaa2 = 0;
-UINT16 aaaaaa3 = 0;
-UINT16 aaaaaa4 = 0;
-
 UINT16 gu8_WakeUp_Type = 0;
+#if 0
 void BQ769x0_SleepMode_Ctrl(void)
 {
 	static UINT8 su8_StartUp_Flag = 0;
@@ -290,6 +286,7 @@ void BQ769x0_SleepMode_Ctrl(void)
 	aaaaaa3 = su16_RTC2_100msTCnt;
 	aaaaaa4 = su16_Normal2_100msTCnt;
 }
+#endif
 
 void App_BQ769X0_Monitor(void)
 {
@@ -368,5 +365,5 @@ void App_BQ769X0_Monitor(void)
 		I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_STAT, Registers_AFE1.SysStatus.StatusByte);
 	}
 
-	BQ769x0_SleepMode_Ctrl();
+	// BQ769x0_SleepMode_Ctrl();
 }

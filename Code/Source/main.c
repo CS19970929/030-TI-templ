@@ -1,4 +1,5 @@
 #include "main.h"
+#include "bsp.h"
 
 UINT8 SeriesNum = 16;
 
@@ -53,7 +54,9 @@ int main(void)
 		App_CellBalance();
 		App_SOC();
 		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
+#ifdef __FUNC__HEAT__
 		App_Heat_Cool_Ctrl();
+#endif // DEBUG
 		App_ChargerLoad_Det();
 
 		App_FlashUpdateDet();
@@ -65,7 +68,6 @@ int main(void)
 	}
 }
 
-// 这个初始化函数很容易出问题
 void InitDevice(void)
 {
 	SystemInit(); // 直接调用就可以了。
@@ -86,9 +88,9 @@ void InitDevice(void)
 	InitSystemWakeUp();
 	// Init_IWDG();
 #else
+	InitDelay();
 	IsSleepStartUp();
 	InitIO();
-	InitDelay();
 	//__delay_ms(1000);
 	InitTimer();
 	InitSystemWakeUp();
@@ -99,16 +101,23 @@ void InitDevice(void)
 	InitData_SOC();
 	Init_RTC(); // 必须放在EEPROM读完数据后面！
 				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
-	// Init_I2CSlaver();
+#ifdef __FUNC__HEAT__
 	InitHeat_Cool();
+#endif // DEBUG
 	InitMosRelay_DOx();
 	Init_ChargerLoad_Det();
 
-	// InitPWM();			//关于CBC的输出
-
 	InitAFE1();
 
-	// Init_IWDG();
+	MCU_GetResetType();
+
+#ifdef wdog_enable
+	Init_IWDG();
+#endif // !1
+#ifdef __test__
+	DBGMCU_Config(DBGMCU_STOP, ENABLE);
+#endif
+	// DBGMCU_Config(DBGMCU_STOP, ENABLE);
 #endif
 }
 
@@ -141,11 +150,9 @@ void InitSystemWakeUp(void)
 void InitSci(void)
 {
 	InitUSART_CommonUpper();
-	InitUSART_UartClient();
 }
 
 void App_Sci(void)
 {
 	App_CommonUpper();
-	App_UartClient_Updata();
 }

@@ -1,9 +1,21 @@
 #ifndef I2C_AFE1_H
 #define I2C_AFE1_H
 
+#ifdef TERNARYLI
+#define AFE_COV_H       4300
+#define AFE_CUV_H       2000
+#define AFE_OCC_H       20
+#define AFE_ODC_H       110
+#elif (defined(LIFEPO))
+#define AFE_COV_H       3800
+#define AFE_CUV_H       2000
+#define AFE_OCC_H       20
+#define AFE_ODC_H       110
+#endif
+
 #define FLAG_TIMEOUT         ((uint32_t)0x1000)
 //#define LONG_TIMEOUT         ((uint32_t)(10 * FLAG_TIMEOUT))
-//Ô­À´*10£¬»á³öÏÖÉÏÎ»»úËùÓÐÊý¾Ý¶¼ÂÒµÄÇé¿ö£¬ÏÖÔÚÐÞ¸Ä£¬¾ÍÃ»ÁË£¬¾ßÌåÔ­Òò²»Ã÷
+//Ô­ï¿½ï¿½*10ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¶ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸Ä£ï¿½ï¿½ï¿½Ã»ï¿½Ë£ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½
 #define LONG_TIMEOUT         ((uint32_t)(FLAG_TIMEOUT))
 
 #define I2C_SYSTEM
@@ -14,14 +26,14 @@
 #define I2C_AFE		I2C2
 #define DELAY_US_IIC_AFE1	6
 
-//IO·½ÏòÉèÖÃ
-#define SDA_IN()  {GPIOF->MODER&=0xFFFF3FFF;GPIOF->MODER|=(UINT32)0<<14;}		//Ä¬ÈÏÖµÎª00£¬¼È²»ÉÏÀ­Ò²²»ÏÂÀ­ÊäÈë¡£
-#define SDA_OUT() {GPIOF->MODER&=0xFFFF3FFF;GPIOF->MODER|=(UINT32)1<<14;}		//¹ØÓÚÊä³öÀàÐÍºÍÊä³öËÙ¶È£¬ÔÚÄ¬ÈÏÖµµÄInitº¯ÊýÅäºÃ£¬»ØÀ´Á¢¿ÌÉúÐ§
+//IOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define SDA_IN()  {GPIOF->MODER&=0xFFFF3FFF;GPIOF->MODER|=(UINT32)0<<14;}		//Ä¬ï¿½ï¿½ÖµÎª00ï¿½ï¿½ï¿½È²ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë¡£
+#define SDA_OUT() {GPIOF->MODER&=0xFFFF3FFF;GPIOF->MODER|=(UINT32)1<<14;}		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Íºï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½Öµï¿½ï¿½Initï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§
 
-//IO²Ù×÷º¯Êý	 
+//IOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½	 
 #define IIC_SCL    PORT_OUT_GPIOF->bit6 	//SCL
 #define IIC_SDA    PORT_OUT_GPIOF->bit7		//SDA
-#define READ_SDA   (uint16_t)(GPIOF->IDR&GPIO_Pin_7)  //ÊäÈëSDA 
+#define READ_SDA   (uint16_t)(GPIOF->IDR&GPIO_Pin_7)  //ï¿½ï¿½ï¿½ï¿½SDA 
 
 
 

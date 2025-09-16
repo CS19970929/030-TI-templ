@@ -1513,7 +1513,6 @@ void Sci_WrRegs_0x10_SysOther(struct RS485MSG *s)
 		// u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_COOL_CHG_L;
 
 		InitShortCur();
-		App_PWM(); // 刷新PWM
 	}
 	else
 	{
@@ -2034,5 +2033,30 @@ void App_CommonUpper(void)
 
 #ifdef _COMMOM_UPPER_SCI2
 	App_CommonUpperSCI2(&g_stCurrentMsgPtr_SCI2);
+#endif
+}
+
+#if 1
+#define debug_uart USART1
+#else
+#define debug_uart USART2
+#endif
+
+int fputc(int ch, FILE *f)
+{
+#if 0 /* 将需要printf的字符通过串口中断FIFO发送出去，printf函数会立即返回 */
+	comSendChar(COM1, ch);
+
+	return ch;
+#else /* 采用阻塞方式发送每个字符,等待数据发送完毕 */
+	/* 写一个字节到USART1 */
+	USART_SendData(debug_uart, (uint8_t)ch);
+
+	/* 等待发送结束 */
+	while (USART_GetFlagStatus(debug_uart, USART_FLAG_TC) == RESET)
+	{
+	}
+
+	return ch;
 #endif
 }

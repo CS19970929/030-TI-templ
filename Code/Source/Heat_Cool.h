@@ -74,7 +74,7 @@ struct HEAT_COOL_ELEMENT {
 								 0,0,0,0,0,0,0,\
 								 0,0,0,0}
 
-#define HeatCoolElement_Default {400,500,50,1100,1000,\
+#define HeatCoolElement_Default {400,500,HEAT_OPEN_CURR,1100,1000,\
 								 0,0,0,0,0,0,0,0,\
 								 0,0,0,0,0,0,0,\
 								 0,0,0,0}

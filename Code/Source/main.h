@@ -19,12 +19,8 @@
 #include "I2C_AFE1.h"
 #include "Cell_balance.h"
 #include "Flash.h"
-#include "Uart_Client.h"
 #include "SleepDeal.h"
-#include "I2C_Slave.h"
 #include "IO_Control.h"
-#include "LED_Buzzer.h"
-#include "PWM.h"
 #include "ProductionID.h"
 #include "ChargerLoadFunc.h"
 #include "Heat_Cool.h"
@@ -33,8 +29,10 @@
 #include "LedBar.h"
 #include "ShortFunc.h"
 
+#include "lk8625.h"
 #include "conf_gpio.h"
 #include "conf.h"
+
 
 
 #define APPLICATION_ADDRESS     (uint32_t)0x08001C00
@@ -63,8 +61,6 @@
 //#define _DEBUG_CODE
 #define _IAP					//��������ļ���ַ��Ļ��������������IAP��project����
 
-//#define _DI_SWITCH_SYS_ONOFF	//DI������������
-//#define _DI_SWITCH_DSG_ONOFF	//DI�����������Ʒŵ�Ӵ�������MOS
 
 
 

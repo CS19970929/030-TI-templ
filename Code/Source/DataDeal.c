@@ -80,10 +80,6 @@ void DataLoad_CellVolt_Test(void)
 	}
 #endif
 
-	g_stCellInfoReport.u16VCell[28] = aaaaaa1;
-	g_stCellInfoReport.u16VCell[29] = aaaaaa2;
-	g_stCellInfoReport.u16VCell[30] = aaaaaa3;
-	g_stCellInfoReport.u16VCell[31] = aaaaaa4;
 }
 
 // 这里排列好就行，不需要电池位号映射表。>61000为不用
@@ -201,9 +197,10 @@ void DataLoad_Temperature(void)
 		Monitor_TempBreak(&g_stCellInfoReport.u16Temperature[i]);
 	}
 
-#if 1
+#if 0
 	// 环境温度1
 	t_i32temp = g_i32ADCResult[ADC_TEMP_EV1] / 10 - 40; // 放大1000倍和B值对应的意思
+	t_i32temp = -40;
 	t_i32temp = ((t_i32temp * g_u16CalibCoefK[MDL_TEMP_ENV1]) + g_i16CalibCoefB[MDL_TEMP_ENV1]) >> 10;
 	g_stCellInfoReport.u16Temperature[ENV_TEMP1] = (UINT16)(t_i32temp * 10 + 400);
 	Monitor_TempBreak(&g_stCellInfoReport.u16Temperature[ENV_TEMP1]);
@@ -539,6 +536,6 @@ void App_AFEGet(void)
 	DataLoad_CellVoltMaxMinFind();
 	DataLoad_Temperature();
 	DataLoad_TemperatureMaxMinFind();
-	// DataLoad_Current();
-	test_Autocurrent_cycle();
+	DataLoad_Current();
+	// test_Autocurrent_cycle();
 }

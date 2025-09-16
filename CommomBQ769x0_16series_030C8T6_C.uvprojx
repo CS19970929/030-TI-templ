@@ -325,8 +325,8 @@
             <wLevel>2</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
-            <uC99>0</uC99>
-            <uGnu>0</uGnu>
+            <uC99>1</uC99>
+            <uGnu>1</uGnu>
             <useXO>0</useXO>
             <v6Lang>1</v6Lang>
             <v6LangP>1</v6LangP>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER STM32F0XX</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Code\Drivers;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source;.\Code\Source\conf</IncludePath>
+              <IncludePath>.\Code\Drivers;.\Code\STM32F0xx_StdPeriph_Driver\inc;.\Code\NewFunc;.\Code\Source;.\Code\Source\conf;.\Code\Source\bsp</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -484,19 +484,9 @@
               <FilePath>.\Code\Source\I2C_AFE1.c</FilePath>
             </File>
             <File>
-              <FileName>I2C_Slave.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\Source\I2C_Slave.c</FilePath>
-            </File>
-            <File>
               <FileName>IO_Control.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\IO_Control.c</FilePath>
-            </File>
-            <File>
-              <FileName>LED_Buzzer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\Source\LED_Buzzer.c</FilePath>
             </File>
             <File>
               <FileName>LogRecord.c</FileName>
@@ -517,11 +507,6 @@
               <FileName>PubFunc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\PubFunc.c</FilePath>
-            </File>
-            <File>
-              <FileName>PWM.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\Source\PWM.c</FilePath>
             </File>
             <File>
               <FileName>RTC.c</FileName>
@@ -554,11 +539,6 @@
               <FilePath>.\Code\Source\System_Monitor.c</FilePath>
             </File>
             <File>
-              <FileName>Uart_Client.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\Source\Uart_Client.c</FilePath>
-            </File>
-            <File>
               <FileName>BQ769X0_Func.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\BQ769X0_Func.c</FilePath>
@@ -572,6 +552,21 @@
               <FileName>IODrivers_030.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\IODrivers_030.c</FilePath>
+            </File>
+            <File>
+              <FileName>LedBar.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\LedBar.c</FilePath>
+            </File>
+            <File>
+              <FileName>ShortFunc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\ShortFunc.c</FilePath>
+            </File>
+            <File>
+              <FileName>lk8625.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\lk8625.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -811,31 +806,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>NewFunc</GroupName>
-          <Files>
-            <File>
-              <FileName>LedBar.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\NewFunc\LedBar.c</FilePath>
-            </File>
-            <File>
-              <FileName>LedBar.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\NewFunc\LedBar.h</FilePath>
-            </File>
-            <File>
-              <FileName>ShortFunc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Code\NewFunc\ShortFunc.c</FilePath>
-            </File>
-            <File>
-              <FileName>ShortFunc.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Code\NewFunc\ShortFunc.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>conf</GroupName>
           <Files>
             <File>
@@ -852,6 +822,16 @@
               <FileName>conf_gpio.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Code\Source\conf\conf_gpio.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>bsp</GroupName>
+          <Files>
+            <File>
+              <FileName>bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\bsp\bsp.c</FilePath>
             </File>
           </Files>
         </Group>

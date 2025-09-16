@@ -1,4 +1,5 @@
 #include "main.h"
+#include "bsp.h"
 
 // 通过while循环，每执行一次，v中1的数目就会减少1，如果v中1的数目为奇数，则parity=true，否则parity=false。
 Parity OddEven_Check(UINT8 v)
@@ -310,4 +311,74 @@ UINT8 Monitor_TempBreak(UINT16 *temp_AD)
 	}
 
 	return result;
+}
+
+Reset_TypeDef MCU_GetResetType(void)
+{
+	uint32_t flags = RCC->CSR; // 读取复位标志寄存器
+	Reset_TypeDef type = RESET_TYPE_UNKNOWN;
+
+	if (flags & RCC_CSR_LPWRRSTF)
+	{
+		type = RESET_TYPE_LOW_POWER;
+	}
+	else if (flags & RCC_CSR_WWDGRSTF)
+	{
+		type = RESET_TYPE_WINDOW_WDG;
+	}
+	else if (flags & RCC_CSR_IWDGRSTF)
+	{
+		type = RESET_TYPE_INDEPENDENT_WDG;
+	}
+	else if (flags & RCC_CSR_SFTRSTF)
+	{
+		type = RESET_TYPE_SOFTWARE;
+	}
+	else if (flags & RCC_CSR_PORRSTF)
+	{
+		type = RESET_TYPE_POR;
+	}
+	else if (flags & RCC_CSR_PINRSTF)
+	{
+		type = RESET_TYPE_PIN;
+	}
+	else
+	{
+		type = RESET_TYPE_NONE;
+	}
+
+	// 清除复位标志（必须写1到RMVF位）
+	RCC->CSR |= RCC_CSR_RMVF;
+
+	switch (type)
+	{
+	case RESET_TYPE_LOW_POWER:
+		BSP_Printf("低功耗唤醒复位\n");
+		break;
+	case RESET_TYPE_WINDOW_WDG:
+		BSP_Printf("窗口看门狗复位\n");
+		break;
+	case RESET_TYPE_INDEPENDENT_WDG:
+		BSP_Printf("独立看门狗复位\n");
+		break;
+	case RESET_TYPE_SOFTWARE:
+		BSP_Printf("软件复位\n");
+		break;
+	case RESET_TYPE_POR:
+		BSP_Printf("上电复位\n");
+		break;
+	case RESET_TYPE_PIN:
+		BSP_Printf("外部引脚复位\n");
+		break;
+	default:
+		BSP_Printf("未知或无复位标志\n");
+		break;
+	}
+
+	return type;
+}
+
+void toggleLed(void)
+{
+	MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 }

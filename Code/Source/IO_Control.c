@@ -221,35 +221,31 @@ void Drivers_External_Ctrl(void)
 
 void InitMosRelay_DOx(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
-
 	InitData_Drivers();
 }
 
 void App_MOS_Relay_Ctrl(void)
 {
-#if defined(_MOS)
-	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_MOS))
-	{
-		return;
-	}
-#elif defined(_RELAY) // 同口分口问题，TODO
-	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
-	{
-		return;
-	}
-#endif
+// #if defined(_MOS)
+// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_MOS))
+// 	{
+// 		return;
+// 	}
+// #elif defined(_RELAY) // 同口分口问题，TODO
+// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
+// 	{
+// 		return;
+// 	}
+// #endif
 
 	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
 	{
 		return;
 	}
 
+	sys_time.cnt_10ms_test_iocontrol++;
+
+	// MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 
 	App_DI1_Switch();
 	RefreshData_Drivers();

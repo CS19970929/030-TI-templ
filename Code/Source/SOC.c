@@ -189,8 +189,9 @@ void App_SOC(void)
 		return;
 	}
 
-	MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
-	SOC_OCV_Fix();
+	toggleLed();
+	// SOC_OCV_Fix();
+	
 	RefreshData_SOC();
 	GetData_SOC();
 	SOC_IntEnhance_Ctrl(gu8_200msAccClock_Flag);
