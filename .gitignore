@@ -12,7 +12,6 @@ DebugConfig/Target_1_STM32F030C8.dbgconf
 Objects/
 CommomBQ769x0_16series_030C8T6_C.uvoptx
 CommomBQ769x0_16series_030C8T6_C.uvguix.cs
-Code/Source/SocEnhance.c
 JLinkLog.txt
 JLinkSettings.ini
 CommomBQ769x0_16series_030C8T6_C.uvguix.Administrator

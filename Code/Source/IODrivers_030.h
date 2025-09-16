@@ -123,6 +123,7 @@ typedef struct DRIVER_ELEMENT {
 
 extern DriverElement Driver_Element;
 
+
 //GPIO均为推挽输出，2MHz，GPIO_Type有4种形式
 void InitDrivers_GPIO(GPIO_TypeDef* GPIOx, UINT16 GPIO_Pin_x, GPIO_Type GpioType);
 

@@ -269,17 +269,14 @@ void ReadEEPROM_ByteData_StartUp(void)
 	INT16 t_i16RdTemp;
 	UINT16 t_u16TempMax, t_u16TempMin;
 
-	const struct PRT_E2ROM_PARAS PrtE2PARAS_Default = E2P_PROTECT_DEFAULT_PRT;
 	const struct PRT_E2ROM_PARAS PrtE2paras_Min = E2P_PROTECT_MIN_PRT;
 	const struct PRT_E2ROM_PARAS PrtE2paras_Max = E2P_PROTECT_MAX_PRT;
 	const struct PRT_E2ROM_PARAS PrtE2paras_Pos = E2P_ADDR_E2POS_PROTECT;
 
-	const struct OTHER_ELEMENT OtherElement_to_default = OtherElement_default;
 	const struct OTHER_ELEMENT OtherElement_to_Max = OtherElement_max;
 	const struct OTHER_ELEMENT OtherElement_to_Min = OtherElement_min;
 	const struct OTHER_ELEMENT OtherElement_to_Pos = E2P_ADDR_E2POS_OTHER_ELEMENT1;
 
-	const struct HEAT_COOL_ELEMENT HeatCoolEle_Default = HeatCoolElement_Default;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Max = HeatCoolElement_Max;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Min = HeatCoolElement_Min;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Pos = E2P_ADDR_E2POS_HEAT_COOL;
