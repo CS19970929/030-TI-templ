@@ -1321,7 +1321,7 @@ void App_WarnCtrl(void)
 	App_CellSocUp_SecondCheck();
 	App_CellSocUp_ThirdCheck();
 
-	App_CellDisChgOtp_SecondCheck();
+		App_CellDisChgOtp_SecondCheck();
 	App_CellDisChgOtp_ThirdCheck();
 	App_CellDischgUtp_SecondCheck();
 	App_CellDischgUtp_ThirdCheck();
