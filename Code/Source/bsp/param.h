@@ -15,6 +15,7 @@
 #define __PARAM_H
 
 #include "Flash.h"
+#include "main.h"
 
 /* 下面2行宏只能选择其一 */
 // #define PARAM_SAVE_TO_EEPROM			/* 参数存储到外部的EEPROM (AT24C128) */
@@ -29,8 +30,9 @@
 	//#define PARAM_ADDR	 ADDR_FLASH_SECTOR_11		/* 0x080E0000 Flash最后128K扇区用来存放参数 */
 #endif
 
-#define PARAM_VER			0x00000104					/* 参数版本 */
+#define PARAM_VER			0x10000104					/* 参数版本 */
 
+#if 0
 /* 全局参数 */
 typedef struct
 {
@@ -84,6 +86,38 @@ typedef struct
 	
 	uint8_t Addr485;
 	uint32_t Baud485;
+}
+PARAM_T;
+#endif
+
+typedef struct
+{
+	uint32_t ParamVer;			/* 参数区版本控制（可用于程序升级时，决定是否对参数区进行升级） */
+
+	struct PRT_E2ROM_PARAS    protect;
+	struct OTHER_ELEMENT 	  other;
+	struct HEAT_COOL_ELEMENT  heat;
+
+	// /* uip ip 地址参数 */
+	// uint8_t uip_ip[4];			/* 本机IP地址 */
+	// uint8_t uip_net_mask[4];	/* 子网掩码 */
+	// uint8_t uip_gateway[4];	/* 默认网关 */
+
+	// /* lwip ip 地址参数 */
+	// uint8_t lwip_ip[4];			/* 本机IP地址 */
+	// uint8_t lwip_net_mask[4];	/* 子网掩码 */
+	// uint8_t lwip_gateway[4];	/* 默认网关 */
+
+	// /* 收音机参数 */
+	// uint8_t ucRadioMode;		/* AM 或 FM */
+	// uint8_t ucRadioListType;		/* 电台列表类型。武汉地区或全国 */
+	// uint8_t ucIndexFM;			/* 当前FM电台索引 */
+	// uint8_t ucIndexAM;			/* 当前电台索引 */
+	// uint8_t ucRadioVolume;		/* 音量 */
+	// uint8_t ucSpkOutEn;			/* 扬声器输出使能 */
+	
+	// uint8_t Addr485;
+	// uint32_t Baud485;
 }
 PARAM_T;
 

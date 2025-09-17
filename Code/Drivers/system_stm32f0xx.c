@@ -194,6 +194,7 @@ void SystemInit (void)
 
   /* Configure the System clock frequency, AHB/APBx prescalers and Flash settings */
   SetSysClock();
+  SystemCoreClockUpdate();
 }
 
 /**

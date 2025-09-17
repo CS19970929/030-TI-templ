@@ -40,7 +40,6 @@ int main(void)
 		App_SysTime();
 		// App_NormalSleepTest();
 		Feed_IWatchDog;
-
 #else
 		App_SysTime();
 		App_Sci();
@@ -107,11 +106,10 @@ void InitDevice(void)
 	InitMosRelay_DOx();
 	Init_ChargerLoad_Det();
 
-	InitAFE1();
-
 	MCU_GetResetType();
 	LoadParam();
 
+	InitAFE1();
 #ifdef wdog_enable
 	Init_IWDG();
 #endif // !1

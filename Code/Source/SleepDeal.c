@@ -671,7 +671,8 @@ void SleepDeal_Normal_L2(void)
 			s_u32SleepHiccupCnt = 0;
 	}
 
-	if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow || g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
+	// if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow || g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
+	if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow)
 	{ // 触发条件才跳�?，别的时间不跳转
 		Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
@@ -778,11 +779,11 @@ void SleepDeal_Normal_Select(void)
 			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L3;
 		}
-		else if (g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
-		{
-			Sleep_Mode.bits.b1NormalSleep_L1 = 1;
-			Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
-		}
+		// else if (g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
+		// {
+		// 	Sleep_Mode.bits.b1NormalSleep_L1 = 1;
+		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
+		// }
 		else
 		{ // 等号均纳�?L2
 			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
@@ -951,9 +952,9 @@ void App_SleepDeal(void)
 	case SLEEP_HICCUP_FORCED:
 		SleepDeal_Forced(); // 还没�?
 		break;
-	case SLEEP_HICCUP_NORMAL_L1:
-		SleepDeal_Normal_L1();
-		break;
+	// case SLEEP_HICCUP_NORMAL_L1:
+	// 	SleepDeal_Normal_L1();
+	// 	break;
 	case SLEEP_HICCUP_NORMAL_L2:
 		SleepDeal_Normal_L2();
 		break;

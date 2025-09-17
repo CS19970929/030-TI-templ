@@ -43,8 +43,8 @@
 
 
 /* ���������ڵ��Խ׶��Ŵ� */
-#define BSP_Printf		printf
-// #define BSP_Printf(...)
+// #define BSP_Printf		printf
+#define SP_Printf(...)
 
 #include "stm32f0xx.h"
 //#include "stm32f10x.h"

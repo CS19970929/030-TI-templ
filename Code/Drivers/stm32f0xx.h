@@ -66,8 +66,8 @@
   */
   
 #define _HSE_NOPLL_8M		//这几个无论选不选，只要去掉外部晶振就会自动切回内部8M晶振不需要改
-//#define _HSE_NOPLL_12M
-//#define _HSE_8M_PLL_48M
+// #define _HSE_NOPLL_12M
+// #define _HSE_8M_PLL_48M
 //#define _HSE_12M_PLL_48M
 
 

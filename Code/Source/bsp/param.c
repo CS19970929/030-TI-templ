@@ -16,6 +16,8 @@
 
 #include "bsp.h"
 #include "param.h"
+#include "conf.h"
+#include "main.h"
 
 PARAM_T g_tParam;
 
@@ -32,6 +34,7 @@ PARAM_T g_tParam;
 */
 void LoadParam(void)
 {
+	sys_time.test_sizeof_g_tParam = sizeof(g_tParam);
 #ifdef PARAM_SAVE_TO_FLASH
 	/* 读取CPU Flash中的参数 */
 	bsp_ReadCpuFlash(PARAM_ADDR, (uint8_t *)&g_tParam, sizeof(PARAM_T));
@@ -45,57 +48,79 @@ void LoadParam(void)
 	/* 填充缺省参数 */
 	if (g_tParam.ParamVer != PARAM_VER)
 	{
+		PARAM_T Param_default = {
+			.ParamVer = PARAM_VER,
+			.protect = E2P_PROTECT_DEFAULT_PRT,
+			.other   = OtherElement_default,
+			.heat    = HeatCoolElement_Default,
+		};
 		g_tParam.ParamVer = PARAM_VER;
 
-		g_tParam.ucBackLight = 200;
+		g_tParam = Param_default;
+		// /* uip  本机IP地址 */
+		// g_tParam.uip_ip[0] = 192;
+		// g_tParam.uip_ip[1] = 168;
+		// g_tParam.uip_ip[2] = 1;
+		// g_tParam.uip_ip[3] = 85;
 
-		/* uip  本机IP地址 */
-		g_tParam.uip_ip[0] = 192;
-		g_tParam.uip_ip[1] = 168;
-		g_tParam.uip_ip[2] = 1;
-		g_tParam.uip_ip[3] = 85;
+		// /* uip  子网掩码 */
+		// g_tParam.uip_net_mask[0] = 255;
+		// g_tParam.uip_net_mask[1] = 255;
+		// g_tParam.uip_net_mask[2] = 255;
+		// g_tParam.uip_net_mask[3] = 0;
 
-		/* uip  子网掩码 */
-		g_tParam.uip_net_mask[0] = 255;
-		g_tParam.uip_net_mask[1] = 255;
-		g_tParam.uip_net_mask[2] = 255;
-		g_tParam.uip_net_mask[3] = 0;
+		// /* uip  默认网关 */
+		// g_tParam.uip_gateway[0] = 192;
+		// g_tParam.uip_gateway[1] = 168;
+		// g_tParam.uip_gateway[2] = 1;
+		// g_tParam.uip_gateway[3] = 1;
 
-		/* uip  默认网关 */
-		g_tParam.uip_gateway[0] = 192;
-		g_tParam.uip_gateway[1] = 168;
-		g_tParam.uip_gateway[2] = 1;
-		g_tParam.uip_gateway[3] = 1;
+		// /* lwip  本机IP地址 */
+		// g_tParam.lwip_ip[0] = 192;
+		// g_tParam.lwip_ip[1] = 168;
+		// g_tParam.lwip_ip[2] = 1;
+		// g_tParam.lwip_ip[3] = 86;
 
-		/* lwip  本机IP地址 */
-		g_tParam.lwip_ip[0] = 192;
-		g_tParam.lwip_ip[1] = 168;
-		g_tParam.lwip_ip[2] = 1;
-		g_tParam.lwip_ip[3] = 86;
+		// /* lwip  子网掩码 */
+		// g_tParam.lwip_net_mask[0] = 255;
+		// g_tParam.lwip_net_mask[1] = 255;
+		// g_tParam.lwip_net_mask[2] = 255;
+		// g_tParam.lwip_net_mask[3] = 0;
 
-		/* lwip  子网掩码 */
-		g_tParam.lwip_net_mask[0] = 255;
-		g_tParam.lwip_net_mask[1] = 255;
-		g_tParam.lwip_net_mask[2] = 255;
-		g_tParam.lwip_net_mask[3] = 0;
+		// /* lwip  默认网关 */
+		// g_tParam.lwip_gateway[0] = 192;
+		// g_tParam.lwip_gateway[1] = 168;
+		// g_tParam.lwip_gateway[2] = 1;
+		// g_tParam.lwip_gateway[3] = 1;
 
-		/* lwip  默认网关 */
-		g_tParam.lwip_gateway[0] = 192;
-		g_tParam.lwip_gateway[1] = 168;
-		g_tParam.lwip_gateway[2] = 1;
-		g_tParam.lwip_gateway[3] = 1;
+		// g_tParam.ucRadioMode     = 0;				/* 1 = AM 或 0 = FM */
+		// g_tParam.ucRadioListType = 0;				/* 电台列表类型。0武汉地区或1全国 */
+		// g_tParam.ucIndexFM       = 0;				/* 当前FM电台索引 */
+		// g_tParam.ucIndexAM       = 0;				/* 当前电台索引 */
+		// g_tParam.ucRadioVolume   = 30;				/* 音量 */
+		// g_tParam.ucSpkOutEn      = 1;				/* 扬声器输出使能 */
 
-		g_tParam.ucRadioMode     = 0;				/* 1 = AM 或 0 = FM */
-		g_tParam.ucRadioListType = 0;				/* 电台列表类型。0武汉地区或1全国 */
-		g_tParam.ucIndexFM       = 0;				/* 当前FM电台索引 */
-		g_tParam.ucIndexAM       = 0;				/* 当前电台索引 */
-		g_tParam.ucRadioVolume   = 30;				/* 音量 */
-		g_tParam.ucSpkOutEn      = 1;				/* 扬声器输出使能 */
-
-		/* 485 通信波特率 */
-		g_tParam.Baud485 = 9600;
+		// /* 485 通信波特率 */
+		// g_tParam.Baud485 = 9600;
 
 		SaveParam();							/* 将新参数写入Flash */
+	}
+
+	// if(g_tParam.protect != PRT_E2ROMParas)
+	// {
+
+	// }
+	if(memcmp(&g_tParam.protect, &PRT_E2ROMParas, sizeof(PRT_E2ROMParas)) != 0)
+	{
+		System_ERROR_UserCallback(ERROR_CBC_CHG);
+	}
+	if(memcmp(&g_tParam.other, &OtherElement, sizeof(OtherElement)) != 0)
+	{
+		System_ERROR_UserCallback(ERROR_CBC_CHG);
+	}
+	if(memcmp(&g_tParam.heat, &Heat_Cool_Element, sizeof(Heat_Cool_Element)) != 0)
+	{
+		System_ERROR_UserCallback(ERROR_CBC_CHG);
 	}
 }
 
@@ -118,6 +143,8 @@ void SaveParam(void)
 	/* 将全局的参数变量保存到EEPROM */
 	ee_WriteBytes((uint8_t *)&g_tParam, PARAM_ADDR, sizeof(PARAM_T));
 #endif
+
+	LoadParam();
 }
 
 /***************************** 安富莱电子 www.armfly.com (END OF FILE) *********************************/

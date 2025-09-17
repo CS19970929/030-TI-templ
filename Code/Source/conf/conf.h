@@ -7,11 +7,11 @@
 
 #define EEPROM_VALUE_BEGIN_FLAG				0x3333		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
 
-// #define  wdog_enable
+#define  wdog_enable
 #define __FUNC__HEAT__
 #define __LOAD_REMOVE_SHORT_FUNC__
 
-#define __VIRTURE_CURRENT__
+// #define __VIRTURE_CURRENT__
 
 // #define __FUNC__HEAT__
 // #define __FUNC__LED__
@@ -123,6 +123,7 @@ typedef struct
 
   uint16_t cnt_10ms_test_iocontrol;
   uint16_t  cnt_10ms;
+  uint16_t   test_sizeof_g_tParam;
 
 }Time_T;
 
