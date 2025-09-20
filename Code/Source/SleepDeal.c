@@ -25,7 +25,7 @@ void InitWakeUp_Base(void)
 	// é…ç½®PA0_WKUPå¤–éƒ¨ä¸Šå‡æ²¿ä¸­æ–?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; // ä¸Šå‡æ²¿ä¸­æ–?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // ä¸Šå‡æ²¿ä¸­æ–?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
 	// ä¸?æ–?åµŒå?—è?¾è??

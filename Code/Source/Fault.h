@@ -201,6 +201,103 @@ struct PRT_E2ROM_PARAS {
 	UINT16	u16SocUp_Filter;
 };
 
+#if (LEVEL_CURR == CURR_80A)
+
+#define _CURR_		80
+#define CURR_1C		(10 * _CURR_)
+#define CURR_5C		(5 * 10 * _CURR_)
+
+#define OCC_1       (CURR_1C - 100) 
+#define OCC_2       (CURR_1C - 50) 
+#define OCC_3       (CURR_1C) 
+#define OCC_recover (OCC_2) 
+#define OCC_filter1  300 
+#define OCC_filter2  300 
+#define OCC_filter3  300 
+
+#define ODC_1       (CURR_5C - 100) 
+#define ODC_2       (CURR_5C - 50) 
+#define ODC_3       (CURR_5C) 
+#define ODC_recover (ODC_2) 
+#define ODC_filter1  30 
+#define ODC_filter2  30 
+#define ODC_filter3  30 
+
+
+#elif (LEVEL_CURR == CURR_100A)
+
+#define OCC_1       (900) 
+#define OCC_2       (950) 
+#define OCC_3       (1000) 
+#define OCC_recover (950) 
+#define OCC_filter1  300 
+#define OCC_filter2  300 
+#define OCC_filter3  300 
+
+#define ODC_1       (6900) 
+#define ODC_2       (6950) 
+#define ODC_3       (7000) 
+#define ODC_recover (6950) 
+#define ODC_filter1  30 
+#define ODC_filter2  30 
+#define ODC_filter3  30 
+
+#elif (LEVEL_CURR == CURR_150A)
+
+#define OCC_1       (1400) 
+#define OCC_2       (1450) 
+#define OCC_3       (1500) 
+#define OCC_recover (1450) 
+#define OCC_filter1  300 
+#define OCC_filter2  300 
+#define OCC_filter3  300 
+
+#define ODC_1       (7900) 
+#define ODC_2       (7950) 
+#define ODC_3       (8000) 
+#define ODC_recover (7950) 
+#define ODC_filter1  30 
+#define ODC_filter2  30 
+#define ODC_filter3  30 
+
+#elif (LEVEL_CURR == CURR_200A)
+
+#define OCC_1       (1900) 
+#define OCC_2       (1950) 
+#define OCC_3       (2000) 
+#define OCC_recover (1950) 
+#define OCC_filter1  300 
+#define OCC_filter2  300 
+#define OCC_filter3  300 
+
+#define ODC_1       (8900) 
+#define ODC_2       (8950) 
+#define ODC_3       (9000) 
+#define ODC_recover (8950) 
+#define ODC_filter1  30 
+#define ODC_filter2  30 
+#define ODC_filter3  30 
+
+#elif (LEVEL_CURR == CURR_250A)
+
+#define OCC_1       (2400) 
+#define OCC_2       (2450) 
+#define OCC_3       (2500) 
+#define OCC_recover (2450) 
+#define OCC_filter1  300 
+#define OCC_filter2  300 
+#define OCC_filter3  300 
+
+#define ODC_1       (8900) 
+#define ODC_2       (8950) 
+#define ODC_3       (9000) 
+#define ODC_recover (8950) 
+#define ODC_filter1  30 
+#define ODC_filter2  30 
+#define ODC_filter3  30 
+
+#endif				
+
 #define E2P_PROTECT_MIN_PRT		{/*单节过压*/1000,	1000,	1000,	1000,	1,\
 								 /*单节低压*/1000,	1000,	1000,	1000,	1,\
 								 /*总压过压*/300,	300,	300,	300,	1,\
@@ -234,18 +331,12 @@ struct PRT_E2ROM_PARAS {
 //磷酸铁锂
 #elif (defined(LIFEPO))
 
-#if (LEVEL_CURR == CURR_80A)
-
-#define _CURR_		60
-#define CURR_1C		(10 * _CURR_)
-#define CURR_5C		(5 * 10 * _CURR_)
-
 #define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
 								 /*单节低压*/2700,	2600,	2500,	2600,	100,\
 								 /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
 								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-		        				 /*充电过流*/CURR_1C*4/5, 	CURR_1C,	CURR_1C,	CURR_1C / 2,	300,\
-		        				 /*放电过流*/CURR_5C*4/5,	CURR_5C,	CURR_5C,	CURR_5C / 2,	30,\
+		        				 /*充电过流*/OCC_1,	OCC_2,	OCC_3,	OCC_recover,	OCC_filter3,\
+		        				 /*放电过流*/ODC_1,	ODC_2,	ODC_3,	ODC_recover,	ODC_filter3,\
 								 /*充电高温*/900,	950,	1050,	950,	100,\
 								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
 								 /*放电高温*/900,	950,	1050,	950,	100,\
@@ -253,83 +344,6 @@ struct PRT_E2ROM_PARAS {
 		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
 		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
 		        				 /*电量过低*/3,		2,		1,		2,		100}
-
-#elif (LEVEL_CURR == CURR_100A)
-
-#define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
-								 /*单节低压*/2700,	2600,	2500,	2600,	100,\
-								  /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
-								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-		        				 /*充电过流*/800,	800,	1000,	800,	300,\
-		        				 /*放电过流*/6000,	6000,	7000,	6000,	30,\
-								 /*充电高温*/900,	950,	1050,	950,	100,\
-								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
-								 /*放电高温*/900,	950,	1050,	950,	100,\
-								 /*放电低温*/300,	250,	200,	300,	100,\
-		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
-		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
-		        				 /*电量过低*/3,		2,		1,		2,		100}
-#elif (LEVEL_CURR == CURR_150A)
-
-// #define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
-// 								 /*单节低压*/2700,	2600,	2500,	2600,	100,\
-// 								  /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
-// 								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-// 		        				 /*充电过流*/1300,	1300,	1500,	1300,	300,\
-// 		        				 /*放电过流*/7000,	7500,	8000,	7000,	30,\
-// 								 /*充电高温*/900,	950,	1050,	950,	100,\
-// 								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
-// 								 /*放电高温*/900,	950,	1050,	950,	100,\
-// 								 /*放电低温*/300,	250,	200,	300,	100,\
-// 		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
-// 		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
-// 		        				 /*电量过低*/3,		2,		1,		2,		100}
-#define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
-								 /*单节低压*/2700,	2600,	2500,	2700,	100,\
-								  /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
-								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-		        				 /*充电过流*/1450,	1500,	1550,	1500,	300,\
-		        				 /*放电过流*/7000,	7500,	8000,	7500,	30,\
-								 /*充电高温*/900,	950,	1050,	950,	100,\
-								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
-								 /*放电高温*/900,	950,	1050,	950,	100,\
-								 /*放电低温*/300,	250,	200,	300,	100,\
-		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
-		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
-		        				 /*电量过低*/3,		2,		1,		2,		100}
-
-#elif (LEVEL_CURR == CURR_200A)
-
-#define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
-								 /*单节低压*/2700,	2600,	2500,	2600,	100,\
-								  /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
-								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-		        				 /*充电过流*/1500,	2000,	2000,	1500,	300,\
-		        				 /*放电过流*/8000,	9000,	9000,	8000,	30,\
-								 /*充电高温*/900,	950,	1050,	950,	100,\
-								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
-								 /*放电高温*/900,	950,	1050,	950,	100,\
-								 /*放电低温*/300,	250,	200,	300,	100,\
-		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
-		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
-		        				 /*电量过低*/3,		2,		1,		2,		100}
-#elif (LEVEL_CURR == CURR_250A)
-
-#define E2P_PROTECT_DEFAULT_PRT	{/*单节过压*/3550,	3650,	3750,	3650,	100,\
-								 /*单节低压*/2700,	2600,	2500,	2600,	100,\
-								 /*总压过压*/355*SNum, 360*SNum,	365*SNum, 360*SNum, 100,\
-								 /*总压低压*/270*SNum, 260*SNum,	250*SNum, 260*SNum, 100,\
-		        				 /*充电过流*/2000,	2500,	2500,	2000,	300,\
-		        				 /*放电过流*/8000,	9000,	9000,	8000,	30,\
-								 /*充电高温*/900,	950,	1050,	950,	100,\
-								 /*充电低温*/430,	400,	CHG_LOWTEMP_PARAM,	400,	100,\
-								 /*放电高温*/900,	950,	1050,	950,	100,\
-								 /*放电低温*/300,	250,	200,	300,	100,\
-		        				 /*驱动高温*/1200,	1250,	1350,	1200,	100,\
-		        				 /*压差过大*/1000,	1000,	1000,	900,	100,\
-		        				 /*电量过低*/3,		2,		1,		2,		100}
-#endif							
-
 
 #endif
 

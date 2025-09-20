@@ -177,11 +177,11 @@ struct OTHER_ELEMENT {
 	                             2100,	3,		4200,	2900,\
 	                             SNum,CS_Res,CS_Res_Num,10}
 #elif (defined(LIFEPO))
-#define OtherElement_default 	{3000,	30,	20,	0,	0,	0,	0,	0,\
+#define OtherElement_default 	{3300,	30,	20,	0,	0,	0,	0,	0,\
 	                             CS_Cur_CHGmax,	CS_Cur_DSGmax,CBC_DelayT,CBC_Cur_DSG,\
 	                             SOC_TABLE_LIFEPO,0,1000,30,\
-	                             3200,	7200,	2800,	100,		10,	10,	240,0,\
-	                             2100,	3,		3650,	2600,\
+	                             __SLEEP_VNORMAL__,	__SLEEP_TIMENORMAL__, __SLEEP_VLOW__,	__SLEEP_TIMEVLOW__,		10,	10,	240,0,\
+	                             1500,	3,		3650,	2600,\
 	                             SNum,CS_Res,CS_Res_Num,10}
 #endif
 

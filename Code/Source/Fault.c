@@ -1277,6 +1277,7 @@ void App_VdeltaOp_ThirdCheck(void)
 			}
 			if (t_sPubOPUPChk.u8FlagBit == 0 && Fault_Flag_Third.bits.VdeltaOvp_Third == 1)
 			{
+				System_ERROR_UserCallback(ERROR_REMOVE_VDEATLE_OVER);
 				Fault_Flag_Third.bits.VdeltaOvp_Third = 0;
 			}
 		}
@@ -1321,7 +1322,7 @@ void App_WarnCtrl(void)
 	App_CellSocUp_SecondCheck();
 	App_CellSocUp_ThirdCheck();
 
-		App_CellDisChgOtp_SecondCheck();
+	App_CellDisChgOtp_SecondCheck();
 	App_CellDisChgOtp_ThirdCheck();
 	App_CellDischgUtp_SecondCheck();
 	App_CellDischgUtp_ThirdCheck();
