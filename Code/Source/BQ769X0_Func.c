@@ -335,6 +335,10 @@ void App_BQ769X0_Monitor(void)
 		}
 		System_ERROR_UserCallback(ERROR_UPPER);
 	}
+	else
+	{
+		System_ERROR_UserCallback(ERROR_REMOVE_UPPER);
+	}
 
 	if (Registers_AFE1.SysStatus.StatusBit.OV)
 	{
@@ -346,6 +350,10 @@ void App_BQ769X0_Monitor(void)
 		}
 		System_ERROR_UserCallback(ERROR_WIFI);
 	}
+	else
+	{
+		System_ERROR_UserCallback(ERROR_REMOVE_WIFI);
+	}
 	if (Registers_AFE1.SysStatus.StatusBit.UV)
 	{
 		if (g_stCellInfoReport.u16VCellMin > UVPThreshold)
@@ -354,6 +362,10 @@ void App_BQ769X0_Monitor(void)
 			u8_Change = 1;
 		}
 		System_ERROR_UserCallback(ERROR_BLUETOOTH);
+	}
+	else
+	{
+		System_ERROR_UserCallback(ERROR_REMOVE_BLUETOOTH);
 	}
 
 	BQ769X0_Deal_OC_SC();
