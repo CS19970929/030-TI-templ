@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "conf_gpio.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x0928		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x1928		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
 
 #define  wdog_enable
 #define __FUNC__HEAT__
@@ -35,7 +35,7 @@
 #define   CURR_250A     4
 
 
-#define   LEVEL_CURR     CURR_150A
+#define   LEVEL_CURR     CURR_100A
 
 #ifdef __FUNC_RTC__
 #define __SLEEP_VNORMAL__             	2200

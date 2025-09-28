@@ -146,8 +146,13 @@ struct OTHER_ELEMENT {
 #define LIFEPO			//������﮵�أ���ѡһ
 
 
+#if (LEVEL_CURR == CURR_100A)
+#define CS_Res			2
+#define CS_Res_Num		8
+#else
 #define CS_Res			2
 #define CS_Res_Num		10
+#endif
 
 #define CS_Cur_CHGmax	((INT32)CS_Res_Num*1250/CS_Res-10)
 #define CS_Cur_DSGmax	CS_Cur_CHGmax
