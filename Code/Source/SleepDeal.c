@@ -6,6 +6,8 @@ enum SLEEP_STATUS Sleep_Status = SLEEP_HICCUP_SHIFT;
 UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
+uint8_t reset_sleep_state = 0;
+
 // 通�??唤醒对深度休眠不起效果。不能再Base加入通�??唤醒�?
 void InitWakeUp_Base(void)
 {
@@ -908,6 +910,14 @@ void App_SleepDeal(void)
 	{			// 有个疑问，是不是立刻关了，不需要�?�原�?，均衡是需要关掉�?�原�?
 		return; // Sleep的话，�?�果直接不进去，后续打开会接着上�?�的步伐
 	} // 暂且先这么做，后�?如果要全盘�?�原，�?�时清零再�?�，�?前是接着上�?�的步伐
+
+	if (reset_sleep_state)
+	{
+		reset_sleep_state = 0;
+		Sleep_Status = SLEEP_HICCUP_SHIFT;
+
+		Sleep_Mode.all = 0;
+	}
 
 	if (SystemStatus.bits.b1StartUpBMS)
 	{ // 开机完毕再进入

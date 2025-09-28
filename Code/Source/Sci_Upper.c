@@ -1540,6 +1540,8 @@ void Sci_WrRegs_0x10_SleepElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_I_DSG;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_RES1;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_RES2;
+
+		reset_sleep_state = 1;
 	}
 	else
 	{
@@ -1848,6 +1850,8 @@ void Sci_WrReg_0x06_Reset_OtherCanAdd(struct RS485MSG *s)
 		InitData_Drivers();
 
 		InitShortCur();
+
+		reset_sleep_state = 1;
 	}
 	else
 	{

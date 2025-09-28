@@ -9,29 +9,29 @@ typedef enum _SLEEP_MODE {
 NORMAL_MODE = 0, HICCUP_MODE, DEEP_MODE
 }SLEEP_MODE;
 
-#define RTC_WT_Protect 		5         	//≥цѕ÷±£ї§љш»л–Ё√яіта√ ±Љд
-#define RTC_WT_Normal 		5         	//’э≥£„іћђљш»л–Ё√яіта√ ±Љд
-#define RTC_WT_Force 		5         	//Ќв≤њ«њ÷∆љш»л–Ё√яіта√ ±Љд
+#define RTC_WT_Protect 		5         	//пњљпњљпњљ÷±пњљпњљпњљпњљпњљпњљпњљпњљпњљпњљяіпњљпњљпњљ ±пњљпњљ
+#define RTC_WT_Normal 		5         	//пњљпњљпњљпњљ„іћђпњљпњљпњљпњљпњљпњљпњљяіпњљпњљпњљ ±пњљпњљ
+#define RTC_WT_Force 		5         	//пњљв≤њ«њпњљ∆љпњљпњљпњљпњљпњљпњљяіпњљпњљпњљ ±пњљпњљ
 
-#define SleepInitOC 		10	  		//200ms ±їщ£ђіта√ƒ£ љ∆рјі£ђ≥х Љїѓ—” ±Їу≈–ґѕ «Јс‘ўљш»л–Ё√я
-#define SleepInitCBC 		10	  		//200ms ±їщ£ђіта√ƒ£ љ∆рјі£ђ≥х Љїѓ—” ±Їу≈–ґѕ «Јс‘ўљш»л–Ё√я
-#define SleepInitNormal1 	100	  		//200ms ±їщ£ђіта√ƒ£ љ∆рјі£ђ—” ±∆ЏЉд≈–ґѕ20s «Јс‘ўљш»л–Ё√я
-#define SleepInitNormal2 	150	  		//200ms ±їщ£ђіта√ƒ£ љ∆рјі£ђЈҐѕ÷µзЅч‘т—”≥§÷Ѕ30s≈–ґѕ
+#define SleepInitOC 		10	  		//200ms ±пњљпњљпњљпњљпњљпњљпњљпњљƒ£ љпњљпњљпњљпњљпњљпњљпњљпњљ Љпњљпњљпњљпњљ ±пњљпњљпњљ–ґпњљпњљ«Јпњљпњљўљпњљпњљпњљпњљпњљпњљпњљ
+#define SleepInitCBC 		10	  		//200ms ±пњљпњљпњљпњљпњљпњљпњљпњљƒ£ љпњљпњљпњљпњљпњљпњљпњљпњљ Љпњљпњљпњљпњљ ±пњљпњљпњљ–ґпњљпњљ«Јпњљпњљўљпњљпњљпњљпњљпњљпњљпњљ
+#define SleepInitNormal1 	100	  		//200ms ±пњљпњљпњљпњљпњљпњљпњљпњљƒ£ љпњљпњљпњљпњљпњљпњљпњљпњљ ±пњљЏЉпњљпњљ–ґпњљ20sпњљ«Јпњљпњљўљпњљпњљпњљпњљпњљпњљпњљ
+#define SleepInitNormal2 	150	  		//200ms ±пњљпњљпњљпњљпњљпњљпњљпњљƒ£ љпњљпњљпњљпњљпњљпњљпњљпњљпњљ÷µпњљпњљпњљпњљпњљпњљ”≥пњљпњљпњљ30sпњљ–ґпњљ
 
-//“‘ѕ¬’вЄцЅ™Їѕће±к÷Њќї∆д µњ…“‘”√“їЄц„іћђїъћжіъ(“т»ќЇќ ±ЉдSleepMode÷ї”–“ї÷÷«йњцґш≤їїб≥цѕ÷ґа÷÷«йњц)
-//µЂ «ќ“Њцґ®≤їЄƒ£ђ“тќ™ќіјіѕоƒњ”–њ…ƒ№≥цѕ÷ґа÷÷«йњцЌђ ±љш––
+//пњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљ÷Њќїпњљпњљ µпњљпњљпњљпњљпњљпњљ“їпњљпњљ„іћђпњљпњљпњљпњљпњљ(пњљпњљпњљќЇпњљ ±пњљпњљSleepMode÷їпњљпњљ“їпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљ÷ґпњљпњљпњљпњљпњљпњљ)
+//пњљпњљпњљпњљпњљ“Њпњљпњљпњљпњљпњљпњљƒ£пњљпњљпњљќ™ќіпњљпњљпњљпњљƒњпњљ–њпњљпњљ№≥пњљпњљ÷ґпњљпњљпњљпњљпњљпњљЌђ ±пњљпњљпњљпњљ
 union SLEEP_MODE{
     UINT16   all;
     struct SleepModeFlagBit {
-		UINT8 b1TestSleep        	:1;		//b1ForceToSleep_L2њ…“‘іъћж£ђ»°ѕы
+		UINT8 b1TestSleep        	:1;		//b1ForceToSleep_L2пњљпњљпњљ‘іпњљпњљж£ђ»°пњљпњљ
 		UINT8 b1NormalSleep_L1      :1;
 		UINT8 b1NormalSleep_L2      :1;
 		UINT8 b1NormalSleep_L3      :1;
 		
-		UINT8 b1ForceToSleep_L1     :1;		//Ќв≤њ≤ўњЎљш»лµЏ“їЉґ–Ё√я
-        UINT8 b1ForceToSleep_L2     :1;		//Ќв≤њ≤ўњЎљш»лµЏґюЉґ–Ё√я
-		UINT8 b1ForceToSleep_L3     :1;		//Ќв≤њ≤ўњЎљш»лµЏ»эЉґ–Ё√я
-        UINT8 b1ForceToSleep_L1_Out :1;		//Ќв≤њ≤ўњЎµЏ“їЉґ–Ё√яЌЋ≥ціта√ƒ£ љ±к÷Њќї
+		UINT8 b1ForceToSleep_L1     :1;		//пњљв≤њпњљўњЎљпњљпњљпњљпњљ“їпњљпњљпњљпњљпњљпњљ
+        UINT8 b1ForceToSleep_L2     :1;		//пњљв≤њпњљўњЎљпњљпњљпњљЏґпњљпњљпњљпњљпњљпњљпњљ
+		UINT8 b1ForceToSleep_L3     :1;		//пњљв≤њпњљўњЎљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљпњљ
+        UINT8 b1ForceToSleep_L1_Out :1;		//пњљв≤њпњљўњЎµпњљ“їпњљпњљпњљпњљпњљпњљпњљЋ≥пњљпњљпњљпњљпњљƒ£ љпњљпњљ÷Њќї
 
 		UINT8 b1OverCurSleep        :1;
         UINT8 b1OverVdeltaSleep     :1;
@@ -39,8 +39,8 @@ union SLEEP_MODE{
 		UINT8 b1VcellOVP			:1;
 		
 		UINT8 b1VcellUVP			:1;
-		UINT8 b1_ToSleepFlag		:1;		//µ±ќ™1 ±£ђ1sЇуљш»л–Ё√я£ђ±рµƒ ±Љдќ™0
-		UINT8 Res2					:2;		//8L±Ў–лµ√Јієэјі≤≈ЇЌSTM32“ї÷¬
+		UINT8 b1_ToSleepFlag		:1;		//пњљпњљќ™1 ±пњљпњљ1sпњљпњљпњљпњљпњљпњљпњљпњљя£пњљпњљпњљпњљ ±пњљпњљќ™0
+		UINT8 Res2					:2;		//8Lпњљпњљпњљпњљ√Јпњљпњљпњљпњљпњљпњљ≈ЇпњљSTM32“їпњљпњљ
      }bits;
 };
 
@@ -70,6 +70,8 @@ enum SLEEP_STATUS{
 extern volatile union SLEEP_MODE Sleep_Mode;
 extern enum SLEEP_STATUS Sleep_Status;
 extern UINT8 RTC_ExtComCnt;
+
+extern uint8_t reset_sleep_state;
 
 
 void App_NormalSleepTest(void);
