@@ -1,306 +1,244 @@
 #include "SocEnhance.h"
 #include "conf.h"
+#include "DataDeal.h"
+#include "PubFunc.h"
+#include "EEPROM.h"
 
-#define SOC_OCV_UPDATE  					3000     	//暂定200*6000 = 1200s = 20min
-														//暂定200*3000 = 600s = 10min
+#define E2P_ADDR_SOC E2P_ADDR_E2POS_ENHANCE_SOC
+#define E2P_ADDR_DSG_SOC_Int (E2P_ADDR_E2POS_ENHANCE_SOC + 2)
+#define E2P_ADDR_CYCLE_TIMES (E2P_ADDR_E2POS_ENHANCE_SOC + 2 + 2)
+// #define E2P_ADDR_CYCLE_TIMES	(E2P_ADDR_E2POS_ENHANCE_SOC + 2 + 2)
 
-#define SOC_VIRTUAL_CURRENT_CHG (UINT16)	2		//A*10，1和2都认为是0，带=号，0.2就开始算了
-#define SOC_VIRTUAL_CURRENT_DSG (UINT16)	2		//A*10，1和2都认为是0，这个不能为0的同时，把=号判断上去，不然就会卡在DSG那里计算出不来。
+#define SOC_VIRTUAL_CURRENT_CHG (UINT16)2 // A*10，1和2都认为是0，带=号，0.2就开始算了
+#define SOC_VIRTUAL_CURRENT_DSG (UINT16)2 // A*10，1和2都认为是0，这个不能为0的同时，把=号判断上去，不然就会卡在DSG那里计算出不来。
 
-#define DELAYB1000MS_5MIN					300		//默认通讯周期为1s一次
-#define DELAYB1000MS_10MIN					600		//默认通讯周期为1s一次
+// #define CHG_CUR_1C							2100	//A*10恒流充电为1C，恒压充电为1C-0.1C(SOC=95%)，涓流充电也为0.1C
 
-//#define CHG_CUR_1C							2100	//A*10恒流充电为1C，恒压充电为1C-0.1C(SOC=95%)，涓流充电也为0.1C
+#define EEPROM_VALUE_POWEROFF_FLAG ((UINT16)0x5678)
+#define EEPROM_VALUE_DATA_UPDATE_FLAG ((UINT16)0x9ABC)
+#define EEPROM_VALUE_STORE_RESET ((UINT16)0xFFFF)
 
-#define EEPROM_VALUE_SLEEP_FLAG			((UINT16)0x1234)
-#define EEPROM_VALUE_POWEROFF_FLAG		((UINT16)0x5678)
-#define EEPROM_VALUE_DATA_UPDATE_FLAG 	((UINT16)0x9ABC)
-#define EEPROM_VALUE_STORE_RESET 		((UINT16)0xFFFF)
+// 充电可以提前充满，但是不能卡死
+// #define _CAL_SLOW_DOWN_CHG
 
-//充电可以提前充满，但是不能卡死
-//#define _CAL_SLOW_DOWN_CHG
-
-
-typedef enum _CUR {
-CurCHG = 0, CurDSG
-}_Cur;
-
-
-enum CHG_CURVE_STATUS {
-	CHG_CURVE_STARTUP = 0,
-	CHG_CURVE_BEGIN,
-	CHG_CURVE_CONSTANT_CUR,
-	CHG_CURVE_CONSTANT_VOR,
-	CHG_CURVE_TRICKLE_CUR,
-	CHG_CURVE_OVER,
-	CHG_CURVE_ERROR_DEAL
-};
-
-enum SOC_CALI_STATE {
-	SOC_CALI_DATA_INIT = 0,
-	SOC_CALI_STARTUP,
+enum SOC_CALI_STATE
+{
+	// SOC_CALI_DATA_INIT = 0,
+	// SOC_CALI_STARTUP,
 	SOC_CALI_STATE_TRANSFER,
 	SOC_CALI_CONT_CHG,
 	SOC_CALI_CONT_DSG,
 };
 
-enum CAP_FULL_STATE {
-	CAP_FULL_INIT = 0,
-	CAP_FULL_STARTUP,
-	CAP_FULL_CALCU,
-	CAP_FULL_SUCCESS,
-	CAP_FULL_FAIL,
-};
-
-
-enum EEPROM_COMMAND {
+enum EEPROM_COMMAND
+{
 	EEPROM_DATA_REFRESH = 0,
 	EEPROM_DATA_READ
 };
 
-
-struct SOC_CALCULATE_ELEMENT {	
-	//InitSOC_IntEnhance赋值类型
-	UINT32  u32CapFactory;  	//电池初始总容量(出厂容量)As*10 =        Ah*3600*10
-	UINT32  u32CycleT_Limit;    //可循环次数
-	//以下置零
-	UINT32	u32CapChange;		//电池容量变化	   As*10，叠加类型
-	UINT8   u8OCV_Cali_Flag;    //开路电压法可使用标志
-	UINT8   u8CHG_AHCalcu_Flag;	//充电安时积分可使用标志
-	UINT8   u8DSG_AHCalcu_Flag;	//放电安时积分可使用标志
-	
-	//InitSOC_IntEnhance赋值，其后SOC_Update_StartUp再次赋值类型
-	UINT8   u8SOC_Now;          //当前电池SOC     0—100 为相对容量百分比
-	UINT32  u32CapNow;		 	//电池剩余总容量As*10
-	UINT8	u8DSG_SOC_Int;		//循环次数只算放电量，已放电量积累量百分比，90%算一个循环		
-	UINT32  u32Cycle_times;     //循环次数*100，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
-	UINT32  u32CapFull;	 		//电池衰减后总容量As*10(SOH)，我的显示SOH要改一改，算错了
-
-	//运行过程长期修改类型
-	UINT8   u8SOC_Old;          //初始SOC    0-100 为相对容量百分比
-	//UINT8   u8a_BurnIn;         //老化因素α的修正系数，系数乘以100
-	//UINT8   u8b_CapC;      		//电池容量修正因子δ，与充放电循环次数相关δ = f(Cycle_times)
-	UINT8	u8_DataUpdateOK;	//更新记录
-	UINT32  u32CapFull_Cal_As;	//长期运行，更新容量，As*10
-};
-
-
-struct SOC_ENHANCE_E2PROM_PAR {
-	UINT16  u16_SOC_E2P0;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
-	UINT16  u16_SOC_E2P1;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
-	UINT16  u16_SOC_E2P2;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
-	UINT16  u16_SOC_E2P3;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
-
-	UINT16  u16_SOC_Temp;			//记录哪个SOC是最新的
-	UINT16  u16_DsgSOC_Int0;		//记录已放电量积累量百分比
-	UINT16  u16_DsgSOC_Int1;		//记录已放电量积累量百分比
-	UINT16  u16_DsgSOC_Temp;		//记录哪个电量积累量是最新的
-
-	UINT16  u16_Cycle_Times;		//记录循环次数
-	UINT16  Res1;					//上一次做的任务，虽然取消了，但是位置不能变，原版升级问题
-	UINT16  Res5;					//上一次的纠正系数
-	UINT16 	u16_SeriousFaultFlag;	//严重错误标志位保存
-
-	UINT16  u16CapFull_Cal_Ah;		//Ah*10
-	UINT16  Res2;					//Res2
-	UINT16  Res3;					//Res3
-	UINT16 	Res4;					//Res4
-};
-
-
-struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;				//对外交互结构体,lib文件的桥梁
-struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element;			//内部计算结构体
-struct SOC_ENHANCE_E2PROM_PAR SOC_E2prom_Par;				//EEPROM保存关键数据结构体
-struct SOC_ENHANCE_E2PROM_PAR SOC_E2prom_Adress;			//EEPROM地址结构体
-
-enum SOC_CALI_STATE SOC_Cali_Flag = SOC_CALI_DATA_INIT;		//妈的，忘了这个？		SOC计算状态机，记得初始化
-enum CAP_FULL_STATE CapFull_Cali_Flag = CAP_FULL_INIT;		//容量更新计算状态机。
-
-
-//古瑞瓦特
-const UINT16 SOC_Table_LiFePO[SOC_Size_LiFePO] = {
-    3336	,	100	,
-    3332	,	90	,
-    3330    ,   80  ,
-    3327    ,   75  ,
-    3316    ,   70  ,
-    3301    ,   65  ,
-    3294    ,   60  ,
-    3291    ,   55  ,
-    3290    ,   50  ,
-    3288    ,   45  ,
-    3286    ,   40  ,
-    3279    ,   35  ,
-    3266    ,   30  ,
-    3254    ,   25  ,
-    3236    ,   20  ,
-    3212    ,   15  ,
-    3198    ,   10  ,
-    3112    ,    5  ,
-    2526    ,    0  ,
-    1000    ,    0  ,
-    1000    ,    0  ,
-};
-
-
-//单位为mV和SOC
-const UINT16 SocTable_TernaryLi[SOC_Size_TernaryLi] = {
-    4126	,	100	,
-    4066	,	95	,
-    4011    ,   90  ,
-    3955    ,   85  ,
-    3888    ,   80  ,
-    3837    ,   75  ,
-    3793    ,   70  ,
-    3756    ,   65  ,
-    3724    ,   60  ,
-    3699    ,   55  ,
-    3675    ,   50  ,
-    3658    ,   45  ,
-    3632    ,   40  ,
-    3605    ,   35  ,
-    3584    ,   30  ,
-    3557    ,   25  ,
-    3535    ,   20  ,
-    3497    ,   15  ,
-    3475    ,   10  ,
-    3371    ,    5  ,
-    3136    ,    0  ,
-};
-
-
-//单位为mV和SOC
-const UINT16 SocTable_LiFePO2[SOC_Size_LiFePO2] = {
-    3650	,	100	,
-    3600	,	98	,
-    3550    ,   95  ,
-    3500    ,   92  ,
-    3400    ,   90  ,
-    3350    ,   87  ,
-    3340    ,   85  ,
-    3335    ,   82  ,
-    3330    ,   80  ,
-    3325    ,   78  ,
-    3320    ,   75  ,
-    3300    ,   70  ,
-    3275    ,   65  ,
-    3250    ,   60  ,
-    3200    ,   50  ,
-    3150    ,   45  ,
-    3100    ,   30  ,
-    3000    ,   20  ,
-    2850    ,   10  ,
-    2750    ,    5  ,
-    2650    ,    0  ,
-};
-
-// 求绝对值
-UINT32 ModulusSubb(UINT32 Data1, UINT32 Data2)
+struct SOC_CALCULATE_ELEMENT
 {
-	return (UINT32)(Data1 > Data2 ? Data1 - Data2 : Data2 - Data1);
+	// InitSOC_IntEnhance赋值类型
+	UINT32 u32CapFactory;	// 电池初始总容量(出厂容量)As*10 =        Ah*3600*10
+	UINT32 u32CycleT_Limit; // 可循环次数
+	// 以下置零
+	UINT32 u32CapChange;	  // 电池容量变化	   As*10，叠加类型
+	UINT8 u8OCV_Cali_Flag;	  // 开路电压法可使用标志
+	UINT8 u8CHG_AHCalcu_Flag; // 充电安时积分可使用标志
+	UINT8 u8DSG_AHCalcu_Flag; // 放电安时积分可使用标志
+
+	// InitSOC_IntEnhance赋值，其后SOC_Update_StartUp再次赋值类型
+	UINT8 u8SOC_Now;	   // 当前电池SOC     0—100 为相对容量百分比
+	UINT32 u32CapNow;	   // 电池剩余总容量As*10
+	UINT8 u8DSG_SOC_Int;   // 循环次数只算放电量，已放电量积累量百分比，90%算一个循环
+	UINT32 u32Cycle_times; // 循环次数*100，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
+	UINT32 u32CapFull;	   // 电池衰减后总容量As*10(SOH)，我的显示SOH要改一改，算错了
+
+	// 运行过程长期修改类型
+	UINT8 u8SOC_Old; // 初始SOC    0-100 为相对容量百分比
+	// UINT8   u8a_BurnIn;         //老化因素α的修正系数，系数乘以100
+	// UINT8   u8b_CapC;      		//电池容量修正因子δ，与充放电循环次数相关δ = f(Cycle_times)
+	UINT8 u8_DataUpdateOK;	  // 更新记录
+	UINT32 u32CapFull_Cal_As; // 长期运行，更新容量，As*10
+};
+
+struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;			   // 对外交互结构体,lib文件的桥梁
+struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element;		   // 内部计算结构体
+struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element_backup; // 内部计算结构体
+
+enum SOC_CALI_STATE SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER; // 妈的，忘了这个？		SOC计算状态机，记得初始化
+
+void SOC_DealEEPROM_Data(enum EEPROM_COMMAND Command);
+// 古瑞瓦特
+const UINT16 SOC_Table_LiFePO[SOC_Size_LiFePO] = {
+	3336,
+	100,
+	3332,
+	90,
+	3330,
+	80,
+	3327,
+	75,
+	3316,
+	70,
+	3301,
+	65,
+	3294,
+	60,
+	3291,
+	55,
+	3290,
+	50,
+	3288,
+	45,
+	3286,
+	40,
+	3279,
+	35,
+	3266,
+	30,
+	3254,
+	25,
+	3236,
+	20,
+	3212,
+	15,
+	3198,
+	10,
+	3112,
+	5,
+	2526,
+	0,
+	1000,
+	0,
+	1000,
+	0,
+};
+
+// 单位为mV和SOC
+const UINT16 SocTable_TernaryLi[SOC_Size_TernaryLi] = {
+	4126,
+	100,
+	4066,
+	95,
+	4011,
+	90,
+	3955,
+	85,
+	3888,
+	80,
+	3837,
+	75,
+	3793,
+	70,
+	3756,
+	65,
+	3724,
+	60,
+	3699,
+	55,
+	3675,
+	50,
+	3658,
+	45,
+	3632,
+	40,
+	3605,
+	35,
+	3584,
+	30,
+	3557,
+	25,
+	3535,
+	20,
+	3497,
+	15,
+	3475,
+	10,
+	3371,
+	5,
+	3136,
+	0,
+};
+
+// 单位为mV和SOC
+const UINT16 SocTable_LiFePO2[SOC_Size_LiFePO2] = {
+	3650,
+	100,
+	3600,
+	98,
+	3550,
+	95,
+	3500,
+	92,
+	3400,
+	90,
+	3350,
+	87,
+	3340,
+	85,
+	3335,
+	82,
+	3330,
+	80,
+	3325,
+	78,
+	3320,
+	75,
+	3300,
+	70,
+	3275,
+	65,
+	3250,
+	60,
+	3200,
+	50,
+	3150,
+	45,
+	3100,
+	30,
+	3000,
+	20,
+	2850,
+	10,
+	2750,
+	5,
+	2650,
+	0,
+};
+
+void soc_factory_param_init_first(void)
+{
+	SOC_Enhance_Element.u16_SOC_CycleT_Ever = OtherElement.u16Soc_Cycle_times;
+
+	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
+	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+
+	SOC_Calculate_Element.u8SOC_Now = 88;
+	SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
+	SOC_DealEEPROM_Data(EEPROM_DATA_REFRESH);
 }
 
-UINT16 GetEndValuee(const UINT16 *ptbl, UINT16 tblsize, UINT16 dat)
+void soc_param_lib_init(void)
 {
-	UINT16 i, t_linenum;
-	UINT32 x1 = 0, y1 = 0, x2 = 1, y2 = 1;
-	const UINT16 *p;
-	UINT16 t_tmp16a, t_tmp16b;
-	INT32 t_tmp32a, t_tmp32b;
-	UINT32 k, b;
-	INT32 ret;
-	p = ptbl;
+	// 外部获取的数据初始化
+	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
+	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
 
-	t_linenum = tblsize - 1;
-	for (i = 0; i < tblsize - 2; i = i + 2)
-	{
-		t_tmp16a = p[i];
-		t_tmp16b = p[i + 2];
+	SOC_Calculate_Element.u32CapChange = 0;
+	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // 第一次写置1出现了开机严重错误的问题
+	SOC_Calculate_Element.u8CHG_AHCalcu_Flag = 0;
+	SOC_Calculate_Element.u8DSG_AHCalcu_Flag = 0;
 
-		if (((dat >= t_tmp16a) && (dat <= t_tmp16b)) || ((dat <= t_tmp16a) && (dat >= t_tmp16b)))
-		{
-			x1 = t_tmp16a;
-			x2 = t_tmp16b;
-			y1 = p[i + 1];
-			y2 = p[i + 3];
-			break;
-		}
-	}
+	SOC_Calculate_Element.u8SOC_Now = 0; // 以上均为0，因为模拟前端还没读回电压
+	SOC_Calculate_Element.u32CapNow = 0;
+	SOC_Calculate_Element.u8DSG_SOC_Int = 0;
+	SOC_Calculate_Element.u32CapFull = 0;
 
-	if (i >= t_linenum - 1)
-	{
-		p = ptbl;
-		t_tmp16a = p[0];
-		t_tmp16b = p[tblsize - 2];
-
-		if (t_tmp16a <= t_tmp16b)
-		{
-			if (dat >= t_tmp16b)
-			{
-				t_tmp16a = p[tblsize - 1];
-			}
-			else
-			{
-				t_tmp16a = p[1];
-			}
-		}
-		else
-		{
-			if (dat >= t_tmp16a)
-			{
-				t_tmp16a = p[1];
-			}
-			else
-			{
-				t_tmp16a = p[tblsize - 1];
-			}
-		}
-		return t_tmp16a;
-	}
-	else
-	{
-		if (x2 < x1)
-		{
-			ret = x2;
-			x2 = x1;
-			x1 = ret;
-			ret = y2;
-			y2 = y1;
-			y1 = ret;
-		}
-
-		if (y2 >= y1)
-		{
-			t_tmp32a = y1 * x2;
-			t_tmp32b = y2 * x1;
-			ret = dat;
-			k = y2 - y1;
-			ret = ret * k;
-			if (t_tmp32a >= t_tmp32b)
-			{
-				b = t_tmp32a - t_tmp32b;
-				ret = ret + b;
-			}
-			else
-			{
-				b = t_tmp32b - t_tmp32a;
-				ret = ret - b;
-			}
-			ret = ret / (x2 - x1);
-		}
-		else
-		{
-			t_tmp32a = y1 * x2;
-			t_tmp32b = y2 * x1;
-			ret = dat;
-			k = y1 - y2;
-			ret = ret * k;
-			b = t_tmp32a - t_tmp32b;
-			ret = b - ret;
-			ret = ret / (x2 - x1);
-		}
-		return (ret & 0xffff);
-	}
+	SOC_DealEEPROM_Data(EEPROM_DATA_READ);
+	SOC_Enhance_Element.u16_SOC_InitOver = 1; // Soc初始化完毕
 }
 
 UINT8 Get_OpenCircuit_Value(void)
@@ -309,19 +247,19 @@ UINT8 Get_OpenCircuit_Value(void)
 	switch (SOC_Enhance_Element.u16_SOC_TableSelect)
 	{
 	case SOC_TABLE_TEST:
-		result = GetEndValuee(SOC_Enhance_Element.SOC_Table_CanSet, (UINT16)SOC_Size_TableCanSet, (UINT16)SOC_Enhance_Element.u16_VCellMin);
+		result = GetEndValue(SOC_Enhance_Element.SOC_Table_CanSet, (UINT16)SOC_Size_TableCanSet, (UINT16)SOC_Enhance_Element.u16_VCellMin);
 		break;
 	case SOC_TABLE_LIFEPO:
-		result = GetEndValuee(SOC_Table_LiFePO, (UINT16)SOC_Size_LiFePO, (UINT16)SOC_Enhance_Element.u16_VCellMin);
+		result = GetEndValue(SOC_Table_LiFePO, (UINT16)SOC_Size_LiFePO, (UINT16)SOC_Enhance_Element.u16_VCellMin);
 		break;
 	case SOC_TABLE_TERNARYLI:
-		result = GetEndValuee(SocTable_TernaryLi, (UINT16)SOC_Size_TernaryLi, (UINT16)SOC_Enhance_Element.u16_VCellMin);
+		result = GetEndValue(SocTable_TernaryLi, (UINT16)SOC_Size_TernaryLi, (UINT16)SOC_Enhance_Element.u16_VCellMin);
 		break;
 	case SOC_TABLE_LIFEPO2:
-		result = GetEndValuee(SocTable_LiFePO2, (UINT16)SOC_Size_LiFePO2, (UINT16)SOC_Enhance_Element.u16_VCellMin);
+		result = GetEndValue(SocTable_LiFePO2, (UINT16)SOC_Size_LiFePO2, (UINT16)SOC_Enhance_Element.u16_VCellMin);
 		break;
 	default:
-		result = GetEndValuee(SOC_Table_LiFePO, (UINT16)SOC_Size_TableCanSet, (UINT16)SOC_Enhance_Element.u16_VCellMin);
+		result = GetEndValue(SOC_Table_LiFePO, (UINT16)SOC_Size_TableCanSet, (UINT16)SOC_Enhance_Element.u16_VCellMin);
 		break;
 	}
 	return result;
@@ -585,17 +523,6 @@ void SOC_Cont_AH_Int_CHG(void)
 		SOC_Calculate_Element.u32CapFull_Cal_As += (UINT32)SOC_Enhance_Element.u16_Ichg * 1;
 	}
 #endif
-
-#if 0
-	if(SOC_Calculate_Element.u8CHG_AHCalcu_Flag) {
-		Correction_Terminal(CurCHG);
-		SOC_Calculate_Element.u32CapNow += (UINT32)SOC_Enhance_Element.u16_Ichg * 1;	//剩余容量实时跟踪
-		if(SOC_Calculate_Element.u32CapNow > SOC_Calculate_Element.u32CapFull) SOC_Calculate_Element.u32CapNow = SOC_Calculate_Element.u32CapFull;
-		SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u32CapNow * 100 / SOC_Calculate_Element.u32CapFull;
-		SOC_Calculate_Element.u8CHG_AHCalcu_Flag = 0;
-		SOC_Calculate_Element.Last_Had_Done = SOC_CALI_CONT_CHG;
-	}
-#endif
 }
 
 void SOC_Cont_AH_Int_DSG(void)
@@ -711,177 +638,54 @@ void SOC_DealEEPROM_Data(enum EEPROM_COMMAND Command)
 	switch (Command)
 	{
 	case EEPROM_DATA_REFRESH:
-		SOC_E2prom_Par.u16_SOC_Temp = 0;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SOC_Temp, SOC_E2prom_Par.u16_SOC_Temp);
-
-		*(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp) = SOC_Calculate_Element.u8SOC_Now;
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp),
-								  *(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp));
-
-		SOC_E2prom_Par.u16_DsgSOC_Temp = 0;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_DsgSOC_Temp, SOC_E2prom_Par.u16_DsgSOC_Temp);
-
-		*(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp) = SOC_Calculate_Element.u8DSG_SOC_Int;
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp),
-								  *(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp));
-
-		SOC_E2prom_Par.u16_Cycle_Times = SOC_Calculate_Element.u32Cycle_times / 100;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_Cycle_Times, SOC_E2prom_Par.u16_Cycle_Times);
-
-		SOC_E2prom_Par.u16CapFull_Cal_Ah = SOC_Calculate_Element.u32CapFactory / 3600;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16CapFull_Cal_Ah, SOC_E2prom_Par.u16CapFull_Cal_Ah);
-
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG; // 回归到PowerOFF地方取
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag, SOC_E2prom_Par.u16_SeriousFaultFlag);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_SOC, SOC_Calculate_Element.u8SOC_Now);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int, SOC_Calculate_Element.u8DSG_SOC_Int);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, SOC_Calculate_Element.u32Cycle_times / 100);
 		break;
-
 	case EEPROM_DATA_READ:
-		// SOC_E2prom_Par.u16_SeriousFaultFlag = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag);	//不能在这里
-		// 取SOC
-		SOC_E2prom_Par.u16_SOC_Temp = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SOC_Temp);
-		if (SOC_E2prom_Par.u16_SOC_Temp < 5)
-		{
-			*(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp) =
-				ReadEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp));
-		}
-		else
-		{
-			SOC_E2prom_Par.u16_SOC_Temp = 0;
-			WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SOC_Temp, SOC_E2prom_Par.u16_SOC_Temp);
-			// 取SOC
-			*(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp) = Get_OpenCircuit_Value();
-		}
+		SOC_Calculate_Element.u8SOC_Now = (UINT8)ReadEEPROM_Word_NoZone(E2P_ADDR_SOC);
+		SOC_Calculate_Element.u8DSG_SOC_Int = (UINT8)ReadEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int);
+		SOC_Calculate_Element.u32Cycle_times = (UINT32)ReadEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES) * 100;
+		SOC_Calculate_Element.u32CapFull = (UINT32)SOC_Calculate_Element.u32CapFactory;
 
-		// 取循环下降积累量
-		SOC_E2prom_Par.u16_DsgSOC_Temp = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_DsgSOC_Temp);
-		if (SOC_E2prom_Par.u16_DsgSOC_Temp < 3)
-		{
-			*(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp) =
-				ReadEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp));
-		}
-		else
-		{
-			SOC_E2prom_Par.u16_DsgSOC_Temp = 0;
-			WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_DsgSOC_Temp, SOC_E2prom_Par.u16_DsgSOC_Temp);
-			// 取循环下降积累量，初始化为0
-			*(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp) = 0;
-		}
+		SOC_Calculate_Element.u32CapNow = SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
 
-		// 取循环次数
-		temp = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_Cycle_Times);
-		if (temp != 0xFFFF)
-		{
-			SOC_E2prom_Par.u16_Cycle_Times = temp;
-		}
-		else
-		{
-			// 有问题
-			SOC_E2prom_Par.u16_Cycle_Times = SOC_Calculate_Element.u32Cycle_times / 100;
-			WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_Cycle_Times, SOC_E2prom_Par.u16_Cycle_Times);
-		}
-
-		// 取满电容量
-		temp = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16CapFull_Cal_Ah);
-		if (temp != 0xFFFF)
-		{
-			SOC_E2prom_Par.u16CapFull_Cal_Ah = temp;
-		}
-		else
-		{
-			// 有问题
-			SOC_E2prom_Par.u16CapFull_Cal_Ah = SOC_Calculate_Element.u32CapFactory / 3600;
-			WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16CapFull_Cal_Ah, SOC_E2prom_Par.u16CapFull_Cal_Ah);
-		}
+		SOC_Calculate_Element_backup = SOC_Calculate_Element;
 		break;
-
 	default:
 		break;
 	}
-
-	/*
-	//这段代码是为了解决，以前，没有循环次数，这次加上循环次数，但是读出来的SOC_E2prom_Par.u16_DsgSOC_Temp为
-	//0xFFFF，然后下面ReadEEPROM_Word_WithZone()就溢出导致硬件错误了。
-	//后续：这个写法其实有点问题，会把原来的数据全部清空，不太好。
-	if(FaultFlag) {
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_STORE_RESET;		//重新处理数据
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag, SOC_E2prom_Par.u16_SeriousFaultFlag);
-		NVIC_SystemReset();
-	}
-	*/
 }
 
 void SOC_Update_StartUp(void)
 {
-	switch (SOC_E2prom_Par.u16_SeriousFaultFlag)
+	switch (SOC_Enhance_Element.u16_RefreshData_Flag)
 	{
-	case EEPROM_VALUE_POWEROFF_FLAG: // 别的情况就在掉电位置取
-		SOC_DealEEPROM_Data(EEPROM_DATA_READ);
-		SOC_Calculate_Element.u8SOC_Now = (UINT8) * (&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp);
-		SOC_Calculate_Element.u8DSG_SOC_Int = (UINT8) * (&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp);
-		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_E2prom_Par.u16_Cycle_Times * 100;
-		SOC_Calculate_Element.u32CapFull = (UINT32)SOC_E2prom_Par.u16CapFull_Cal_Ah * 3600;
+	case 1:
+		SOC_Calculate_Element.u8SOC_Now = Get_OpenCircuit_Value();
 		break;
 
-	case EEPROM_VALUE_SLEEP_FLAG: // 如果出现休眠，会在这里取，这个其实可以删掉，意义不大
-		SOC_DealEEPROM_Data(EEPROM_DATA_READ);
-		SOC_Calculate_Element.u8SOC_Now = (UINT8) * (&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp);
-		SOC_Calculate_Element.u8DSG_SOC_Int = (UINT8) * (&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp);
-		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_E2prom_Par.u16_Cycle_Times * 100;
-		SOC_Calculate_Element.u32CapFull = (UINT32)SOC_E2prom_Par.u16CapFull_Cal_Ah * 3600;
-
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG; // 回归到PowerOFF地方取
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag, SOC_E2prom_Par.u16_SeriousFaultFlag);
+	case 2: // SOC归零类型，改为循环次数归初始化
+			// 添加容量初始化
+		// SOC_Calculate_Element.u8SOC_Now = 0;
+		SOC_Calculate_Element.u8DSG_SOC_Int = 0;
+		SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
+		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+		SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+		// 上面SOC_Calculate_Element.u32CapFactory已经初始化
+		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
 		break;
 
-	case EEPROM_VALUE_DATA_UPDATE_FLAG:
-		// 这几个数的EEPROM可以不管，如果不一样自己更新就vans了
-		switch (SOC_Enhance_Element.u16_RefreshData_Flag)
-		{
-		case 1:
-			SOC_Calculate_Element.u8SOC_Now = Get_OpenCircuit_Value();
-			break;
-
-		case 2: // SOC归零类型，改为循环次数归初始化
-				// 添加容量初始化
-			// SOC_Calculate_Element.u8SOC_Now = 0;
-			SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-			SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
-			SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-			SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
-			// 上面SOC_Calculate_Element.u32CapFactory已经初始化
-			SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-			break;
-
-		case 3:
-			SOC_Calculate_Element.u8SOC_Now = SOC_Enhance_Element.u8_SetSocOnce;
-			break;
-
-		default:
-			break;
-		}
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
-		SOC_Calculate_Element.u8_DataUpdateOK = 1;
+	case 3:
+		SOC_Calculate_Element.u8SOC_Now = SOC_Enhance_Element.u8_SetSocOnce;
 		break;
 
 	default:
-		// 第一次上电的值不一定是0xFFFF，有可能0x0000？
-		// 这个只会在第一次烧代码才会运行那么一次		，第二次上电不会用这个
-		// 第一次烧代码，上位机升级都会跑这个，用keil或者脱机烧写工具第二次烧写只会跑POWEROFF的路，目前这个问题无解
-		// SOC_Calculate_Element.u8SOC_Now = GetEndValue(SOC_Table_LiFePO, (UINT16)SOC_Size_LiFePO, (UINT16)g_stCellInfoReport.u16VCellMin);
-		// SOC_Calculate_Element.u8SOC_Now = Get_OpenCircuit_Value();
-		SOC_Calculate_Element.u8SOC_Now = 80;
-		// InitSOC_IntEnhance()已处理这两个
-		// SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-		// SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever*100;
-		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-
-		// 初始化EEPROM的值
-		SOC_DealEEPROM_Data(EEPROM_DATA_REFRESH);
 		break;
 	}
+	SOC_Calculate_Element.u8_DataUpdateOK = 1;
 
 	SOC_Calculate_Element.u32CapNow = SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
-	SOC_Enhance_Element.u16_SOC_InitOver = 1; // Soc初始化完毕
 	SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 }
 
@@ -909,43 +713,22 @@ void SOC_EEPROM_Deal_Monitor(void)
 	}
 	su8_TimeCnt = 0;
 
-	if (SOC_Calculate_Element.u8SOC_Now != *(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp))
+	if (SOC_Calculate_Element.u8SOC_Now != SOC_Calculate_Element_backup.u8SOC_Now)
 	{
-		if (++SOC_E2prom_Par.u16_SOC_Temp >= 4)
-		{
-			SOC_E2prom_Par.u16_SOC_Temp = 0;
-		}
-		*(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp) = SOC_Calculate_Element.u8SOC_Now;
-
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp),
-								  *(&SOC_E2prom_Par.u16_SOC_E2P0 + SOC_E2prom_Par.u16_SOC_Temp));
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_SOC_Temp), SOC_E2prom_Par.u16_SOC_Temp);
+		SOC_Calculate_Element_backup.u8SOC_Now = SOC_Calculate_Element.u8SOC_Now;
+		WriteEEPROM_Word_NoZone(E2P_ADDR_SOC, SOC_Calculate_Element.u8SOC_Now);
 	}
 
-	if (SOC_Calculate_Element.u8DSG_SOC_Int != *(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp))
+	if (SOC_Calculate_Element.u8DSG_SOC_Int != SOC_Calculate_Element_backup.u8DSG_SOC_Int)
 	{
-		if (++SOC_E2prom_Par.u16_DsgSOC_Temp >= 2)
-		{
-			SOC_E2prom_Par.u16_DsgSOC_Temp = 0;
-		}
-		*(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp) = SOC_Calculate_Element.u8DSG_SOC_Int;
-
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp),
-								  *(&SOC_E2prom_Par.u16_DsgSOC_Int0 + SOC_E2prom_Par.u16_DsgSOC_Temp));
-		WriteEEPROM_Word_NoZone(*(&SOC_E2prom_Adress.u16_DsgSOC_Temp), SOC_E2prom_Par.u16_DsgSOC_Temp);
+		SOC_Calculate_Element_backup.u8DSG_SOC_Int = SOC_Calculate_Element.u8DSG_SOC_Int;
+		WriteEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int, SOC_Calculate_Element.u8DSG_SOC_Int);
 	}
 
-	if ((UINT16)(SOC_Calculate_Element.u32Cycle_times / 100) != SOC_E2prom_Par.u16_Cycle_Times)
+	if ((UINT16)(SOC_Calculate_Element.u32Cycle_times) != SOC_Calculate_Element_backup.u32Cycle_times)
 	{
-		SOC_E2prom_Par.u16_Cycle_Times = SOC_Calculate_Element.u32Cycle_times / 100;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_Cycle_Times, SOC_E2prom_Par.u16_Cycle_Times);
-	}
-
-	// 这个不能乘，不然就经常写了
-	if ((UINT16)(SOC_Calculate_Element.u32CapFull / 3600) != SOC_E2prom_Par.u16CapFull_Cal_Ah)
-	{
-		SOC_E2prom_Par.u16CapFull_Cal_Ah = SOC_Calculate_Element.u32CapFull / 3600;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16CapFull_Cal_Ah, SOC_E2prom_Par.u16CapFull_Cal_Ah);
+		SOC_Calculate_Element_backup.u32Cycle_times = SOC_Calculate_Element.u32Cycle_times;
+		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, SOC_Calculate_Element.u32Cycle_times / 100);
 	}
 }
 
@@ -963,8 +746,8 @@ void SOC_RefreshData_Monitor(void)
 	case 0:
 		if (SOC_Enhance_Element.u16_RefreshData_Flag)
 		{
-			SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_DATA_UPDATE_FLAG;
-			SOC_Cali_Flag = SOC_CALI_STARTUP;
+			SOC_Update_StartUp();
+			SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 			su8_DataRefreshFlag = 1;
 		}
 		break;
@@ -1021,7 +804,7 @@ void SOC_Data_Filter(void)
 	// 如果真的是的话，下面计算瞬间让满电容量和当前容量为0，问题不大。
 	// 如果能通过这个滤波这种情况一般只会在电容爆掉，啥的，硬件出问题。
 	// 如果通不过，就是瞬间变化，过滤掉不需要管。(有可能是采样，或者AFE出问题，海诚hs012出现)
-	if (ModulusSubb(SOC_Enhance_Element.u16_VCellMax, SOC_Enhance_Element.u16_VCellMin) < 600)
+	if (ModulusSub(SOC_Enhance_Element.u16_VCellMax, SOC_Enhance_Element.u16_VCellMin) < 600)
 	{
 		su16_VcellMax_hold = SOC_Enhance_Element.u16_VCellMax;
 		su16_Vcellmin_hold = SOC_Enhance_Element.u16_VCellMin;
@@ -1055,19 +838,10 @@ void SOC_Data_Filter(void)
 
 void InitSOC_IntEnhance(void)
 {
-	UINT8 i;
-
-	// SOC_Calculate_Element.C0 = (UINT32)OtherElement.u16Soc_Ah*3600 *10;  //开始不加(UINT32)出现严重计算错误
 	// 外部获取的数据初始化
 	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
 	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
 	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
-
-	// SOC的EEPROM位置初始化
-	for (i = 0; i < E2P_AdressNum; ++i)
-	{
-		*(&SOC_E2prom_Adress.u16_SOC_E2P0 + i) = SOC_Enhance_Element.SOC_E2P_Adress[i];
-	}
 
 	SOC_Calculate_Element.u32CapChange = 0;
 	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // 第一次写置1出现了开机严重错误的问题
@@ -1079,14 +853,8 @@ void InitSOC_IntEnhance(void)
 	SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 	SOC_Calculate_Element.u32CapFull = 0;
 
-#if !defined(__ONLY_UPDATE_NO_REFREH_PARAM__)
-	SOC_E2prom_Par.u16_SeriousFaultFlag = ReadEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag);
-#else
-	SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
-#endif
-
 	SOC_Enhance_Element.u16_SOC_InitOver = 0; // 对外标志位初始化
-	SOC_Cali_Flag = SOC_CALI_STARTUP;		  // 跳到下一步
+	SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 }
 
 /*
@@ -1101,12 +869,12 @@ void SOC_IntEnhance_Ctrl(void)
 {
 	switch (SOC_Cali_Flag)
 	{
-	case SOC_CALI_DATA_INIT:
-		InitSOC_IntEnhance();
-		break;
-	case SOC_CALI_STARTUP:
-		SOC_Update_StartUp();
-		break;
+	// case SOC_CALI_DATA_INIT:
+	// 	InitSOC_IntEnhance();
+	// 	break;
+	// case SOC_CALI_STARTUP:
+	// 	SOC_Update_StartUp();
+	// 	break;
 	case SOC_CALI_STATE_TRANSFER:
 		SOC_State_Transfer();
 		break;
@@ -1117,7 +885,7 @@ void SOC_IntEnhance_Ctrl(void)
 		SOC_Cont_AH_Int_DSG();
 		break;
 	default:
-		SOC_Cali_Flag = SOC_CALI_STARTUP;
+		SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 		break;
 	}
 

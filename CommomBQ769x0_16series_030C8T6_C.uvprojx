@@ -843,6 +843,16 @@
               <FileType>1</FileType>
               <FilePath>.\Code\Source\bsp\param.c</FilePath>
             </File>
+            <File>
+              <FileName>Time_Triggered.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\bsp\Time_Triggered.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\bsp\bsp_timer.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

@@ -537,6 +537,8 @@ void InitE2PROM(void)
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
+	__delay_ms(100);
+
 	InitData_E2prom();
 }
 
@@ -556,9 +558,12 @@ void InitData_E2prom(void)
 		EEPROM_ResetData_OtherToDefault(); // 把E2P_BEGIN_FLAG写进头地址，
 										   // 如果有别的添加，可以往这个函数写，目前加了保护记录初始化
 		WriteProID_Default();
+
+		soc_factory_param_init_first();
 		
-		WriteEEPROM_Word_NoZone(812, 0xffff); // 第一次上电初始化完成
 		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG); // 第一次上电初始化完成
+
+		MCU_RESET();
 	}
 }
 

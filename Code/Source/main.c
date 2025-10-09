@@ -4,6 +4,8 @@
 
 UINT8 SeriesNum = 16;
 
+// #define _DEBUG_CODE
+
 // 不同串数维护的表格
 const unsigned char SeriesSelect_AFE1[16][16] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1串
@@ -39,6 +41,10 @@ int main(void)
 	{
 #if (defined _DEBUG_CODE)
 		SCH_Dispatch_Tasks();
+		App_Sci();
+		App_E2promDeal();
+		App_FlashUpdateDet();
+		App_ProID_Deal();
 
 		Feed_IWatchDog;
 #else
@@ -70,11 +76,35 @@ void InitDevice(void)
 	bsp_Init();
 
 #if (defined _DEBUG_CODE)
+	IsSleepStartUp();
 	InitIO();
-	InitDelay();
-	InitTimer();
+
 	InitSystemWakeUp();
-	// Init_IWDG();
+	InitE2PROM(); // 内部EEPROM，不需要初始化
+	InitSci();
+	InitADC();
+
+	InitMosRelay_DOx();
+	Init_ChargerLoad_Det();
+
+	// MCU_GetResetType();
+	// LoadParam();
+
+	InitAFE1();
+
+	SCH_Add_Task(App_AFEGet, 0, 200);
+	SCH_Add_Task(App_WarnCtrl, 8, 10);
+	SCH_Add_Task(App_AnlogCal, 2, 10);
+	SCH_Add_Task(App_SOC, 5, 200);
+	SCH_Add_Task(App_LogRecord, 6, 1000);
+	SCH_Add_Task(App_SleepDeal, 7, 1000);
+	SCH_Add_Task(App_CellBalance, 8, 1000);
+#ifdef __FUNC__HEAT__
+	SCH_Add_Task(App_Heat_Cool_Ctrl, 9, 1000);
+#endif // DEBUG
+	SCH_Add_Task(App_ChargerLoad_Det, 9, 1000);
+	// SCH_Add_Task(rtc_sleep, 10, 1000);
+	// SCH_Add_Task(APP_LedBar, 9, 100);
 #else
 	IsSleepStartUp();
 	InitIO();
@@ -85,9 +115,9 @@ void InitDevice(void)
 	InitSci();
 	InitADC();
 
-	InitData_SOC();
-	Init_RTC(); // 必须放在EEPROM读完数据后面！
-				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
+	// InitData_SOC();
+	// Init_RTC(); // 必须放在EEPROM读完数据后面！
+	// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 #ifdef __FUNC__HEAT__
 	InitHeat_Cool();
 #endif // DEBUG
@@ -111,7 +141,7 @@ void InitDevice(void)
 #endif // DEBUG
 	SCH_Add_Task(App_ChargerLoad_Det, 9, 1000);
 	// SCH_Add_Task(rtc_sleep, 10, 1000);
-	// SCH_Add_Task(APP_LedBar, 9, 100);
+	//SCH_Add_Task(APP_LedBar, 9, 100);
 
 #ifdef wdog_enable
 	// Init_IWDG();

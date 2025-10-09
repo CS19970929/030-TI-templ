@@ -99,16 +99,12 @@ void InitData_SOC(void)
 	SOC_Enhance_Element.u8_LargeCurFlag_Chg = 0; // 默认是0，除非末端大电流CC充放电导致没法在端点达到100%和0%置1
 	SOC_Enhance_Element.u8_LargeCurFlag_Dsg = 0;
 
-	for (i = 0; i < E2P_AdressNum; ++i)
-	{
-		SOC_Enhance_Element.SOC_E2P_Adress[i] = E2P_ADDR_E2POS_ENHANCE_SOC + 2 * i;
-	}
-
 	for (i = 0; i < SOC_Size_TableCanSet; ++i)
 	{
 		SOC_Enhance_Element.SOC_Table_CanSet[i] = SOC_Table_Set[i];
 	}
 	// SOC_Enhance_Element.SOC_E2P_Adress = E2P_ADDR_E2POS_ENHANCE_SOC;
+	soc_param_lib_init();
 }
 
 void SOC_OCV_Fix(void)
@@ -174,7 +170,6 @@ void App_SOC(void)
 {
 	toggleLed();
 	// SOC_OCV_Fix();
-	
 	RefreshData_SOC();
 	GetData_SOC();
 	SOC_IntEnhance_Ctrl();
