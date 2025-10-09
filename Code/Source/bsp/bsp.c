@@ -208,6 +208,7 @@ void bsp_RunPer1ms(void)
 void bsp_Idle(void)
 {
     /* --- 喂狗 */
+    Feed_IWatchDog;
 }
 
 /*

@@ -110,18 +110,18 @@ void LoadParam(void)
 	// {
 
 	// }
-	if(memcmp(&g_tParam.protect, &PRT_E2ROMParas, sizeof(PRT_E2ROMParas)) != 0)
-	{
-		System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
-	if(memcmp(&g_tParam.other, &OtherElement, sizeof(OtherElement)) != 0)
-	{
-		System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
-	if(memcmp(&g_tParam.heat, &Heat_Cool_Element, sizeof(Heat_Cool_Element)) != 0)
-	{
-		System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
+	// if(memcmp(&g_tParam.protect, &PRT_E2ROMParas, sizeof(PRT_E2ROMParas)) != 0)
+	// {
+	// 	System_ERROR_UserCallback(ERROR_CBC_CHG);
+	// }
+	// if(memcmp(&g_tParam.other, &OtherElement, sizeof(OtherElement)) != 0)
+	// {
+	// 	System_ERROR_UserCallback(ERROR_CBC_CHG);
+	// }
+	// if(memcmp(&g_tParam.heat, &Heat_Cool_Element, sizeof(Heat_Cool_Element)) != 0)
+	// {
+	// 	System_ERROR_UserCallback(ERROR_CBC_CHG);
+	// }
 }
 
 /*

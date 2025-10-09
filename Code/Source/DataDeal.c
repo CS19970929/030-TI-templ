@@ -464,8 +464,8 @@ void test_Autocurrent_cycle(void)
 {
 	static uint8_t step = 0;
 #if 1
-	static uint16_t CHG_current = 2000;
-	static uint16_t DSG_current = 4000;
+	static uint16_t CHG_current = 400;
+	static uint16_t DSG_current = 800;
 #else
 	static uint16_t CHG_current = 200;
 	static uint16_t DSG_current = 400;
@@ -525,8 +525,8 @@ void App_AFEGet(void)
 	DataLoad_CellVoltMaxMinFind();
 	DataLoad_Temperature();
 	DataLoad_TemperatureMaxMinFind();
-	DataLoad_Current();
-	// test_Autocurrent_cycle();
+	// DataLoad_Current();
+	test_Autocurrent_cycle();
 	App_BQ769X0_Monitor();
 	
 	App_MOS_Relay_Ctrl();

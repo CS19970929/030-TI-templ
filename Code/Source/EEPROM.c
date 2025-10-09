@@ -547,6 +547,7 @@ void InitData_E2prom(void)
 	if (EEPROM_VALUE_BEGIN_FLAG == ReadEEPROM_Word_NoZone(EEPROM_ADDR_PASS))
 	{ // 第二次上电就会执行这个
 		ReadEEPROM_ByteData_StartUp();
+		InitData_SOC();
 	}
 	else
 	{ // 第一次上电，用于量产

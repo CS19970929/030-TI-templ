@@ -25,7 +25,7 @@ void InitWakeUp_Base(void)
 	// 配置PA0_WKUP外部上升沿中�?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿中�?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
 	// �?�?嵌�?��?��??
@@ -45,7 +45,7 @@ void InitWakeUp_Base(void)
 	// 配置PA1_WKUP外部上升沿中�?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line13;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
 	// �?�?嵌�?��?��??
@@ -642,9 +642,10 @@ void SleepDeal_Normal_L2(void)
 	case FIRST:
 		if (++s_u32SleepFirstCnt > (UINT32)OtherElement.u16Sleep_TimeNormal * 60)
 		{
-			// if(++s_u32SleepFirstCnt >= 3) {			//这个，�??一次个后面都是一�?
+			// if(++s_u32SleepFirstCnt >= 3) {			//?????????????
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
+			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
 		}
 		break;
@@ -659,7 +660,7 @@ void SleepDeal_Normal_L2(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // ??????
 		break;
 	}
 
@@ -671,9 +672,8 @@ void SleepDeal_Normal_L2(void)
 			s_u32SleepHiccupCnt = 0;
 	}
 
-	// if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow || g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
 	if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow)
-	{ // 触发条件才跳�?，别的时间不跳转
+	{ // ???????????????
 		Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
@@ -717,9 +717,10 @@ void SleepDeal_Normal_L3(void)
 	case FIRST:
 		if (++s_u32SleepFirstCnt > (UINT32)OtherElement.u16Sleep_TimeVlow * 60)
 		{
-			// if(++s_u32SleepFirstCnt >= 1) {			//这个，�??一次个后面都是一�?
+			// if(++s_u32SleepFirstCnt >= 1) {			//?????????????
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
+			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
 		}
 		break;
@@ -734,11 +735,11 @@ void SleepDeal_Normal_L3(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // ??????
 		break;
 	}
 
-	if (g_stCellInfoReport.u16Ichg > OtherElement.u16Sleep_VirCur_Chg || g_stCellInfoReport.u16IDischg > OtherElement.u16Sleep_VirCur_Dsg)
+	if (g_stCellInfoReport.u16Ichg > OtherElement.u16Sleep_VirCur_Chg)
 	{
 		if (s_u32SleepFirstCnt)
 			s_u32SleepFirstCnt = 0;
@@ -747,7 +748,7 @@ void SleepDeal_Normal_L3(void)
 	}
 
 	if (g_stCellInfoReport.u16VCellMin >= OtherElement.u16Sleep_Vlow)
-	{ // 触发条件才跳�?，别的时间不跳转
+	{ // ???????????????
 		Sleep_Mode.bits.b1NormalSleep_L3 = 0;
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
@@ -757,6 +758,7 @@ void SleepDeal_Normal_L3(void)
 			s_u32SleepHiccupCnt = 0;
 	}
 }
+
 
 // 这个地方，IO控制策略要改一下，起来延时1s再打开管子会不会更好？不过现象貌似直接打开没问�?
 // 这个作为主循�?，�?�果开头判�?出现了别的错�?，则跳出主循�?，去执�?�别�?
@@ -776,7 +778,7 @@ void SleepDeal_Normal_Select(void)
 	{
 		if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow)
 		{
-			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
+			Sleep_Mode.bits.b1NormalSleep_L3 = 0;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L3;
 		}
 		// else if (g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
@@ -785,14 +787,14 @@ void SleepDeal_Normal_Select(void)
 		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
 		// }
 		else
-		{ // 等号均纳�?L2
-			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
+		{ // ?????L2
+			Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L2;
 		}
 	}
 	else
 	{
-		// 有电流则继续在这�?函数�?�?
+		// ?????????????
 	}
 }
 
@@ -889,7 +891,7 @@ void IsSleepStartUp(void)
 		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
 		{
 			IOstatus_DeepMode();
-			InitWakeUp_DeepMode();
+			//InitWakeUp_DeepMode();
 			// Sys_StandbyMode();		//不能掌控外部IO，弃�?
 			Sys_StopMode();
 			IORecover_DeepMode();
@@ -926,49 +928,20 @@ void App_SleepDeal(void)
 
 	switch (Sleep_Status)
 	{
-	case SLEEP_HICCUP_SHIFT: // 先跳到这里，再跳到SleepDeal_Continue()，然后进入别的循�?
-		SleepDeal_Shift();	 // 主控跳转函数，开机执行一遍没事进入核心循�?函数
-		break;
 	case SLEEP_HICCUP_NORMAL_SELECT:
 		SleepDeal_Normal_Select();
 		break;
-	case SLEEP_HICCUP_TEST:
-		SleepDeal_Test();
-		break;
-	case SLEEP_HICCUP_OVERCUR:
-		SleepDeal_OverCurrent();
-		break;
-	case SLEEP_HICCUP_OVDELTA:
-		SleepDeal_Vdelta(); // �?前压�?过大直接进入休眠不起来，�?�?�?
-		break;
-	case SLEEP_HICCUP_CBC:
-		SleepDeal_CBC();
-		break;
-	case SLEEP_HICCUP_FORCED:
-		SleepDeal_Forced(); // 还没�?
-		break;
-	// case SLEEP_HICCUP_NORMAL_L1:
-	// 	SleepDeal_Normal_L1();
-	// 	break;
 	case SLEEP_HICCUP_NORMAL_L2:
 		SleepDeal_Normal_L2();
 		break;
 	case SLEEP_HICCUP_NORMAL_L3:
 		SleepDeal_Normal_L3();
 		break;
-
-	case SLEEP_HICCUP_VCELLOVP:
-		SleepDeal_VcellOVP();
-		break;
-	case SLEEP_HICCUP_VCELLUVP:
-		SleepDeal_VcellUVP();
-		break;
-
-	case SLEEP_HICCUP_CONTINUE:
-		SleepDeal_Continue();
-		break;
+	// case SLEEP_HICCUP_CONTINUE:
+	// 	SleepDeal_Continue();
+	// 	break;
 	default:
-		Sleep_Status = SLEEP_HICCUP_SHIFT;
+		Sleep_Status = SLEEP_HICCUP_NORMAL_SELECT;
 		break;
 	}
 
@@ -979,6 +952,13 @@ void App_SleepDeal(void)
 	else
 	{
 		Sleep_Mode.bits.b1_ToSleepFlag = 0;
+	}
+
+	if ((Sleep_Mode.all & 0x00ff))
+	{
+		LogRecord_Flag.bits.Log_Sleep = 1;
+		// LogEvent_Record(LogRecord_Flag.bits.Log_Sleep, BMS_SLEEP, &su32_Interval_S_Tcnt);
+		SleepDeal_Continue();
 	}
 }
 
