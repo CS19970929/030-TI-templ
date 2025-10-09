@@ -355,6 +355,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 			if (u8IICFaultcnt1 == 30 && u8WakeCnt1 <= 20)
 			{
 				App_WakeUpAFE(); // 因为这两个会使两个AFE垮掉
+				InitAFE1();
 				// MCUO_WAKEUP_AFE = !MCUO_WAKEUP_AFE;
 				InitialisebqMaximo(DEVICE_ADDR_AFE1);
 				// InitialisebqMaximo2(DEVICE_ADDR_AFE1);
@@ -379,6 +380,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 				// MCUO_WAKEUP_AFE = 0;
 				// System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
 			}
+			System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
 		}
 		break;
 
@@ -528,6 +530,6 @@ void App_AFEGet(void)
 	// DataLoad_Current();
 	test_Autocurrent_cycle();
 	App_BQ769X0_Monitor();
-	
+
 	App_MOS_Relay_Ctrl();
 }

@@ -891,7 +891,7 @@ void IsSleepStartUp(void)
 		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
 		{
 			IOstatus_DeepMode();
-			//InitWakeUp_DeepMode();
+			InitWakeUp_DeepMode();
 			// Sys_StandbyMode();		//不能掌控外部IO，弃�?
 			Sys_StopMode();
 			IORecover_DeepMode();
