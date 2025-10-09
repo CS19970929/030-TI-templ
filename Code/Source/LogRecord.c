@@ -109,11 +109,6 @@ void App_LogRecord(void)
 	UINT8 temp;
 	static UINT32 su32_Interval_S_Tcnt = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag3)
-	{
-		return;
-	}
-
 	if (gu8_Reset_EventRecord)
 	{
 		return;

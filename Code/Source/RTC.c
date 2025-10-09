@@ -185,6 +185,7 @@ void Init_RTC(void)
 
 void App_RTC(void)
 {
+#if 0
 #ifndef _HALT_ACTIVE_MODE
 	static UINT8 u8RTCcnt = 0;
 	if (0 == g_st_SysTimeFlag.bits.b1Sys200msFlag1)
@@ -199,6 +200,7 @@ void App_RTC(void)
 	RTC_GetDate(RTC_Format_BIN, &RTC_DateStructure);
 	RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
 	RTC_GetAlarm(RTC_Format_BIN, RTC_Alarm_A, &RTC_AlarmStructure);
+#endif
 #endif
 }
 

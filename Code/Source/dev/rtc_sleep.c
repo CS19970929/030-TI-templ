@@ -464,9 +464,6 @@ void disable_int(void)
 
 void rtc_sleep(void)
 {
-    if (!g_st_SysTimeFlag.bits.b1Sys1000msFlag1)
-        return;
-
     if (System_ERROR_UserCallback(ERROR_STATUS_EEPROM_COM))
     {
         ReadEEPROM_Byte(0);

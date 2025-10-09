@@ -79,7 +79,6 @@ void DataLoad_CellVolt_Test(void)
 		*(&System_ErrFlag.u8ErrFlag_Com_AFE1 + i) = i + 1;
 	}
 #endif
-
 }
 
 // 这里排列好就行，不需要电池位号映射表。>61000为不用
@@ -111,7 +110,6 @@ void DataLoad_CellVolt(void)
 			g_stCellInfoReport.u16VCell[i] = 61001;
 		}
 	}
-
 }
 
 void DataLoad_CellVoltMaxMinFind(void)
@@ -510,13 +508,6 @@ void test_Autocurrent_cycle(void)
 
 void App_AFEGet(void)
 {
-	static UINT8 ts_u8TempSel = 0;
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
-	{
-		return;
-	}
-
 	if (u32E2P_Pro_VolCur_WriteFlag != 0 || u32E2P_Pro_Temp_WriteFlag != 0 || u32E2P_Pro_Other_WriteFlag != 0 || u32E2P_OtherElement1_WriteFlag != 0 || u32E2P_RTC_Element_WriteFlag != 0 || u8E2P_SocTable_WriteFlag != 0 || u8E2P_CopperLoss_WriteFlag != 0 || u8E2P_KB_WriteFlag != 0)
 	{
 		return;
@@ -527,9 +518,7 @@ void App_AFEGet(void)
 		return;
 	}
 
-	MonitorAFE(0, UpdateVoltageFromBqMaximo_Partition(DEVICE_ADDR_AFE1, ts_u8TempSel++));
-	if (ts_u8TempSel >= 4)
-		ts_u8TempSel = 0;
+	MonitorAFE(0, UpdateVoltageFromBqMaximo(DEVICE_ADDR_AFE1));
 
 	DataLoad_CellVolt();
 	// DataLoad_CellVolt_Test();
@@ -538,4 +527,7 @@ void App_AFEGet(void)
 	DataLoad_TemperatureMaxMinFind();
 	DataLoad_Current();
 	// test_Autocurrent_cycle();
+	App_BQ769X0_Monitor();
+	
+	App_MOS_Relay_Ctrl();
 }

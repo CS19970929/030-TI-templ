@@ -376,15 +376,6 @@ void CellBalance_StateOFF(UINT8 OnOFF_Ctrl)
 
 void App_CellBalance(void)
 {
-	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_BALANCE))
-	{
-		return;
-	}
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag2)
-	{
-		return;
-	}
-
 	switch (g_enBalanceState)
 	{
 	case BALANCE_ST_INIT:

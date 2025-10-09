@@ -1,5 +1,6 @@
 #include "main.h"
 #include "bsp.h"
+#include "Time_Triggered.h"
 
 UINT8 SeriesNum = 16;
 
@@ -37,29 +38,15 @@ int main(void)
 	while (1)
 	{
 #if (defined _DEBUG_CODE)
-		App_SysTime();
-		// App_NormalSleepTest();
+		SCH_Dispatch_Tasks();
+
 		Feed_IWatchDog;
 #else
-		App_SysTime();
-		App_Sci();
-		App_AFEGet();
-		App_BQ769X0_Monitor();
-		App_WarnCtrl();
-		App_MOS_Relay_Ctrl();
-		App_AnlogCal();
-		App_E2promDeal();
-		// App_RTC();
-		App_CellBalance();
-		App_SOC();
-		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
-#ifdef __FUNC__HEAT__
-		App_Heat_Cool_Ctrl();
-#endif // DEBUG
-		App_ChargerLoad_Det();
+		SCH_Dispatch_Tasks();
 
+		App_Sci();
+		App_E2promDeal();
 		App_FlashUpdateDet();
-		App_LogRecord();
 		App_ProID_Deal();
 
 		Feed_IWatchDog;
@@ -69,16 +56,18 @@ int main(void)
 
 void InitDevice(void)
 {
-	SystemInit(); // 直接调用就可以了。
-				  // A，先reset所有配置，使用HSI(8MHz)运行。reset默认是使用HSI运行。
-				  // B，调用SetSysClock()，默认使用8MHz外部晶振，然后六倍频输出，倍频输出不能超过48MHz(我使用12MHz，所以改为4倍频)
-				  // C，如果倍频失败，会有个else语句让我改，输出一些标志位，我目前没改
-				  // D，当从待机和停止模式返回或用作系统时钟的HSE 振荡器发生故障时，该位由硬件置来启动HSI 振荡器。
-				  // E，言下之意，进入待机模式要关外部晶振，回来，先用HSI运行，然后开启外部晶振和倍频。
-				  // F，还有一个切换时钟的函数，SystemCoreClockUpdate()，使用条件后面了解。
-				  // G，外部晶振修改的话，改主头文件HSE_VALUE的值，会影响串口波特率。
-				  // H，如果不使用HSE，直接焊掉外部晶振便可，系统会默认返回HSI，SystemCoreClock自动改为8M，后续观察串口波特率和I2C频率是否符合需求
+	// SystemInit(); // 直接调用就可以了。
+	// A，先reset所有配置，使用HSI(8MHz)运行。reset默认是使用HSI运行。
+	// B，调用SetSysClock()，默认使用8MHz外部晶振，然后六倍频输出，倍频输出不能超过48MHz(我使用12MHz，所以改为4倍频)
+	// C，如果倍频失败，会有个else语句让我改，输出一些标志位，我目前没改
+	// D，当从待机和停止模式返回或用作系统时钟的HSE 振荡器发生故障时，该位由硬件置来启动HSI 振荡器。
+	// E，言下之意，进入待机模式要关外部晶振，回来，先用HSI运行，然后开启外部晶振和倍频。
+	// F，还有一个切换时钟的函数，SystemCoreClockUpdate()，使用条件后面了解。
+	// G，外部晶振修改的话，改主头文件HSE_VALUE的值，会影响串口波特率。
+	// H，如果不使用HSE，直接焊掉外部晶振便可，系统会默认返回HSI，SystemCoreClock自动改为8M，后续观察串口波特率和I2C频率是否符合需求
 	Init_IAPAPP();
+	InitDelay();
+	bsp_Init();
 
 #if (defined _DEBUG_CODE)
 	InitIO();
@@ -87,11 +76,10 @@ void InitDevice(void)
 	InitSystemWakeUp();
 	// Init_IWDG();
 #else
-	InitDelay();
 	IsSleepStartUp();
 	InitIO();
 	//__delay_ms(1000);
-	InitTimer();
+	// InitTimer();
 	InitSystemWakeUp();
 	InitE2PROM(); // 内部EEPROM，不需要初始化
 	InitSci();
@@ -110,8 +98,23 @@ void InitDevice(void)
 	LoadParam();
 
 	InitAFE1();
+
+	SCH_Add_Task(App_AFEGet, 0, 200);
+	SCH_Add_Task(App_WarnCtrl, 8, 10);
+	SCH_Add_Task(App_AnlogCal, 2, 10);
+	SCH_Add_Task(App_SOC, 5, 200);
+	SCH_Add_Task(App_LogRecord, 6, 1000);
+	SCH_Add_Task(App_SleepDeal, 7, 1000);
+	SCH_Add_Task(App_CellBalance, 8, 1000);
+#ifdef __FUNC__HEAT__
+	SCH_Add_Task(App_Heat_Cool_Ctrl, 9, 1000);
+#endif // DEBUG
+	SCH_Add_Task(App_ChargerLoad_Det, 9, 1000);
+	// SCH_Add_Task(rtc_sleep, 10, 1000);
+	// SCH_Add_Task(APP_LedBar, 9, 100);
+
 #ifdef wdog_enable
-	Init_IWDG();
+	// Init_IWDG();
 #endif // !1
 #ifdef __test__
 	DBGMCU_Config(DBGMCU_STOP, ENABLE);

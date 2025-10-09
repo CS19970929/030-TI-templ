@@ -26,23 +26,23 @@ typedef union DRIVER_ONOFF_ETC {
     UINT16 all;
     struct OnOFF_Result {
 		UINT8 b1Status_ToSleep				:1; 	//
-		DriversStatus b1Status_MOS_PRE      :1;		//Ô¤³äMOS¹Ü¹¦ÄÜ×´Ì¬
-		DriversStatus b1Status_MOS_CHG      :1;		//³äµçMOS¹Ü¹¦ÄÜ×´Ì¬
-		DriversStatus b1Status_MOS_DSG      :1;		//·ÅµçMOS¹Ü¹¦ÄÜ×´Ì¬
+		DriversStatus b1Status_MOS_PRE      :1;		//Ô¤ï¿½ï¿½MOSï¿½Ü¹ï¿½ï¿½ï¿½×´Ì¬
+		DriversStatus b1Status_MOS_CHG      :1;		//ï¿½ï¿½ï¿½MOSï¿½Ü¹ï¿½ï¿½ï¿½×´Ì¬
+		DriversStatus b1Status_MOS_DSG      :1;		//ï¿½Åµï¿½MOSï¿½Ü¹ï¿½ï¿½ï¿½×´Ì¬
 		
-		DriversStatus b1Status_Relay_PRE    :1;		//Ô¤³ä¼ÌµçÆ÷¹¦ÄÜ×´Ì¬
-		DriversStatus b1Status_Relay_CHG    :1;		//·Ö¿Ú³äµç¼ÌµçÆ÷¹¦ÄÜ×´Ì¬
-		DriversStatus b1Status_Relay_DSG    :1;		//·Ö¿Ú·Åµç¼ÌµçÆ÷¹¦ÄÜ×´Ì¬
-		DriversStatus b1Status_Relay_MAIN   :1;		//Í¬¿ÚÖ÷¼ÌµçÆ÷¹¦ÄÜ×´Ì¬
+		DriversStatus b1Status_Relay_PRE    :1;		//Ô¤ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
+		DriversStatus b1Status_Relay_CHG    :1;		//ï¿½Ö¿Ú³ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
+		DriversStatus b1Status_Relay_DSG    :1;		//ï¿½Ö¿Ú·Åµï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
+		DriversStatus b1Status_Relay_MAIN   :1;		//Í¬ï¿½ï¿½ï¿½ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
 		
-		UINT8 b1_FuncOFF_OV					:1;		//Á¬Ðø¹ýÑ¹±£»¤µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ£¬½öÓÃÓÚ½Ó´¥Æ÷Çý¶¯·½°¸
-		UINT8 b1_FuncOFF_UV					:1;		//Á¬ÐøµÍÑ¹±£»¤µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ£¬½öÓÃÓÚ½Ó´¥Æ÷Çý¶¯·½°¸£¬×Ô¾ÙµçÂ·Ò²ÓÐ
-		UINT8 b1_FuncOFF_Ocp_Ichg			:1;		//Á¬Ðø³äµç¹ýÁ÷±£»¤µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ
-		UINT8 b1_FuncOFF_Ocp_Idsg			:1;		//Á¬Ðø·Åµç¹ýÁ÷±£»¤µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ
+		UINT8 b1_FuncOFF_OV					:1;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±Õ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		UINT8 b1_FuncOFF_UV					:1;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±Õ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¾Ùµï¿½Â·Ò²ï¿½ï¿½
+		UINT8 b1_FuncOFF_Ocp_Ichg			:1;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±ï¿½
+		UINT8 b1_FuncOFF_Ocp_Idsg			:1;		//ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±ï¿½
 		
-		UINT8 b1_FuncOFF_Ocp_Imain			:1;		//Á¬Ðø¹ýÁ÷±£»¤(Ö»ÓÐÒ»¸öÖ÷½Ó´¥Æ÷°æ±¾Ê¹ÓÃ)µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ
-													//±»È¡Ïû£¬ÑÏ¸ñ°´ÕÕ³ä·ÅµçµçÁ÷¹ýÁ÷´¦Àí
-		UINT8 b1_FuncOFF_Vdelta				:1;		//Ñ¹²î¹ý´ó±£»¤µ¼ÖÂIO¹¦ÄÜ¹Ø±Õ
+		UINT8 b1_FuncOFF_Ocp_Imain			:1;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Ö»ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½æ±¾Ê¹ï¿½ï¿½)ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±ï¿½
+													//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½Õ³ï¿½Åµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		UINT8 b1_FuncOFF_Vdelta				:1;		//Ñ¹ï¿½ï¿½ï¿½ï¿½ó±£»ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½ï¿½ï¿½Ü¹Ø±ï¿½
 		UINT8 Res   						:2;		//
     }bits;
 }Driver_OnOFF_Etc;
@@ -50,15 +50,15 @@ typedef union DRIVER_ONOFF_ETC {
 typedef union _DRIVER_FORCE_EXTERNAL {
     UINT16 all;
     struct Force_Result {
-		FORCE_STATUS b2_DriverOFF_Flag		:2; 	//Íâ²¿Ç¿ÖÆ¹Ø±ÕÇý¶¯±êÖ¾Î»
-		FORCE_STATUS b2_Force_MOS_PRE		:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆÔ¤³äMOS¹Ü£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
-		FORCE_STATUS b2_Force_MOS_CHG      	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆ³äµçMOS¹Ü£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
-		FORCE_STATUS b2_Force_MOS_DSG      	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆ·ÅµçMOS¹Ü£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_DriverOFF_Flag		:2; 	//ï¿½â²¿Ç¿ï¿½Æ¹Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾Î»
+		FORCE_STATUS b2_Force_MOS_PRE		:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½MOSï¿½Ü£ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_MOS_CHG      	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½Æ³ï¿½ï¿½MOSï¿½Ü£ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_MOS_DSG      	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½Æ·Åµï¿½MOSï¿½Ü£ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
 		
-		FORCE_STATUS b2_Force_Relay_PRE    	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆÔ¤³ä¼ÌµçÆ÷£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
-		FORCE_STATUS b2_Force_Relay_CHG    	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆ·Ö¿Ú³äµç¼ÌµçÆ÷£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
-		FORCE_STATUS b2_Force_Relay_DSG    	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆ·Ö¿Ú·Åµç¼ÌµçÆ÷£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
-		FORCE_STATUS b2_Force_Relay_MAIN   	:2;		//Íâ²¿Ç¿ÖÆ¿ØÖÆÍ¬¿ÚÖ÷¼ÌµçÆ÷£¬ÄÜÇ¿ÖÆOPEN£¬ºÍÇ¿ÖÆCLOSE£¬Ä¬ÈÏ½â³ý¿ØÖÆÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_Relay_PRE    	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_Relay_CHG    	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½Æ·Ö¿Ú³ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_Relay_DSG    	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½Æ·Ö¿Ú·Åµï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
+		FORCE_STATUS b2_Force_Relay_MAIN   	:2;		//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½OPENï¿½ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½CLOSEï¿½ï¿½Ä¬ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªFORCE_KEEP_MODE
     }bits;
 }DRIVER_FORCE_EXT;
 
@@ -78,63 +78,63 @@ typedef union FAULT_FLAG {
 		UINT8 b1CellChgUtp		:1; 	//
 		UINT8 b1CellDischgUtp	:1; 	//
 		UINT8 b1VcellDeltaBig	:1; 	//
-		UINT8 b1TempDeltaBig	:1; 	//Õâ¸öÃ»ÓÐ£¬Res¿ÉÓÃ
+		UINT8 b1TempDeltaBig	:1; 	//ï¿½ï¿½ï¿½Ã»ï¿½Ð£ï¿½Resï¿½ï¿½ï¿½ï¿½
 		
 		UINT8 b1SocLow			:1; 	//
 		UINT8 b1TmosOtp 		:1; 	//
-		UINT8 b1PackOvp 		:1; 	//´®²¢»úÐèÒª
+		UINT8 b1PackOvp 		:1; 	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª
 		UINT8 b1PackUvp 		:1; 	//
      }bits;
 }Fault_Flag;
 
 
 typedef struct DRIVER_ELEMENT {
-	//Ö»ÐèÒª¸³ÖµÒ»´ÎµÄ²ÎÊý
+	//Ö»ï¿½ï¿½Òªï¿½ï¿½ÖµÒ»ï¿½ÎµÄ²ï¿½ï¿½ï¿½
 	UINT16 u16_VirCur_Chg;				//A*10
 	UINT16 u16_VirCur_Dsg;				//A*10
-	UINT16 u16_PreChg_Time;				//´ÎÊý£¬¶àÉÙ¸öÖÜÆÚ
-	UINT16 u16_PreChg_Duty;				//Õ¼¿Õ±È£¬10,20,30£¬µ½100¡£
-	UINT16 u16_PreChg_Period;			//ÖÜÆÚ£¬100msÎªµ¥Î»£¬1Îª100ms£¬10Îª1s
-	UINT8 u8_DriverCtrl_Right;			//Çý¶¯¿ØÖÆÈ¨£¬Èç¹ûÎª0£¬ÔòÓÉlibÎÄ¼þ¿ØÖÆIOµÄ¿ª¹Ø¶¯×÷£¬Èç¹ûÎª1£¬ÔòlibÎÄ¼þÖ»Ìá¹©IO¿ª¹ØµÄÐÅÏ¢£¬Íâ²¿×ÔÐÐ¿ª¹Ø
-										//±¸ÓÃ£¬Ä¬ÈÏ²»¹Ü0¾ÍºÃ¡£ÓÐ¾ÖÏÞÐÔ¡£Èç¹ûÍâ²¿ÑÓÊ±²Ù×÷£¬Ì«³¤£¬»áÔì³ÉÊ±ÐòÎÉÂÒ(Ô¤·Å¹¦ÄÜËùÖÂµÈµÈ)
+	UINT16 u16_PreChg_Time;				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¸ï¿½ï¿½ï¿½ï¿½ï¿½
+	UINT16 u16_PreChg_Duty;				//Õ¼ï¿½Õ±È£ï¿½10,20,30ï¿½ï¿½ï¿½ï¿½100ï¿½ï¿½
+	UINT16 u16_PreChg_Period;			//ï¿½ï¿½ï¿½Ú£ï¿½100msÎªï¿½ï¿½Î»ï¿½ï¿½1Îª100msï¿½ï¿½10Îª1s
+	UINT8 u8_DriverCtrl_Right;			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½ï¿½ï¿½ï¿½Îª0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½libï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½IOï¿½Ä¿ï¿½ï¿½Ø¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª1ï¿½ï¿½ï¿½ï¿½libï¿½Ä¼ï¿½Ö»ï¿½á¹©IOï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½â²¿ï¿½ï¿½ï¿½Ð¿ï¿½ï¿½ï¿½
+										//ï¿½ï¿½ï¿½Ã£ï¿½Ä¬ï¿½Ï²ï¿½ï¿½ï¿½0ï¿½ÍºÃ¡ï¿½ï¿½Ð¾ï¿½ï¿½ï¿½ï¿½Ô¡ï¿½ï¿½ï¿½ï¿½ï¿½â²¿ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Ô¤ï¿½Å¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÂµÈµï¿½)
 
-	UINT16 u16_10msForceOpenT_Ovp;		//¸øÄÇÐ©¹ýÑ¹Ö®ºó£¬Çý¶¯ÐèÒªÇ¿ÖÆ´ò¿ªÊ±¼äÉèÖÃ£¬Ô­À´30sÇ¿ÖÆ´ò¿ª£¬ÀýÈçÖ÷½Ó´¥Æ÷Çý¶¯£¬ÏÖÔÚ¿ÉÉè£¬Ä¬ÈÏ»¹ÊÇÐ´30s
-	UINT16 u16_10msForceOpenT_Uvp;		//¸øÄÇÐ©µÍÑ¹Ö®ºó£¬Çý¶¯ÐèÒªÇ¿ÖÆ´ò¿ªÊ±¼äÉèÖÃ£¬Ô­À´30sÇ¿ÖÆ´ò¿ª£¬ÀýÈçÖ÷½Ó´¥Æ÷Çý¶¯£¬ÏÖÔÚ¿ÉÉè£¬Ä¬ÈÏ»¹ÊÇÐ´30s
-										//OvpÔÚÖ÷½Ó´¥Æ÷Çý¶¯ÓÐ£¬UvpÔÚÖ÷½Ó´¥Æ÷Çý¶¯ºÍ×Ô¾ÙµçÂ·ÓÐ
-	//UINT16 u16_10msForceOpenT_Ocp;	//µçÁ÷ÏÈ²»×ö½øÈ¥£¬Ç¿ÖÆ30s£¬Õâ¸öÔÚËùÓÐÇý¶¯¶¼ÓÐ
+	UINT16 u16_10msForceOpenT_Ovp;		//ï¿½ï¿½ï¿½ï¿½Ð©ï¿½ï¿½Ñ¹Ö®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒªÇ¿ï¿½Æ´ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½Ô­ï¿½ï¿½30sÇ¿ï¿½Æ´ò¿ª£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¿ï¿½ï¿½è£¬Ä¬ï¿½Ï»ï¿½ï¿½ï¿½Ð´30s
+	UINT16 u16_10msForceOpenT_Uvp;		//ï¿½ï¿½ï¿½ï¿½Ð©ï¿½ï¿½Ñ¹Ö®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒªÇ¿ï¿½Æ´ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½Ô­ï¿½ï¿½30sÇ¿ï¿½Æ´ò¿ª£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¿ï¿½ï¿½è£¬Ä¬ï¿½Ï»ï¿½ï¿½ï¿½Ð´30s
+										//Ovpï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½Uvpï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¾Ùµï¿½Â·ï¿½ï¿½
+	//UINT16 u16_10msForceOpenT_Ocp;	//ï¿½ï¿½ï¿½ï¿½ï¿½È²ï¿½ï¿½ï¿½ï¿½ï¿½È¥ï¿½ï¿½Ç¿ï¿½ï¿½30sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	//ÐèÒª²»¼ä¶Ï¸³ÖµµÄ²ÎÊý
+	//ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Öµï¿½Ä²ï¿½ï¿½ï¿½
 	Fault_Flag Fault_Flag;
 	UINT16 u16_CurChg;					//A*10
 	UINT16 u16_CurDsg;					//A*10
 
 
-	//ÄÜ»ñÈ¡½á¹ûÐÅÏ¢µÄ²ÎÊý
-	Driver_OnOFF_Etc MosRelay_Status;	//»¹ÊÇ¾ö¶¨Ê¡¿Õ¼ä£¬Ä¿±êÊÇ8LºÍ103¾ùÄÜÓÃ
+	//ï¿½Ü»ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½Ä²ï¿½ï¿½ï¿½
+	Driver_OnOFF_Etc MosRelay_Status;	//ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½Ê¡ï¿½Õ¼ä£¬Ä¿ï¿½ï¿½ï¿½ï¿½8Lï¿½ï¿½103ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 
-	//ÐÅÏ¢½»»»Çø
-	UINT8 u8_FuncOFF_Flag; 				//ÒªÇó¹Ø±Õ¹¦ÄÜ±êÖ¾Î»£¬1£¬Ïà¹Ø¹¦ÄÜ±êÖ¾Î»ÐèÒª¹Ø±Õ; 0£¬²»¹Ø±Õ¡£
-										//Õâ¸ö±êÖ¾Î»ÓÃif(!=)Ôò¸³ÖµµÄ·½Ê½£¿
-	//UINT8 u8_DriverOFF_Flag;			//Íâ²¿Ç¿ÖÆ¹Ø±ÕÇý¶¯±êÖ¾Î»£¬×ªÒÆµ½ÒÔÏÂ·½Î»
-	DRIVER_FORCE_EXT DriverForceExt;	//Íâ²¿Ç¿ÖÆ¿ØÖÆÇý¶¯±êÖ¾Î»£¬È«¾Ö¿ØÖÆºÍ¾Ö²¿µ¥¸ö¿ØÖÆ¶¼ÓÐ
+	//ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	UINT8 u8_FuncOFF_Flag; 				//Òªï¿½ï¿½Ø±Õ¹ï¿½ï¿½Ü±ï¿½Ö¾Î»ï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½Ø¹ï¿½ï¿½Ü±ï¿½Ö¾Î»ï¿½ï¿½Òªï¿½Ø±ï¿½; 0ï¿½ï¿½ï¿½ï¿½ï¿½Ø±Õ¡ï¿½
+										//ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾Î»ï¿½ï¿½if(!=)ï¿½ï¿½Öµï¿½Ä·ï¿½Ê½ï¿½ï¿½
+	//UINT8 u8_DriverOFF_Flag;			//ï¿½â²¿Ç¿ï¿½Æ¹Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾Î»ï¿½ï¿½×ªï¿½Æµï¿½ï¿½ï¿½ï¿½Â·ï¿½Î»
+	DRIVER_FORCE_EXT DriverForceExt;	//ï¿½â²¿Ç¿ï¿½Æ¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾Î»ï¿½ï¿½È«ï¿½Ö¿ï¿½ï¿½ÆºÍ¾Ö²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¶ï¿½ï¿½ï¿½
 }DriverElement;
 
 
 extern DriverElement Driver_Element;
 
 
-//GPIO¾ùÎªÍÆÍìÊä³ö£¬2MHz£¬GPIO_TypeÓÐ4ÖÖÐÎÊ½
+//GPIOï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½2MHzï¿½ï¿½GPIO_Typeï¿½ï¿½4ï¿½ï¿½ï¿½ï¿½Ê½
 void InitDrivers_GPIO(GPIO_TypeDef* GPIOx, UINT16 GPIO_Pin_x, GPIO_Type GpioType);
 
 void Drivers_RelaySameDoor_NoPreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 void Drivers_RelaySameDoor_HavePreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 void Drivers_RelayDiffDoor_NoPreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 void Drivers_RelayDiffDoor_HavePreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
-void Drivers_MosSameDoor_NoPreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 void Drivers_MosSameDoor_HavePreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 void Drivers_MosBootStrap_Cir(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl);
 
+void Drivers_MosSameDoor_NoPreChg(UINT8 OnOFF_Ctrl);
 
 #endif	/* IODRIVERS_030_H */
 

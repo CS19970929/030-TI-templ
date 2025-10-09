@@ -24,17 +24,6 @@ void Heat_Control(void)
 		return;
 	}
 
-	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_HEAT))
-	{
-		return;
-	}
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag2)
-	{
-		return;
-	}
-
-	/* 加热电流设置为50A的时候关闭加热 */
 	if (Heat_Cool_Element.u16Heat_OpenCur == 500)
 	{
 		SystemStatus.bits.b1Status_Heat = 0;

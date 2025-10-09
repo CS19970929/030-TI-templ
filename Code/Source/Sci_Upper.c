@@ -868,8 +868,6 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 
 void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
-
 	if (0 == gu8_TxEnable_SCI1)
 	{
 		return;
@@ -885,28 +883,12 @@ void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s)
 		return;
 	}
 
-	if (delayFlag)
-	{
-		if (g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-		{
-			if (++delayFlag == 6)
-			{
-				delayFlag = 0;
-			}
-		}
-		return;
-	}
-
 	while (!((USART1->ISR) & (1 << 7)))
 		; // 1<<6 也可以
 	if (s->ptr_no < s->AckLenth)
 	{
 		USART1->TDR = s->u16Buffer[s->ptr_no]; // load data
 		s->ptr_no++;
-		if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
-		{
-			delayFlag = 1;
-		}
 	}
 	else
 	{
@@ -1181,8 +1163,6 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 
 void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
-
 	if (0 == gu8_TxEnable_SCI2)
 	{
 		return;
@@ -1198,28 +1178,12 @@ void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s)
 		return;
 	}
 
-	if (delayFlag)
-	{
-		if (g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-		{
-			if (++delayFlag == 6)
-			{
-				delayFlag = 0;
-			}
-		}
-		return;
-	}
-
 	while (!((USART2->ISR) & (1 << 7)))
 		; // 1<<6 也可以
 	if (s->ptr_no < s->AckLenth)
 	{
 		USART2->TDR = s->u16Buffer[s->ptr_no]; // load data
 		s->ptr_no++;
-		if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
-		{
-			delayFlag = 1;
-		}
 	}
 	else
 	{

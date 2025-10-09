@@ -116,10 +116,6 @@ struct SOC_ENHANCE_E2PROM_PAR SOC_E2prom_Adress;			//EEPROM地址结构体
 enum SOC_CALI_STATE SOC_Cali_Flag = SOC_CALI_DATA_INIT;		//妈的，忘了这个？		SOC计算状态机，记得初始化
 enum CAP_FULL_STATE CapFull_Cali_Flag = CAP_FULL_INIT;		//容量更新计算状态机。
 
-UINT16 ChgValue = 0;
-UINT16 DsgValue = 0;
-//UINT16 SeriousFaultFlag = 0;
-
 
 //古瑞瓦特
 const UINT16 SOC_Table_LiFePO[SOC_Size_LiFePO] = {
@@ -1101,15 +1097,8 @@ void InitSOC_IntEnhance(void)
    这样的话，当前容量虽然减少了，但是乘以100%，也差距不会太大。
 3，结合1和2，容量最好不要显示，只显示SOC，SOH和出厂容量为妙。
 */
-void SOC_IntEnhance_Ctrl(UINT8 TimeBase_200ms)
+void SOC_IntEnhance_Ctrl(void)
 {
-	if (0 == TimeBase_200ms)
-	{
-		return;
-	}
-
-	// SOC_Data_Filter();
-
 	switch (SOC_Cali_Flag)
 	{
 	case SOC_CALI_DATA_INIT:

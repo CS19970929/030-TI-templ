@@ -294,11 +294,6 @@ void App_BQ769X0_Monitor(void)
 	static UINT8 su8_AfeFault_Tcnt = 0;
 	static UINT8 su8_AlarmFault_Tcnt = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag3)
-	{
-		return;
-	}
-
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte));
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_STAT, &(Registers_AFE1.SysStatus.StatusByte));
 

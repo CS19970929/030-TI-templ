@@ -125,6 +125,9 @@ typedef struct
   uint16_t  cnt_10ms;
   uint16_t   test_sizeof_g_tParam;
 
+  uint16_t  cnt_enter_chg_open;
+  uint16_t  cnt_enter_dsg_open;
+
 }Time_T;
 
 extern Time_T  sys_time;

@@ -203,20 +203,21 @@ void App_DI1_Switch(void)
 
 void Drivers_External_Ctrl(void)
 {
-	static UINT8 su8_Ctrl_Tcnt = 0;
-
 	if (Driver_Element.u8_DriverCtrl_Right)
 	{
-		// 100ms控制一次
-		if (++su8_Ctrl_Tcnt >= 10)
+		if (SystemStatus.bits.b1Status_MOS_CHG != Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG)
 		{
-			su8_Ctrl_Tcnt = 0;
+			// log_w();
+			sys_time.cnt_enter_chg_open++;
 			BQ769X0_DriverMos_Ctrl(GPIO_CHG, Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG);
+		}
+		if (SystemStatus.bits.b1Status_MOS_DSG != Driver_Element.MosRelay_Status.bits.b1Status_MOS_DSG)
+		{
+			// log_w();
+			sys_time.cnt_enter_dsg_open++;
 			BQ769X0_DriverMos_Ctrl(GPIO_DSG, Driver_Element.MosRelay_Status.bits.b1Status_MOS_DSG);
 		}
 	}
-
-	// MCUO_MOS_PRE = Driver_Element.MosRelay_Status.bits.b1Status_MOS_PRE;
 }
 
 void InitMosRelay_DOx(void)
@@ -226,26 +227,7 @@ void InitMosRelay_DOx(void)
 
 void App_MOS_Relay_Ctrl(void)
 {
-// #if defined(_MOS)
-// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_MOS))
-// 	{
-// 		return;
-// 	}
-// #elif defined(_RELAY) // 同口分口问题，TODO
-// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
-// 	{
-// 		return;
-// 	}
-// #endif
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-	{
-		return;
-	}
-
 	sys_time.cnt_10ms_test_iocontrol++;
-
-	// MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 
 	App_DI1_Switch();
 	RefreshData_Drivers();
@@ -260,7 +242,7 @@ void App_MOS_Relay_Ctrl(void)
 #elif (defined _RELAY_DIFF_DOOR_HAVE_PRECHG)
 	Drivers_RelayDiffDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_SAME_DOOR_NO_PRECHG)
-	Drivers_MosSameDoor_NoPreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
+	Drivers_MosSameDoor_NoPreChg(System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_SAME_DOOR_HAVE_PRECHG)
 	Drivers_MosSameDoor_HavePreChg(g_st_SysTimeFlag.bits.b1Sys10msFlag1, System_OnOFF_Func.bits.b1OnOFF_MOS_Relay);
 #elif (defined _MOS_BOOTSTRAP_CIR)

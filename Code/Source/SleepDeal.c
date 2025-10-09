@@ -904,30 +904,25 @@ void IsSleepStartUp(void)
 
 void App_SleepDeal(void)
 {
-	if (!System_OnOFF_Func.bits.b1OnOFF_Sleep)
-	{			// 有个疑问，是不是立刻关了，不需要�?�原�?，均衡是需要关掉�?�原�?
-		return; // Sleep的话，�?�果直接不进去，后续打开会接着上�?�的步伐
-	} // 暂且先这么做，后�?如果要全盘�?�原，�?�时清零再�?�，�?前是接着上�?�的步伐
+	// if (!System_OnOFF_Func.bits.b1OnOFF_Sleep)
+	// {			// 有个疑问，是不是立刻关了，不需要�?�原�?，均衡是需要关掉�?�原�?
+	// 	return; // Sleep的话，�?�果直接不进去，后续打开会接着上�?�的步伐
+	// } // 暂且先这么做，后�?如果要全盘�?�原，�?�时清零再�?�，�?前是接着上�?�的步伐
 
-	if (SystemStatus.bits.b1StartUpBMS)
-	{ // 开机完毕再进入
-		return;
-	}
-	else
-	{
-		SystemStatus.bits.b1Status_ToSleep = 1;
-	}
+	// if (SystemStatus.bits.b1StartUpBMS)
+	// { // 开机完毕再进入
+	// 	return;
+	// }
+	// else
+	// {
+	// 	SystemStatus.bits.b1Status_ToSleep = 1;
+	// }
 
-	if (Sleep_Mode.bits.b1_ToSleepFlag)
-	{
-		LogRecord_Flag.bits.Log_Sleep = 1;
-		return;
-	}
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
-	{
-		return; // 如果�?强制进入休眠的则必须�?点进入休眠，不能�?
-	}
+	// if (Sleep_Mode.bits.b1_ToSleepFlag)
+	// {
+	// 	LogRecord_Flag.bits.Log_Sleep = 1;
+	// 	return;
+	// }
 
 	switch (Sleep_Status)
 	{
@@ -1002,27 +997,6 @@ void IORecover_TestMode(void)
 	MCU_RESET();
 }
 
-void App_NormalSleepTest(void)
-{
-	static UINT16 s_u16HaltTestCnt = 0;
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1)
-	{ // 休眠起来等待系统初�?�化完成
-		return;
-	}
-
-	if (++s_u16HaltTestCnt >= 5)
-	{ // 10s——Test
-		s_u16HaltTestCnt = 0;
-		IOstatus_TestMode();
-		InitWakeUp_TestMode();
-		TIM_Cmd(TIM17, DISABLE); //
-		Sys_StopMode();
-		// Sys_StandbyMode();
-		IORecover_TestMode();
-	}
-}
-
 void Sys_SleepOnExitMode(void)
 {
 	NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, ENABLE); // 库函数版�?，�?�置SLEEP ON EXIT位为1
@@ -1030,21 +1004,3 @@ void Sys_SleepOnExitMode(void)
 	__ASM volatile("wfi");
 }
 
-void App_RTCSleepTest(void)
-{
-	static UINT16 s_u16HaltTestCnt = 0;
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys200msFlag1)
-	{ // 休眠起来等待系统初�?�化完成
-		return;
-	}
-
-	if (++s_u16HaltTestCnt >= 3)
-	{ // 10s——Test
-		s_u16HaltTestCnt = 0;
-		IOstatus_RTCMode();
-		InitWakeUp_RTCMode();
-		Sys_StopMode();
-		IORecover_RTCMode();
-	}
-}

@@ -177,11 +177,6 @@ void LedBar_Show_Sleep(void)
 
 void APP_LedBar(void)
 {
-    if (0 == g_st_SysTimeFlag.bits.b1Sys100msFlag)
-    {
-        return;
-    }
-
     if (SystemStatus.bits.b1StartUpBMS)
     {
         return;
