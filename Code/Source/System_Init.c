@@ -74,6 +74,7 @@ void __delay_ms(UINT16 ms)
 	SysTick->VAL = 0X00;					   // 清空计数器
 }
 
+#if 0
 void InitIO(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -118,6 +119,68 @@ void InitIO(void)
 	GPIO_Init(GPIO_KEY1, &GPIO_InitStructure);
 
 	lk8625_init();
+}
+#endif
+
+void InitIO(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); // 开启GPIOA的外设时钟
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); // 开启GPIOB的外设时钟
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE); // 开启GPIOC的外设时钟
+	// RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE); // 开启GPIOB的外设时钟
+	// RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE); // 开启GPIOB的外设时钟
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 开启GPIOF的外设时钟
+
+	// PB2_LED1
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_15 | GPIO_Pin_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	// C034 ALERT MCU			C022还没对
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	// PF7_WAKEUP_AFE
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOF, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PIN_M_CTR;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_M_CTR, &GPIO_InitStructure);
+
+	MCUO_DEBUG_LED1 = 0;
+	{
+#define GPIO_PORT_K1 GPIOC
+#define GPIO_PIN_K1 GPIO_Pin_13
+
+		GPIO_InitStructure.GPIO_Pin = GPIO_PIN_K1;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+		GPIO_Init(GPIO_PORT_K1, &GPIO_InitStructure);
+	}
+
+#define MCUO_PWSV_STB 		(PORT_OUT_GPIOB->bit1)		//
+#define MCUO_PWSV_LDO		(PORT_OUT_GPIOB->bit5)		//
+#define MCUO_PWSV_CTR		(PORT_OUT_GPIOA->bit8)		//
+#define MCUO_BEL_EN		    (PORT_OUT_GPIOB->bit15)		//
+#define MCUO_PW_RS485_EN	(PORT_OUT_GPIOB->bit7)		//
+
+	MCUO_PWSV_STB = 1;
+	// MCUO_PWSV_LDO = 1;
+	MCUO_BEL_EN = 1;
+	MCUO_PWSV_CTR = 1;
+	MCUO_AFE_ALARM = 1;
 }
 
 void InitTimer(void)

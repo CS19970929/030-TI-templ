@@ -1,6 +1,8 @@
 #ifndef SCI_H
 #define SCI_H
 
+#include "DataDeal.h"
+
 #define	RS485_BROADCAST_ADDR		(( UINT8 ) 0x00 )
 #define	RS485_SLAVE_ADDR			(( UINT8 ) 0x01 )
 

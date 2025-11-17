@@ -72,6 +72,92 @@ struct SOC_ENHANCE_ELEMENT {
 
 extern struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;
 
+struct SOC_CALCULATE_ELEMENT {	
+	//InitSOC_IntEnhance赋值类型
+	UINT32  u32CapFactory;  	//电池初始总容量(出厂容量)As*10 =        Ah*3600*10
+	UINT32  u32CycleT_Limit;    //可循环次数
+	//以下置零
+	UINT32	u32CapChange;		//电池容量变化	   As*10，叠加类型
+	UINT8   u8OCV_Cali_Flag;    //开路电压法可使用标志
+	UINT8   u8CHG_AHCalcu_Flag;	//充电安时积分可使用标志
+	UINT8   u8DSG_AHCalcu_Flag;	//放电安时积分可使用标志
+	
+	//InitSOC_IntEnhance赋值，其后SOC_Update_StartUp再次赋值类型
+	UINT8   u8SOC_Now;          //当前电池SOC     0—100 为相对容量百分比
+	UINT32  u32CapNow;		 	//电池剩余总容量As*10
+	UINT8	u8DSG_SOC_Int;		//循环次数只算放电量，已放电量积累量百分比，90%算一个循环		
+	UINT32  u32Cycle_times;     //循环次数*100，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
+	UINT32  u32CapFull;	 		//电池衰减后总容量As*10(SOH)，我的显示SOH要改一改，算错了
+
+	//运行过程长期修改类型
+	UINT8   u8SOC_Old;          //初始SOC    0-100 为相对容量百分比
+	//UINT8   u8a_BurnIn;         //老化因素α的修正系数，系数乘以100
+	//UINT8   u8b_CapC;      		//电池容量修正因子δ，与充放电循环次数相关δ = f(Cycle_times)
+	UINT8	u8_DataUpdateOK;	//更新记录
+	UINT32  u32CapFull_Cal_As;	//长期运行，更新容量，As*10
+
+	float    delata_cap;
+	float acc_cap_delta;
+	float    silent_power;
+};
+
+
+struct SOC_ENHANCE_E2PROM_PAR {
+	UINT16  u16_SOC_E2P0;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
+	UINT16  u16_SOC_E2P1;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
+	UINT16  u16_SOC_E2P2;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
+	UINT16  u16_SOC_E2P3;    		//保存最近的SOC，以用于上电即可显示，不能通过上位机修改
+
+	UINT16  u16_SOC_Temp;			//记录哪个SOC是最新的
+	UINT16  u16_DsgSOC_Int0;		//记录已放电量积累量百分比
+	UINT16  u16_DsgSOC_Int1;		//记录已放电量积累量百分比
+	UINT16  u16_DsgSOC_Temp;		//记录哪个电量积累量是最新的
+
+	UINT16  u16_Cycle_Times;		//记录循环次数
+	UINT16  Res1;					//上一次做的任务，虽然取消了，但是位置不能变，原版升级问题
+	UINT16  Res5;					//上一次的纠正系数
+	UINT16 	u16_SeriousFaultFlag;	//严重错误标志位保存
+
+	UINT16  u16CapFull_Cal_Ah;		//Ah*10
+	UINT16  Res2;					//Res2
+	UINT16  Res3;					//Res3
+	UINT16 	Res4;					//Res4
+};
+
+enum CHG_CURVE_STATUS {
+	CHG_CURVE_STARTUP = 0,
+	CHG_CURVE_BEGIN,
+	CHG_CURVE_CONSTANT_CUR,
+	CHG_CURVE_CONSTANT_VOR,
+	CHG_CURVE_TRICKLE_CUR,
+	CHG_CURVE_OVER,
+	CHG_CURVE_ERROR_DEAL
+};
+
+enum SOC_CALI_STATE {
+	SOC_CALI_DATA_INIT = 0,
+	SOC_CALI_STARTUP,
+	SOC_CALI_STATE_TRANSFER,
+	SOC_CALI_CONT_CHG,
+	SOC_CALI_CONT_DSG,
+};
+
+enum CAP_FULL_STATE {
+	CAP_FULL_INIT = 0,
+	CAP_FULL_STARTUP,
+	CAP_FULL_CALCU,
+	CAP_FULL_SUCCESS,
+	CAP_FULL_FAIL,
+};
+
+
+enum EEPROM_COMMAND {
+	EEPROM_DATA_REFRESH = 0,
+	EEPROM_DATA_READ
+};
+
+
+
 extern UINT16 ChgValue;
 extern UINT16 DsgValue;
 
