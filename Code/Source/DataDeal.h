@@ -186,7 +186,7 @@ struct OTHER_ELEMENT {
 	                             CS_Cur_CHGmax,	CS_Cur_DSGmax,CBC_DelayT,CBC_Cur_DSG,\
 	                             SOC_TABLE_LIFEPO,0,1000,30,\
 	                             __SLEEP_VNORMAL__,	__SLEEP_TIMENORMAL__, __SLEEP_VLOW__,	__SLEEP_TIMEVLOW__,		10,	10,	240,0,\
-	                             1500,	3,		3650,	2600,\
+	                             1000,	3,		3650,	2600,\
 	                             SNum,CS_Res,CS_Res_Num,10}
 #endif
 

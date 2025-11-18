@@ -52,7 +52,7 @@ int main(void)
 		// App_RTC();
 		App_CellBalance();
 		App_SOC();
-		// App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
+		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
 #ifdef __FUNC__HEAT__
 		App_Heat_Cool_Ctrl();
 #endif // DEBUG

@@ -97,7 +97,7 @@ struct SOC_CALCULATE_ELEMENT {
 	UINT32  u32CapFull_Cal_As;	//长期运行，更新容量，As*10
 
 	float    delata_cap;
-	float acc_cap_delta;
+	float acc_cap_K;
 	float    silent_power;
 };
 
