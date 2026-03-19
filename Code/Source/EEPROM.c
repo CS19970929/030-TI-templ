@@ -537,6 +537,8 @@ void InitE2PROM(void)
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
+	__delay_ms(100);
+
 	InitData_E2prom();
 }
 

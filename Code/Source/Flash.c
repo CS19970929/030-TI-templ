@@ -33,6 +33,40 @@ void Init_IAPAPP(void)
 #endif
 }
 
+static void BootFlag_EnableAccess(void)
+{
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+	PWR->CR |= PWR_CR_DBP;
+}
+
+void BootFlag_Write(UINT16 flag)
+{
+	BootFlag_EnableAccess();
+	RTC->BKP1R = flag;
+	RTC->BKP2R = (UINT16)(~flag);
+}
+
+UINT16 BootFlag_Read(void)
+{
+	UINT16 flag;
+	UINT16 inverse_flag;
+
+	BootFlag_EnableAccess();
+	flag = (UINT16)RTC->BKP1R;
+	inverse_flag = (UINT16)RTC->BKP2R;
+	if ((UINT16)(flag ^ inverse_flag) != 0xFFFF)
+	{
+		return BOOT_FLAG_RESET_VALUE;
+	}
+
+	return flag;
+}
+
+void BootFlag_Clear(void)
+{
+	BootFlag_Write(BOOT_FLAG_RESET_VALUE);
+}
+
 void App_FlashUpdateDet(void)
 {
 	if (1 == u8FlashUpdateFlag)
