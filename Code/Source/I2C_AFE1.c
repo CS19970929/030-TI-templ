@@ -609,8 +609,10 @@ int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 
 	g_stBq769x0_Read_AFE1.f32Gain = (365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5)) / 1000.0;
 	g_stBq769x0_Read_AFE1.i16Gain = 365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5);
-	Registers_AFE1.OVTrip = (unsigned char)((((unsigned short)((AFE_COV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - OV_THRESH_BASE) >> 4) & 0xFF);
-	Registers_AFE1.UVTrip = (unsigned char)((((unsigned short)((AFE_CUV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - UV_THRESH_BASE) >> 4) & 0xFF);
+	// Registers_AFE1.OVTrip = (unsigned char)((((unsigned short)((AFE_COV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - OV_THRESH_BASE) >> 4) & 0xFF);
+	// Registers_AFE1.UVTrip = (unsigned char)((((unsigned short)((AFE_CUV_H - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - UV_THRESH_BASE) >> 4) & 0xFF);
+	Registers_AFE1.OVTrip = (unsigned char)((((unsigned short)(((PRT_E2ROMParas.u16VcellOvp_Third + 5) - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - OV_THRESH_BASE) >> 4) & 0xFF);
+	Registers_AFE1.UVTrip = (unsigned char)((((unsigned short)(((PRT_E2ROMParas.u16VcellUvp_Third - 5) - Registers_AFE1.ADCOffset) / g_stBq769x0_Read_AFE1.f32Gain + 0.5) - UV_THRESH_BASE) >> 4) & 0xFF);
 	result = ConfigureBqMaximo(I2CSlaveAddress);
 
 	return result;

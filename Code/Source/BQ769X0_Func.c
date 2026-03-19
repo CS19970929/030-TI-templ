@@ -342,8 +342,10 @@ void App_BQ769X0_Monitor(void)
 
 	if (Registers_AFE1.SysStatus.StatusBit.OV)
 	{
+		FaultWarnRecord2(CellOvp_Third);
 		// todo
-		if (g_stCellInfoReport.u16VCellMax < OVPThreshold)
+		// if (g_stCellInfoReport.u16VCellMax < OVPThreshold)
+		if (g_stCellInfoReport.u16VCellMax < PRT_E2ROMParas.u16VcellOvp_Rcv)
 		{
 			Registers_AFE1.SysStatus.StatusBit.OV = 1;
 			u8_Change = 1;
@@ -356,7 +358,9 @@ void App_BQ769X0_Monitor(void)
 	}
 	if (Registers_AFE1.SysStatus.StatusBit.UV)
 	{
-		if (g_stCellInfoReport.u16VCellMin > UVPThreshold)
+		FaultWarnRecord2(CellUvp_Third);
+		if (g_stCellInfoReport.u16VCellMin > PRT_E2ROMParas.u16VcellUvp_Rcv)
+		// if (g_stCellInfoReport.u16VCellMin > UVPThreshold)
 		{
 			Registers_AFE1.SysStatus.StatusBit.UV = 1;
 			u8_Change = 1;

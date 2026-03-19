@@ -568,6 +568,16 @@
               <FileType>1</FileType>
               <FilePath>.\Code\Source\lk8625.c</FilePath>
             </File>
+            <File>
+              <FileName>SleepManager_LowPower.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\SleepManager_LowPower.c</FilePath>
+            </File>
+            <File>
+              <FileName>SleepManager_LowPower.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Code\Source\SleepManager_LowPower.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -8,7 +8,35 @@ UINT8 RTC_ExtComCnt = 0;
 
 uint8_t reset_sleep_state = 0;
 
-// 通�??唤醒对深度休眠不起效果。不能再Base加入通�??唤醒�?
+void entersleep(enum _SLEEP_MODE mode)
+{
+	switch (mode)
+	{
+	case HICCUP_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L1 = 1;
+		// g_sleepModeSelect = HICCUP_MODE;
+		break;
+	case NORMAL_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+		// g_sleepModeSelect = NORMAL_MODE;
+		break;
+	case DEEP_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+		// g_sleepModeSelect = DEEP_MODE;
+#ifdef __FUNC__LED__
+		// set_LED_state(LED_BAR_NORMAL, 4);
+#endif // DEBUG
+		break;
+	// case NO_SLEEP:
+	//     // g_sleepModeSelect = NO_SLEEP;
+	//     Sleep_Status = SLEEP_HICCUP_SHIFT;
+	//     Sleep_Mode.all = 0;
+	//     break;
+	default:
+		break;
+	}
+}
+
 void InitWakeUp_Base(void)
 {
 	EXTI_InitTypeDef EXTI_InitStruct;
@@ -940,7 +968,80 @@ void IsSleepStartUp(void)
 	}
 }
 #endif
+void App_SleepDeal(void)
+{
+	// static uint32_t sleep_veryvlow_cnt = 0;
+	// static uint32_t sleep_vlow_cnt = 0;
+	// static uint32_t sleep_vnormal_cnt = 0;
+	// static uint32_t afe_comm_err_sleepcnt = 0;
+	// static UINT8 su8_SleepExtComCnt = 0;
 
+	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
+	{
+		return;
+	}
+
+	if (g_stCellInfoReport.u16VCellMin <= 2500)
+	{
+		sys_time.sleep_vlow_cnt = 0;
+		sys_time.sleep_vnormal_cnt = 0;
+		sys_time.afe_comm_err_sleepcnt = 0;
+		if (++sys_time.sleep_veryvlow_cnt >= (60 * 60 * 1))
+		{
+			sys_time.sleep_veryvlow_cnt = 0;
+			entersleep(DEEP_MODE);
+		}
+	}
+	else if ((g_stCellInfoReport.u16VCellMin <= OtherElement.u16Sleep_Vlow && !g_stCellInfoReport.u16Ichg))
+	{
+		if (++sys_time.sleep_vlow_cnt >= ((UINT32)OtherElement.u16Sleep_TimeVlow * 60))
+		{
+			sys_time.sleep_vlow_cnt = 0;
+			entersleep(DEEP_MODE);
+		}
+		sys_time.sleep_veryvlow_cnt = 0;
+		sys_time.sleep_vnormal_cnt = 0;
+		sys_time.afe_comm_err_sleepcnt = 0;
+	}
+	else if ((g_stCellInfoReport.u16VCellMin <= OtherElement.u16Sleep_VNormal))
+	{
+		if (sys_time.su8_SleepExtComCnt != RTC_ExtComCnt || g_stCellInfoReport.u16Ichg > OtherElement.u16Sleep_VirCur_Chg || g_stCellInfoReport.u16IDischg > OtherElement.u16Sleep_VirCur_Dsg)
+		{
+			sys_time.su8_SleepExtComCnt = RTC_ExtComCnt;
+			sys_time.sleep_vnormal_cnt = 0;
+		}
+
+		if (++sys_time.sleep_vnormal_cnt >= ((UINT32)OtherElement.u16Sleep_TimeNormal * 60))
+		{
+			sys_time.sleep_vnormal_cnt = 0;
+			entersleep(NORMAL_MODE);
+		}
+		sys_time.sleep_veryvlow_cnt = 0;
+		sys_time.sleep_vlow_cnt = 0;
+		sys_time.afe_comm_err_sleepcnt = 0;
+	}
+	else if (1 == System_ErrFlag.u8ErrFlag_Com_AFE1)
+	{
+	}
+	else
+	{
+		sys_time.sleep_veryvlow_cnt = 0;
+		sys_time.sleep_vlow_cnt = 0;
+		sys_time.sleep_vnormal_cnt = 0;
+		sys_time.afe_comm_err_sleepcnt = 0;
+	}
+
+	if ((Sleep_Mode.all & 0x00f0))
+	{
+		extern UINT32 su32_Interval_S_Tcnt;
+		
+		LogRecord_Flag.bits.Log_Sleep = 1;
+		LogEvent_Record(LogRecord_Flag.bits.Log_Sleep, BMS_SLEEP, &su32_Interval_S_Tcnt);
+		SleepDeal_Continue();
+	}
+}
+
+#if 0
 void App_SleepDeal(void)
 {
 	static uint8_t force_sleep_delay = 0;
@@ -1027,6 +1128,7 @@ void App_SleepDeal(void)
 		if (force_sleep_delay >= 60)
 		{
 			// entersleep(DEEP_MODE);
+			Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
 		}
 	}
 	else
@@ -1043,6 +1145,7 @@ void App_SleepDeal(void)
 		Sleep_Mode.bits.b1_ToSleepFlag = 0;
 	}
 }
+#endif
 
 void IOstatus_TestMode(void)
 {

@@ -5,9 +5,9 @@
 #include "stdint.h"
 #include "conf_gpio.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x1777		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x6777		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
-#define  wdog_enable
+// #define  wdog_enable
 // #define __FUNC__HEAT__
 #define __LOAD_REMOVE_SHORT_FUNC__
 
@@ -125,6 +125,12 @@ typedef struct
   uint16_t cnt_10ms_test_iocontrol;
   uint16_t  cnt_10ms;
   uint16_t   test_sizeof_g_tParam;
+
+  uint32_t sleep_veryvlow_cnt ;
+	uint32_t sleep_vlow_cnt;
+	uint32_t sleep_vnormal_cnt;
+	uint32_t afe_comm_err_sleepcnt;
+  uint8_t su8_SleepExtComCnt;
 
 }Time_T;
 

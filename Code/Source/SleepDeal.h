@@ -18,8 +18,8 @@ NORMAL_MODE = 0, HICCUP_MODE, DEEP_MODE
 #define SleepInitNormal1 	100	  		//200msʱ��������ģʽ��������ʱ�ڼ��ж�20s�Ƿ��ٽ�������
 #define SleepInitNormal2 	150	  		//200msʱ��������ģʽ���������ֵ������ӳ���30s�ж�
 
-//��������������־λ��ʵ������һ��״̬�����(���κ�ʱ��SleepModeֻ��һ�������������ֶ������)
-//�����Ҿ������ģ���Ϊδ����Ŀ�п��ܳ��ֶ������ͬʱ����
+//��������������־λ��ʵ������һ��״̬�����?(���κ�ʱ��SleepModeֻ��һ�������������ֶ������?)
+//�����Ҿ������ģ���Ϊδ����Ŀ�п��ܳ��ֶ�������?ʱ����
 union SLEEP_MODE{
     UINT16   all;
     struct SleepModeFlagBit {
@@ -28,9 +28,9 @@ union SLEEP_MODE{
 		UINT8 b1NormalSleep_L2      :1;
 		UINT8 b1NormalSleep_L3      :1;
 		
-		UINT8 b1ForceToSleep_L1     :1;		//�ⲿ�ٿؽ����һ������
-        UINT8 b1ForceToSleep_L2     :1;		//�ⲿ�ٿؽ���ڶ�������
-		UINT8 b1ForceToSleep_L3     :1;		//�ⲿ�ٿؽ������������
+		UINT8 b1ForceToSleep_L1     :1;		//�ⲿ�ٿؽ����һ������?
+        UINT8 b1ForceToSleep_L2     :1;		//�ⲿ�ٿؽ���ڶ�������?
+		UINT8 b1ForceToSleep_L3     :1;		//�ⲿ�ٿؽ������������?
         UINT8 b1ForceToSleep_L1_Out :1;		//�ⲿ�ٿص�һ�������˳�����ģʽ��־λ
 
 		UINT8 b1OverCurSleep        :1;
@@ -78,6 +78,7 @@ void App_NormalSleepTest(void);
 void App_SleepDeal(void);
 void App_SleepTest(void);
 void IsSleepStartUp(void);
+void entersleep(enum _SLEEP_MODE mode);
 
 #endif	/* SLEEPDEAL_H */
 

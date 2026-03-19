@@ -396,6 +396,7 @@ extern UINT16 FaultCnt_StartUp_Second;
 extern UINT16 FaultCnt_StartUp_Third;
 
 void App_WarnCtrl(void);
+void FaultWarnRecord2(enum FaultFlag num);
 
 #endif	/* FAULT_H */
 
