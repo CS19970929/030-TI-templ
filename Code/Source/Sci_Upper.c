@@ -42,6 +42,153 @@ void Sci_WrReg_0x06_BMS_FunctionON(struct RS485MSG *s);
 void Sci_WrReg_0x06_BMS_FunctionOFF(struct RS485MSG *s);
 void Sci_WrReg_0x06_SetSocOnce(struct RS485MSG *s);
 
+#define SCI_RX_TIMEOUT_10MS	((UINT8)3)
+#define SCI_TX_DELAY_10MS	((UINT8)5)
+
+static void Sci_ResetFrameState(struct RS485MSG *s)
+{
+	s->ptr_no = 0;
+	s->csr = RS485_STA_IDLE;
+	s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
+	s->u8RxTimeoutTick = 0;
+	s->u8TxDelayTick = 0;
+	s->u16RdRegByteNum = 0;
+	s->AckLenth = 0;
+	s->AckType = RS485_ACK_POS;
+	s->ErrorType = RS485_ERROR_NULL;
+	s->enRs485CmdType = RS485_CMD_READ_REGS;
+	s->u16Buffer[0] = 0;
+	s->u16Buffer[1] = 0;
+	s->u16Buffer[2] = 0;
+	s->u16Buffer[3] = 0;
+}
+
+static void Sci_DisableRx(USART_TypeDef *uart)
+{
+	uart->CR1 &= ~(1 << 2);
+	uart->CR1 &= ~(1 << 5);
+}
+
+static void Sci_EnableRx(USART_TypeDef *uart)
+{
+	uart->CR1 |= (1 << 2);
+	uart->CR1 |= (1 << 5);
+}
+
+static void Sci_StopTxIrq(USART_TypeDef *uart)
+{
+	uart->CR1 &= ~(1 << 7);
+	uart->CR1 &= ~(1 << 6);
+}
+
+static void Sci_AbortTransfer_Common(USART_TypeDef *uart, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinish)
+{
+	Sci_StopTxIrq(uart);
+	*pu8TxEnable = 0;
+	*pu8TxFinish = 0;
+	Sci_ResetFrameState(s);
+	Sci_EnableRx(uart);
+}
+
+static void Sci_StartTx_Common(USART_TypeDef *uart, struct RS485MSG *s, UINT8 *pu8TxEnable)
+{
+	if (s->AckLenth == 0)
+	{
+		return;
+	}
+
+	Sci_DisableRx(uart);
+	Sci_StopTxIrq(uart);
+	uart->ICR |= 1 << 6;
+	uart->CR1 |= (1 << 3);
+	uart->CR1 |= (1 << 7);
+	s->ptr_no = 0;
+	s->u8TxDelayTick = 0;
+	*pu8TxEnable = 1;
+}
+
+static void Sci_Service_Common(USART_TypeDef *uart, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinish)
+{
+	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
+	{
+		return;
+	}
+
+	if (*pu8TxEnable)
+	{
+		if (s->u8TxDelayTick > 0)
+		{
+			if (--s->u8TxDelayTick == 0)
+			{
+				uart->CR1 |= (1 << 7);
+			}
+		}
+		return;
+	}
+
+	if ((s->ptr_no > 0) && (s->csr == RS485_STA_IDLE))
+	{
+		if (++s->u8RxTimeoutTick >= SCI_RX_TIMEOUT_10MS)
+		{
+			Sci_AbortTransfer_Common(uart, s, pu8TxEnable, pu8TxFinish);
+		}
+	}
+	else
+	{
+		s->u8RxTimeoutTick = 0;
+	}
+}
+
+static void Sci_TxIrq_Common(USART_TypeDef *uart, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinish)
+{
+	if (0 == *pu8TxEnable)
+	{
+		Sci_StopTxIrq(uart);
+		return;
+	}
+
+	if ((uart->ISR & (1 << 7)) && (uart->CR1 & (1 << 7)))
+	{
+		if (s->u8TxDelayTick > 0)
+		{
+			return;
+		}
+
+		if (s->ptr_no < s->AckLenth)
+		{
+			uart->TDR = s->u16Buffer[s->ptr_no++];
+			if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
+			{
+				uart->CR1 &= ~(1 << 7);
+				s->u8TxDelayTick = SCI_TX_DELAY_10MS;
+			}
+			else if (s->ptr_no >= s->AckLenth)
+			{
+				uart->CR1 &= ~(1 << 7);
+				uart->CR1 |= (1 << 6);
+			}
+		}
+		else
+		{
+			uart->CR1 &= ~(1 << 7);
+			uart->CR1 |= (1 << 6);
+		}
+	}
+
+	if ((uart->ISR & (1 << 6)) && (uart->CR1 & (1 << 6)))
+	{
+		uart->ICR |= 1 << 6;
+		uart->CR1 &= ~(1 << 6);
+		*pu8TxEnable = 0;
+		*pu8TxFinish = 1;
+		if (u8FlashUpdateE2PROM)
+		{
+			u8FlashUpdateE2PROM = 0;
+			u8FlashUpdateFlag = 1;
+		}
+	}
+}
+
 void Sci_DataInit(struct RS485MSG *s)
 {
 	UINT16 i;
@@ -49,6 +196,8 @@ void Sci_DataInit(struct RS485MSG *s)
 	s->ptr_no = 0;
 	s->csr = RS485_STA_IDLE;
 	s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
+	s->u8RxTimeoutTick = 0;
+	s->u8TxDelayTick = 0;
 	s->enRs485CmdType = RS485_CMD_READ_REGS;
 	for (i = 0; i < RS485_MAX_BUFFER_SIZE; i++)
 	{
@@ -748,33 +897,33 @@ void Sci1_CommonUpper_FaultChk(void)
 	UINT8 FaultCnt = 0;
 
 	if (USART1->ISR & 0x08)
-	{						   // 接收溢出错误，RXNEIE或EIE使能产生中断，开
-		USART1->ICR |= 1 << 3; // 清除
+	{
+		USART1->ICR |= 1 << 3;
 		FaultCnt++;
 	}
 
 	if (USART1->ISR & 0x04)
-	{						   // 检测到噪声，默认开，不开的话CR3的ONEBIT置1，不开
-							   // USART_CR3的EIE使能中断
-		USART1->ICR |= 1 << 2; // 清除
+	{
+		USART1->ICR |= 1 << 2;
 		FaultCnt++;
 	}
 
 	if (USART1->ISR & 0x02)
-	{						   // 帧错误，USART_CR3的EIE使能中断，开
-		USART1->ICR |= 1 << 1; // 清除
+	{
+		USART1->ICR |= 1 << 1;
 		FaultCnt++;
 	}
 
 	if (USART1->ISR & 0x01)
-	{						   // 校验错误标志 USART_CR1的PEIE使能该中断，不开
-		USART1->ICR |= 1 << 0; // 清除
+	{
+		USART1->ICR |= 1 << 0;
 		FaultCnt++;
 	}
 
 	if (FaultCnt)
 	{
 		gu16_CommuErrCnt_SCI1++;
+		Sci_AbortTransfer_Common(USART1, &g_stCurrentMsgPtr_SCI1, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
 	}
 }
 
@@ -795,9 +944,9 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 {
 	UINT8 currentByte;
 
-	USART1->CR1 &= ~(1 << 5);
 	currentByte = (UINT8)USART1->RDR;
 	s->u16Buffer[s->ptr_no] = currentByte;
+	s->u8RxTimeoutTick = 0;
 
 	if (s->ptr_no == 0)
 	{
@@ -805,7 +954,6 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 		{
 			s->ptr_no = 0;
 			s->u16Buffer[0] = 0;
-			USART1->CR1 |= (1 << 5);
 			return;
 		}
 
@@ -818,7 +966,6 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 			s->ptr_no = 0;
 			s->u16Buffer[0] = 0;
 			s->u16Buffer[1] = 0;
-			USART1->CR1 |= (1 << 5);
 			return;
 		}
 
@@ -888,63 +1035,16 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 		s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
 	}
 
-	USART1->CR1 |= (1 << 5);
 }
 
 void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
+	Sci_Service_Common(USART1, s, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
+}
 
-	if (0 == gu8_TxEnable_SCI1)
-	{
-		return;
-	}
-
-	if (gu16_CommuErrCnt_SCI1)
-	{ // 出现错误也得把数据全部接收完，然后不回复
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		gu8_TxFinishFlag_SCI1 = 1;
-		gu8_TxEnable_SCI1 = 0;
-		gu16_CommuErrCnt_SCI1 = 0;
-		return;
-	}
-
-	if (delayFlag)
-	{
-		if (g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-		{
-			if (++delayFlag == 6)
-			{
-				delayFlag = 0;
-			}
-		}
-		return;
-	}
-
-	while (!((USART1->ISR) & (1 << 7)))
-		; // 1<<6 也可以
-	if (s->ptr_no < s->AckLenth)
-	{
-		USART1->TDR = s->u16Buffer[s->ptr_no]; // load data
-		s->ptr_no++;
-		if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
-		{
-			delayFlag = 1;
-		}
-	}
-	else
-	{
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		gu8_TxFinishFlag_SCI1 = 1;
-		gu8_TxEnable_SCI1 = 0;
-		if (u8FlashUpdateE2PROM)
-		{
-			u8FlashUpdateE2PROM = 0;
-			u8FlashUpdateFlag = 1;
-		}
-	}
+void Sci1_CommonUpper_TxIrq_Deal(struct RS485MSG *s)
+{
+	Sci_TxIrq_Common(USART1, s, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
 }
 
 // 串口初始化函数
@@ -1058,31 +1158,24 @@ void App_CommonUpperSCI1(struct RS485MSG *s)
 
 		if (s->AckLenth > 0)
 		{
-			USART1->CR1 |= (1 << 3);
-			gu8_TxEnable_SCI1 = 1;
+			Sci_StartTx_Common(USART1, s, &gu8_TxEnable_SCI1);
+			s->csr = RS485_STA_TX_COMPLETE;
 		}
 		else
 		{
 			s->csr = RS485_STA_TX_COMPLETE;
 			gu8_TxFinishFlag_SCI1 = 1;
 		}
+		break;
 	}
 	case RS485_STA_TX_COMPLETE:
 	{
 		if (gu8_TxFinishFlag_SCI1)
 		{
-			s->csr = RS485_STA_IDLE;
-			s->u16Buffer[0] = 0;
-			s->u16Buffer[1] = 0;
-			s->u16Buffer[2] = 0;
-			s->u16Buffer[3] = 0;
 			gu8_TxFinishFlag_SCI1 = 0;
-			s->ptr_no = 0;
-			s->AckLenth = 0;
-			s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
-			USART1->CR1 |= (1 << 2);
-			USART1->CR1 |= (1 << 5);
 			gu8_TxEnable_SCI1 = 0;
+			Sci_ResetFrameState(s);
+			Sci_EnableRx(USART1);
 		}
 		break;
 	}
@@ -1105,33 +1198,33 @@ void Sci2_CommonUpper_FaultChk(void)
 	UINT8 FaultCnt = 0;
 
 	if (USART2->ISR & 0x08)
-	{						   // 接收溢出错误，RXNEIE或EIE使能产生中断，开
-		USART2->ICR |= 1 << 3; // 清除
+	{
+		USART2->ICR |= 1 << 3;
 		FaultCnt++;
 	}
 
 	if (USART2->ISR & 0x04)
-	{						   // 检测到噪声，默认开，不开的话CR3的ONEBIT置1，不开
-							   // USART_CR3的EIE使能中断
-		USART2->ICR |= 1 << 2; // 清除
+	{
+		USART2->ICR |= 1 << 2;
 		FaultCnt++;
 	}
 
 	if (USART2->ISR & 0x02)
-	{						   // 帧错误，USART_CR3的EIE使能中断，开
-		USART2->ICR |= 1 << 1; // 清除
+	{
+		USART2->ICR |= 1 << 1;
 		FaultCnt++;
 	}
 
 	if (USART2->ISR & 0x01)
-	{						   // 校验错误标志 USART_CR1的PEIE使能该中断，不开
-		USART2->ICR |= 1 << 0; // 清除
+	{
+		USART2->ICR |= 1 << 0;
 		FaultCnt++;
 	}
 
 	if (FaultCnt)
 	{
 		gu16_CommuErrCnt_SCI2++;
+		Sci_AbortTransfer_Common(USART2, &g_stCurrentMsgPtr_SCI2, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
 	}
 }
 
@@ -1152,9 +1245,9 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 {
 	UINT8 currentByte;
 
-	USART2->CR1 &= ~(1 << 5);
 	currentByte = (UINT8)USART2->RDR;
 	s->u16Buffer[s->ptr_no] = currentByte;
+	s->u8RxTimeoutTick = 0;
 
 	if (s->ptr_no == 0)
 	{
@@ -1162,7 +1255,6 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 		{
 			s->ptr_no = 0;
 			s->u16Buffer[0] = 0;
-			USART2->CR1 |= (1 << 5);
 			return;
 		}
 
@@ -1175,7 +1267,6 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 			s->ptr_no = 0;
 			s->u16Buffer[0] = 0;
 			s->u16Buffer[1] = 0;
-			USART2->CR1 |= (1 << 5);
 			return;
 		}
 
@@ -1245,63 +1336,16 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 		s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
 	}
 
-	USART2->CR1 |= (1 << 5);
 }
 
 void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
+	Sci_Service_Common(USART2, s, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
+}
 
-	if (0 == gu8_TxEnable_SCI2)
-	{
-		return;
-	}
-
-	if (gu16_CommuErrCnt_SCI2)
-	{ // 出现错误也得把数据全部接收完，然后不回复
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		gu8_TxFinishFlag_SCI2 = 1;
-		gu8_TxEnable_SCI2 = 0;
-		gu16_CommuErrCnt_SCI2 = 0;
-		return;
-	}
-
-	if (delayFlag)
-	{
-		if (g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-		{
-			if (++delayFlag == 6)
-			{
-				delayFlag = 0;
-			}
-		}
-		return;
-	}
-
-	while (!((USART2->ISR) & (1 << 7)))
-		; // 1<<6 也可以
-	if (s->ptr_no < s->AckLenth)
-	{
-		USART2->TDR = s->u16Buffer[s->ptr_no]; // load data
-		s->ptr_no++;
-		if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
-		{
-			delayFlag = 1;
-		}
-	}
-	else
-	{
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		gu8_TxFinishFlag_SCI2 = 1;
-		gu8_TxEnable_SCI2 = 0;
-		if (u8FlashUpdateE2PROM)
-		{
-			u8FlashUpdateE2PROM = 0;
-			u8FlashUpdateFlag = 1;
-		}
-	}
+void Sci2_CommonUpper_TxIrq_Deal(struct RS485MSG *s)
+{
+	Sci_TxIrq_Common(USART2, s, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
 }
 
 // 串口初始化函数
@@ -1415,31 +1459,24 @@ void App_CommonUpperSCI2(struct RS485MSG *s)
 
 		if (s->AckLenth > 0)
 		{
-			USART2->CR1 |= (1 << 3);
-			gu8_TxEnable_SCI2 = 1;
+			Sci_StartTx_Common(USART2, s, &gu8_TxEnable_SCI2);
+			s->csr = RS485_STA_TX_COMPLETE;
 		}
 		else
 		{
 			s->csr = RS485_STA_TX_COMPLETE;
 			gu8_TxFinishFlag_SCI2 = 1;
 		}
+		break;
 	}
 	case RS485_STA_TX_COMPLETE:
 	{
 		if (gu8_TxFinishFlag_SCI2)
 		{
-			s->csr = RS485_STA_IDLE;
-			s->u16Buffer[0] = 0;
-			s->u16Buffer[1] = 0;
-			s->u16Buffer[2] = 0;
-			s->u16Buffer[3] = 0;
 			gu8_TxFinishFlag_SCI2 = 0;
-			s->ptr_no = 0;
-			s->AckLenth = 0;
-			s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
-			USART2->CR1 |= (1 << 2);
-			USART2->CR1 |= (1 << 5);
 			gu8_TxEnable_SCI2 = 0;
+			Sci_ResetFrameState(s);
+			Sci_EnableRx(USART2);
 		}
 		break;
 	}
