@@ -111,6 +111,9 @@ struct RS485MSG {
 	UINT8	ptr_no;          	// Word stating what state msg is in
 	UINT8	csr;          		// I2C address of slave msg is intended for
 	UINT8	u8FrameProtocol;	// current frame protocol
+	UINT8	u8RxTimeoutTick;	// rx timeout counter in 10ms
+	UINT8	u8TxDelayTick;		// tx throttle counter in 10ms
+	UINT8	u8TxIndex;			// tx send index
 	UINT16	u16RdRegStartAddr;	// read reg start addr
 	UINT16	u16RdRegStartAddrActure;	//�Զ����ַ����
 	UINT8	u16RdRegByteNum;    // read byte lenth
@@ -542,12 +545,13 @@ extern struct stCell_Info g_stCellInfoReport;
 
 void Sci1_CommonUpper_FaultChk(void);
 void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s);
+void Sci1_CommonUpper_TxIrq_Deal(struct RS485MSG *s);
 void Sci2_CommonUpper_FaultChk(void);
 void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s);
+void Sci2_CommonUpper_TxIrq_Deal(struct RS485MSG *s);
 
 
 void InitUSART_CommonUpper(void);
 void App_CommonUpper(void);
 
 #endif	/* SCI_H */
-

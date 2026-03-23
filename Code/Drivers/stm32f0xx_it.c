@@ -173,23 +173,35 @@ void EXTI4_15_IRQHandler(void) {
 
 
 void USART1_IRQHandler(void) {
-	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+	#if (defined _COMMOM_UPPER_SCI1)
+	Sci1_CommonUpper_FaultChk();
+	if (USART1->ISR & USART_ISR_RXNE) {
 		RTC_ExtComCnt++;
-		#if (defined _COMMOM_UPPER_SCI1)
-		Sci1_CommonUpper_FaultChk();
 		Sci1_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI1);
-		#endif
 	}
+	if ((USART1->ISR & USART_ISR_TXE) && (USART1->CR1 & USART_CR1_TXEIE)) {
+		Sci1_CommonUpper_TxIrq_Deal(&g_stCurrentMsgPtr_SCI1);
+	}
+	if ((USART1->ISR & USART_ISR_TC) && (USART1->CR1 & USART_CR1_TCIE)) {
+		Sci1_CommonUpper_TxIrq_Deal(&g_stCurrentMsgPtr_SCI1);
+	}
+	#endif
 }
 
 
 void USART2_IRQHandler(void) {
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
+	#ifdef _COMMOM_UPPER_SCI2
+	Sci2_CommonUpper_FaultChk();
+	if (USART2->ISR & USART_ISR_RXNE) {
 		RTC_ExtComCnt++;
-		#ifdef _COMMOM_UPPER_SCI2
-		Sci2_CommonUpper_FaultChk();
 		Sci2_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI2);
-		#endif
 	}
+	if ((USART2->ISR & USART_ISR_TXE) && (USART2->CR1 & USART_CR1_TXEIE)) {
+		Sci2_CommonUpper_TxIrq_Deal(&g_stCurrentMsgPtr_SCI2);
+	}
+	if ((USART2->ISR & USART_ISR_TC) && (USART2->CR1 & USART_CR1_TCIE)) {
+		Sci2_CommonUpper_TxIrq_Deal(&g_stCurrentMsgPtr_SCI2);
+	}
+	#endif
 }
 

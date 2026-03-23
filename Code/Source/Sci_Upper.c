@@ -42,38 +42,200 @@ void Sci_WrReg_0x06_BMS_FunctionON(struct RS485MSG *s);
 void Sci_WrReg_0x06_BMS_FunctionOFF(struct RS485MSG *s);
 void Sci_WrReg_0x06_SetSocOnce(struct RS485MSG *s);
 
-static void Sci_CommonUpper_FaultChk(USART_TypeDef *USARTx, UINT16 *pu16CommuErrCnt)
+#define SCI1_COMMON_UPPER_BAUDRATE	((UINT32)115200)
+#define SCI2_COMMON_UPPER_BAUDRATE	((UINT32)19200)
+
+void CRC_verify(struct RS485MSG *s);
+void Sci_Deal_ReadRegs_0x03(struct RS485MSG *s);
+void Sci_Deal_WrReg_0x06(struct RS485MSG *s);
+void Sci_Deal_WrRegs_0x10(struct RS485MSG *s);
+void Sci_ACK_0x03(struct RS485MSG *s);
+void Sci_ACK_0x06_0x10(struct RS485MSG *s);
+
+#define SCI_RX_TIMEOUT_10MS		((UINT8)2)
+#define SCI_TX_DELAY_10MS		((UINT8)5)
+
+static void Sci_CommonUpper_EnableRx(USART_TypeDef *USARTx)
+{
+	USARTx->CR1 |= (1 << 2);
+	USARTx->CR1 |= (1 << 5);
+}
+
+static void Sci_CommonUpper_DisableRx(USART_TypeDef *USARTx)
+{
+	USARTx->CR1 &= ~(1 << 5);
+	USARTx->CR1 &= ~(1 << 2);
+}
+
+static void Sci_CommonUpper_StopTxIrq(USART_TypeDef *USARTx)
+{
+	USARTx->CR1 &= ~(1 << 7);
+	USARTx->CR1 &= ~(1 << 6);
+}
+
+static void Sci_CommonUpper_ResetRxState(struct RS485MSG *s)
+{
+	s->ptr_no = 0;
+	s->u8RxTimeoutTick = 0;
+	s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
+	s->enRs485CmdType = RS485_CMD_READ_REGS;
+	s->u16RdRegByteNum = 0;
+	s->u16Buffer[0] = 0;
+	s->u16Buffer[1] = 0;
+	s->u16Buffer[2] = 0;
+	s->u16Buffer[3] = 0;
+}
+
+static void Sci_CommonUpper_ResetTxState(struct RS485MSG *s)
+{
+	s->u8TxDelayTick = 0;
+	s->u8TxIndex = 0;
+	s->AckLenth = 0;
+}
+
+static void Sci_CommonUpper_ResetState(struct RS485MSG *s)
+{
+	s->csr = RS485_STA_IDLE;
+	s->AckType = RS485_ACK_POS;
+	s->ErrorType = RS485_ERROR_NULL;
+	Sci_CommonUpper_ResetTxState(s);
+	Sci_CommonUpper_ResetRxState(s);
+}
+
+static void Sci_CommonUpper_Abort(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
+{
+	Sci_CommonUpper_StopTxIrq(USARTx);
+	*pu8TxEnable = 0;
+	*pu8TxFinishFlag = 0;
+	Sci_CommonUpper_EnableRx(USARTx);
+	Sci_CommonUpper_ResetState(s);
+}
+
+static UINT8 Sci_CommonUpper_IsValidStart(UINT8 currentByte)
+{
+	return (UINT8)((currentByte == RS485_SLAVE_ADDR) || (currentByte == RS485_BROADCAST_ADDR) || P12_IsStartByte(currentByte));
+}
+
+static UINT16 Sci_CommonUpper_GetExpectedRxLength(struct RS485MSG *s, UINT8 *pu8Valid, UINT8 *pu8Ready)
+{
+	UINT16 expectedLength = 0;
+
+	*pu8Valid = 1;
+	*pu8Ready = 0;
+
+	if (s->ptr_no == 0)
+	{
+		return 0;
+	}
+
+	if (s->u8FrameProtocol == SCI_FRAME_PROTOCOL_P12)
+	{
+		if (s->ptr_no >= 2U)
+		{
+			if (!P12_CheckHeader(s))
+			{
+				*pu8Valid = 0;
+				return 0;
+			}
+		}
+
+		if (s->ptr_no < 6U)
+		{
+			return 0;
+		}
+
+		expectedLength = (UINT16)(s->u16Buffer[5] + 8U);
+	}
+	else
+	{
+		if ((s->u16Buffer[0] != RS485_SLAVE_ADDR) && (s->u16Buffer[0] != RS485_BROADCAST_ADDR))
+		{
+			*pu8Valid = 0;
+			return 0;
+		}
+
+		if (s->ptr_no < 2U)
+		{
+			return 0;
+		}
+
+		switch (s->u16Buffer[1])
+		{
+		case RS485_CMD_READ_REGS:
+			s->enRs485CmdType = RS485_CMD_READ_REGS;
+			expectedLength = 8U;
+			break;
+
+		case RS485_CMD_WRITE_REG:
+			s->enRs485CmdType = RS485_CMD_WRITE_REG;
+			expectedLength = 8U;
+			break;
+
+		case RS485_CMD_WRITE_REGS:
+			s->enRs485CmdType = RS485_CMD_WRITE_REGS;
+			if (s->ptr_no < 7U)
+			{
+				return 0;
+			}
+			expectedLength = (UINT16)(s->u16Buffer[6] + 9U);
+			break;
+
+		default:
+			*pu8Valid = 0;
+			return 0;
+		}
+	}
+
+	if ((expectedLength == 0U) || (expectedLength > RS485_MAX_BUFFER_SIZE))
+	{
+		*pu8Valid = 0;
+		return 0;
+	}
+
+	if (s->ptr_no == expectedLength)
+	{
+		*pu8Ready = 1;
+	}
+	else if (s->ptr_no > expectedLength)
+	{
+		*pu8Valid = 0;
+	}
+
+	return expectedLength;
+}
+
+static void Sci_CommonUpper_FaultChk(USART_TypeDef *USARTx, struct RS485MSG *s, UINT16 *pu16CommuErrCnt, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
 {
 	UINT8 FaultCnt = 0;
 
 	if (USARTx->ISR & 0x08)
-	{					   // ???????RXNEIE?EIE????????
-		USARTx->ICR |= 1 << 3; // ??
+	{
+		USARTx->ICR |= 1 << 3;
 		FaultCnt++;
 	}
 
 	if (USARTx->ISR & 0x04)
-	{					   // ??????????????CR3?ONEBIT?1???
-						   // USART_CR3?EIE????
-		USARTx->ICR |= 1 << 2; // ??
+	{
+		USARTx->ICR |= 1 << 2;
 		FaultCnt++;
 	}
 
 	if (USARTx->ISR & 0x02)
-	{					   // ????USART_CR3?EIE??????
-		USARTx->ICR |= 1 << 1; // ??
+	{
+		USARTx->ICR |= 1 << 1;
 		FaultCnt++;
 	}
 
 	if (USARTx->ISR & 0x01)
-	{					   // ?????? USART_CR1?PEIE????????
-		USARTx->ICR |= 1 << 0; // ??
+	{
+		USARTx->ICR |= 1 << 0;
 		FaultCnt++;
 	}
 
 	if (FaultCnt)
 	{
 		(*pu16CommuErrCnt)++;
+		Sci_CommonUpper_Abort(USARTx, s, pu8TxEnable, pu8TxFinishFlag);
 	}
 }
 
@@ -81,148 +243,145 @@ static void Sci_CommonUpper_Rx_Deal(USART_TypeDef *USARTx, struct RS485MSG *s)
 {
 	UINT8 currentByte;
 
-	USARTx->CR1 &= ~(1 << 5);
 	currentByte = (UINT8)USARTx->RDR;
-	s->u16Buffer[s->ptr_no] = currentByte;
 
-	if (s->ptr_no == 0)
+	if (s->csr != RS485_STA_IDLE)
 	{
-		if ((currentByte != RS485_SLAVE_ADDR) && (currentByte != RS485_BROADCAST_ADDR) && !P12_IsStartByte(currentByte))
+		return;
+	}
+
+	if (s->ptr_no == 0U)
+	{
+		if (!Sci_CommonUpper_IsValidStart(currentByte))
 		{
-			s->ptr_no = 0;
-			s->u16Buffer[0] = 0;
-			USARTx->CR1 |= (1 << 5);
 			return;
 		}
 
 		s->u8FrameProtocol = P12_IsStartByte(currentByte) ? SCI_FRAME_PROTOCOL_P12 : SCI_FRAME_PROTOCOL_MODBUS;
 	}
-	else if (s->u8FrameProtocol == SCI_FRAME_PROTOCOL_P12)
+
+	if (s->ptr_no >= RS485_MAX_BUFFER_SIZE)
 	{
-		if ((s->ptr_no == 1) && !P12_CheckHeader(s))
+		Sci_CommonUpper_ResetRxState(s);
+		return;
+	}
+
+	s->u16Buffer[s->ptr_no++] = currentByte;
+	s->u8RxTimeoutTick = 0;
+}
+
+static void Sci_CommonUpper_StartTx(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
+{
+	if (s->AckLenth == 0U)
+	{
+		*pu8TxEnable = 0;
+		*pu8TxFinishFlag = 1;
+		s->csr = RS485_STA_TX_COMPLETE;
+		return;
+	}
+
+	*pu8TxEnable = 1;
+	*pu8TxFinishFlag = 0;
+	s->u8TxIndex = 0;
+	s->u8TxDelayTick = 0;
+	Sci_CommonUpper_DisableRx(USARTx);
+	Sci_CommonUpper_StopTxIrq(USARTx);
+	USARTx->ICR |= 1 << 6;
+	USARTx->CR1 |= (1 << 3);
+	USARTx->CR1 |= (1 << 7);
+	s->csr = RS485_STA_TX_COMPLETE;
+}
+
+static void Sci_CommonUpper_Tx_Deal(USART_TypeDef *USARTx, struct RS485MSG *s, UINT16 *pu16CommuErrCnt, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
+{
+	UINT8 u8Valid;
+	UINT8 u8Ready;
+
+	Sci_CommonUpper_GetExpectedRxLength(s, &u8Valid, &u8Ready);
+
+	if ((s->csr == RS485_STA_IDLE) && (s->ptr_no > 0U))
+	{
+		if (!u8Valid)
 		{
-			s->ptr_no = 0;
-			s->u16Buffer[0] = 0;
-			s->u16Buffer[1] = 0;
-			USARTx->CR1 |= (1 << 5);
+			(*pu16CommuErrCnt)++;
+			Sci_CommonUpper_EnableRx(USARTx);
+			Sci_CommonUpper_ResetRxState(s);
+		}
+		else if (u8Ready)
+		{
+			Sci_CommonUpper_DisableRx(USARTx);
+			s->u8RxTimeoutTick = 0;
+			s->csr = RS485_STA_RX_COMPLETE;
+		}
+	}
+
+	if (!g_st_SysTimeFlag.bits.b1Sys10msFlag1)
+	{
+		return;
+	}
+
+	if ((s->csr == RS485_STA_IDLE) && (s->ptr_no > 0U) && !u8Ready)
+	{
+		if (++s->u8RxTimeoutTick >= SCI_RX_TIMEOUT_10MS)
+		{
+			(*pu16CommuErrCnt)++;
+			Sci_CommonUpper_EnableRx(USARTx);
+			Sci_CommonUpper_ResetRxState(s);
+		}
+	}
+	else
+	{
+		s->u8RxTimeoutTick = 0;
+	}
+
+	if ((*pu8TxEnable) && (s->u8TxDelayTick > 0U))
+	{
+		if (--s->u8TxDelayTick == 0U)
+		{
+			USARTx->CR1 |= (1 << 7);
+		}
+	}
+}
+
+static void Sci_CommonUpper_TxIrq_Deal(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
+{
+	if ((USARTx->ISR & (1 << 7)) && (USARTx->CR1 & (1 << 7)))
+	{
+		if (s->u8TxDelayTick > 0U)
+		{
 			return;
 		}
 
-		if (P12_IsRxComplete(s))
+		if (s->u8TxIndex < s->AckLenth)
 		{
-			s->csr = RS485_STA_RX_COMPLETE;
-			USARTx->CR1 &= ~(1 << 2);
-			USARTx->CR1 &= ~(1 << 5);
-		}
-	}
-	else
-	{
-		if (s->ptr_no == 1)
-		{
-			switch (s->u16Buffer[s->ptr_no])
+			USARTx->TDR = s->u16Buffer[s->u8TxIndex++];
+
+			if ((s->u8TxIndex == 19U) || (s->u8TxIndex == 39U) || (s->u8TxIndex == 59U))
 			{
-			case RS485_CMD_READ_REGS:
-				s->enRs485CmdType = RS485_CMD_READ_REGS;
-				break;
-			case RS485_CMD_WRITE_REG:
-				s->enRs485CmdType = RS485_CMD_WRITE_REG;
-				break;
-			case RS485_CMD_WRITE_REGS:
-				s->enRs485CmdType = RS485_CMD_WRITE_REGS;
-				break;
-			default:
-				s->ptr_no = RS485_MAX_BUFFER_SIZE;
-				s->u16Buffer[0] = 0;
-				s->u16Buffer[1] = 0;
-				break;
+				USARTx->CR1 &= ~(1 << 7);
+				s->u8TxDelayTick = SCI_TX_DELAY_10MS;
+			}
+
+			if (s->u8TxIndex >= s->AckLenth)
+			{
+				USARTx->CR1 &= ~(1 << 7);
+				USARTx->CR1 |= (1 << 6);
 			}
 		}
-		else if (s->ptr_no >= 2)
+		else
 		{
-			switch (s->enRs485CmdType)
-			{
-			case RS485_CMD_READ_REGS:
-			case RS485_CMD_WRITE_REG:
-				if (s->ptr_no == 7)
-				{
-					s->csr = RS485_STA_RX_COMPLETE;
-					USARTx->CR1 &= ~(1 << 2);
-					USARTx->CR1 &= ~(1 << 5);
-				}
-				break;
-			case RS485_CMD_WRITE_REGS:
-				if ((s->ptr_no >= 7) && (s->ptr_no == (s->u16Buffer[6] + 8)))
-				{
-					s->csr = RS485_STA_RX_COMPLETE;
-					USARTx->CR1 &= ~(1 << 2);
-					USARTx->CR1 &= ~(1 << 5);
-				}
-				break;
-			default:
-				s->ptr_no = RS485_MAX_BUFFER_SIZE;
-				s->u16Buffer[0] = 0;
-				break;
-			}
+			USARTx->CR1 &= ~(1 << 7);
+			USARTx->CR1 |= (1 << 6);
 		}
 	}
 
-	s->ptr_no++;
-	if (s->ptr_no >= RS485_MAX_BUFFER_SIZE)
+	if ((USARTx->ISR & (1 << 6)) && (USARTx->CR1 & (1 << 6)))
 	{
-		s->ptr_no = 0;
-		s->u16Buffer[0] = 0;
-		s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
-	}
+		USARTx->ICR |= 1 << 6;
+		USARTx->CR1 &= ~(1 << 6);
+		*pu8TxEnable = 0;
+		*pu8TxFinishFlag = 1;
 
-	USARTx->CR1 |= (1 << 5);
-}
-
-static void Sci_CommonUpper_Tx_Deal(USART_TypeDef *USARTx, struct RS485MSG *s, UINT16 *pu16CommuErrCnt, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag, int *pDelayFlag)
-{
-		if (0 == (*pu8TxEnable))
-	{
-		return;
-	}
-
-	if ((*pu16CommuErrCnt))
-	{ // 出现错误也得把数据全部接收完，然后不回复
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		(*pu8TxFinishFlag) = 1;
-		(*pu8TxEnable) = 0;
-		(*pu16CommuErrCnt) = 0;
-		return;
-	}
-
-	if ((*pDelayFlag))
-	{
-		if (g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-		{
-			if (++(*pDelayFlag) == 6)
-			{
-				(*pDelayFlag) = 0;
-			}
-		}
-		return;
-	}
-
-	while (!((USARTx->ISR) & (1 << 7)))
-		; // 1<<6 也可以
-	if (s->ptr_no < s->AckLenth)
-	{
-		USARTx->TDR = s->u16Buffer[s->ptr_no]; // load data
-		s->ptr_no++;
-		if ((s->ptr_no == 19) || (s->ptr_no == 39) || (s->ptr_no == 59))
-		{
-			(*pDelayFlag) = 1;
-		}
-	}
-	else
-	{
-		s->ptr_no = 0;
-		s->csr = RS485_STA_TX_COMPLETE;
-		(*pu8TxFinishFlag) = 1;
-		(*pu8TxEnable) = 0;
 		if (u8FlashUpdateE2PROM)
 		{
 			u8FlashUpdateE2PROM = 0;
@@ -231,29 +390,33 @@ static void Sci_CommonUpper_Tx_Deal(USART_TypeDef *USARTx, struct RS485MSG *s, U
 	}
 }
 
-static void App_CommonUpperSCI(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag, void (*pfnTxDeal)(struct RS485MSG *s))
+static void App_CommonUpperSCI(USART_TypeDef *USARTx, struct RS485MSG *s, UINT16 *pu16CommuErrCnt, UINT8 *pu8TxEnable, UINT8 *pu8TxFinishFlag)
 {
+	Sci_CommonUpper_Tx_Deal(USARTx, s, pu16CommuErrCnt, pu8TxEnable, pu8TxFinishFlag);
+
 	switch (s->csr)
 	{
 	case RS485_STA_IDLE:
 	{
 		break;
 	}
+
 	case RS485_STA_RX_COMPLETE:
 	{
-		USARTx->CR1 &= ~(1 << 5);
 		if (s->u8FrameProtocol == SCI_FRAME_PROTOCOL_P12)
 		{
 			if (!P12_PrepareResponse(s))
 			{
+				(*pu16CommuErrCnt)++;
+				*pu8TxFinishFlag = 1;
 				s->csr = RS485_STA_TX_COMPLETE;
-				(*pu8TxFinishFlag) = 1;
 				break;
 			}
 		}
 		else
 		{
 			CRC_verify(s);
+
 			if (s->AckType == RS485_ACK_POS)
 			{
 				switch (s->enRs485CmdType)
@@ -261,12 +424,15 @@ static void App_CommonUpperSCI(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 
 				case RS485_CMD_READ_REGS:
 					Sci_Deal_ReadRegs_0x03(s);
 					break;
+
 				case RS485_CMD_WRITE_REG:
 					Sci_Deal_WrReg_0x06(s);
 					break;
+
 				case RS485_CMD_WRITE_REGS:
 					Sci_Deal_WrRegs_0x10(s);
 					break;
+
 				default:
 					s->u16RdRegByteNum = 0;
 					s->AckType = RS485_ACK_NEG;
@@ -275,9 +441,11 @@ static void App_CommonUpperSCI(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 
 				}
 			}
 		}
+
 		s->csr = RS485_STA_RX_OK;
 		break;
 	}
+
 	case RS485_STA_RX_OK:
 	{
 		if (s->u8FrameProtocol == SCI_FRAME_PROTOCOL_MODBUS)
@@ -287,53 +455,40 @@ static void App_CommonUpperSCI(USART_TypeDef *USARTx, struct RS485MSG *s, UINT8 
 			case RS485_CMD_READ_REGS:
 				Sci_ACK_0x03(s);
 				break;
+
 			case RS485_CMD_WRITE_REG:
 			case RS485_CMD_WRITE_REGS:
 				Sci_ACK_0x06_0x10(s);
 				break;
+
 			default:
 				break;
 			}
 		}
 
-		if (s->AckLenth > 0)
-		{
-			USARTx->CR1 |= (1 << 3);
-			(*pu8TxEnable) = 1;
-		}
-		else
-		{
-			s->csr = RS485_STA_TX_COMPLETE;
-			(*pu8TxFinishFlag) = 1;
-		}
+		Sci_CommonUpper_StartTx(USARTx, s, pu8TxEnable, pu8TxFinishFlag);
+		break;
 	}
+
 	case RS485_STA_TX_COMPLETE:
 	{
-		if ((*pu8TxFinishFlag))
+		if (*pu8TxFinishFlag)
 		{
-			s->csr = RS485_STA_IDLE;
-			s->u16Buffer[0] = 0;
-			s->u16Buffer[1] = 0;
-			s->u16Buffer[2] = 0;
-			s->u16Buffer[3] = 0;
-			(*pu8TxFinishFlag) = 0;
-			s->ptr_no = 0;
-			s->AckLenth = 0;
-			s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
-			USARTx->CR1 |= (1 << 2);
-			USARTx->CR1 |= (1 << 5);
-			(*pu8TxEnable) = 0;
+			*pu8TxFinishFlag = 0;
+			*pu8TxEnable = 0;
+			Sci_CommonUpper_EnableRx(USARTx);
+			Sci_CommonUpper_ResetState(s);
 		}
 		break;
 	}
 
 	default:
 	{
-		s->csr = RS485_STA_IDLE;
+		Sci_CommonUpper_EnableRx(USARTx);
+		Sci_CommonUpper_ResetState(s);
 		break;
 	}
 	}
-	pfnTxDeal(s);
 }
 
 void Sci_DataInit(struct RS485MSG *s)
@@ -343,6 +498,9 @@ void Sci_DataInit(struct RS485MSG *s)
 	s->ptr_no = 0;
 	s->csr = RS485_STA_IDLE;
 	s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
+	s->u8RxTimeoutTick = 0;
+	s->u8TxDelayTick = 0;
+	s->u8TxIndex = 0;
 	s->enRs485CmdType = RS485_CMD_READ_REGS;
 	for (i = 0; i < RS485_MAX_BUFFER_SIZE; i++)
 	{
@@ -1039,7 +1197,7 @@ void Sci_ACK_0x06_0x10(struct RS485MSG *s)
 #if (defined _COMMOM_UPPER_SCI1)
 void Sci1_CommonUpper_FaultChk(void)
 {
-	Sci_CommonUpper_FaultChk(USART1, &gu16_CommuErrCnt_SCI1);
+	Sci_CommonUpper_FaultChk(USART1, &g_stCurrentMsgPtr_SCI1, &gu16_CommuErrCnt_SCI1, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
 }
 
 
@@ -1064,9 +1222,12 @@ void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s)
 
 void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
+	Sci_CommonUpper_Tx_Deal(USART1, s, &gu16_CommuErrCnt_SCI1, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
+}
 
-	Sci_CommonUpper_Tx_Deal(USART1, s, &gu16_CommuErrCnt_SCI1, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1, &delayFlag);
+void Sci1_CommonUpper_TxIrq_Deal(struct RS485MSG *s)
+{
+	Sci_CommonUpper_TxIrq_Deal(USART1, s, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
 }
 
 
@@ -1097,7 +1258,7 @@ void InitSCI1_CommonUpper(void)
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	// 串口初始化
-	USART_InitStructure.USART_BaudRate = 19200;										// 设置串口波特率
+	USART_InitStructure.USART_BaudRate = SCI1_COMMON_UPPER_BAUDRATE;										// 设置串口波特率
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;						// 设置数据位
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;							// 设置停止位
 	USART_InitStructure.USART_Parity = USART_Parity_No;								// 设置效验位
@@ -1116,7 +1277,7 @@ void InitSCI1_CommonUpper(void)
 
 void App_CommonUpperSCI1(struct RS485MSG *s)
 {
-	App_CommonUpperSCI(USART1, s, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1, Sci1_CommonUpper_Tx_Deal);
+	App_CommonUpperSCI(USART1, s, &gu16_CommuErrCnt_SCI1, &gu8_TxEnable_SCI1, &gu8_TxFinishFlag_SCI1);
 }
 
 
@@ -1126,7 +1287,7 @@ void App_CommonUpperSCI1(struct RS485MSG *s)
 
 void Sci2_CommonUpper_FaultChk(void)
 {
-	Sci_CommonUpper_FaultChk(USART2, &gu16_CommuErrCnt_SCI2);
+	Sci_CommonUpper_FaultChk(USART2, &g_stCurrentMsgPtr_SCI2, &gu16_CommuErrCnt_SCI2, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
 }
 
 
@@ -1151,9 +1312,12 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 
 void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s)
 {
-	static int delayFlag = 0;
+	Sci_CommonUpper_Tx_Deal(USART2, s, &gu16_CommuErrCnt_SCI2, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
+}
 
-	Sci_CommonUpper_Tx_Deal(USART2, s, &gu16_CommuErrCnt_SCI2, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2, &delayFlag);
+void Sci2_CommonUpper_TxIrq_Deal(struct RS485MSG *s)
+{
+	Sci_CommonUpper_TxIrq_Deal(USART2, s, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
 }
 
 
@@ -1184,7 +1348,7 @@ void InitSCI2_CommonUpper(void)
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	// 串口初始化
-	USART_InitStructure.USART_BaudRate = 19200;										// 设置串口波特率
+	USART_InitStructure.USART_BaudRate = SCI2_COMMON_UPPER_BAUDRATE;										// 设置串口波特率
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;						// 设置数据位
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;							// 设置停止位
 	USART_InitStructure.USART_Parity = USART_Parity_No;								// 设置效验位
@@ -1203,7 +1367,7 @@ void InitSCI2_CommonUpper(void)
 
 void App_CommonUpperSCI2(struct RS485MSG *s)
 {
-	App_CommonUpperSCI(USART2, s, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2, Sci2_CommonUpper_Tx_Deal);
+	App_CommonUpperSCI(USART2, s, &gu16_CommuErrCnt_SCI2, &gu8_TxEnable_SCI2, &gu8_TxFinishFlag_SCI2);
 }
 
 
