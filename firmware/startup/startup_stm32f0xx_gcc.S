@@ -6,6 +6,13 @@
 .global Default_Handler
 .global Reset_Handler
 
+.equ APP_VECTOR_WORDS, 48
+.equ RAM_VECTOR_BASE, 0x20000000
+.equ RCC_APB2ENR, 0x40021018
+.equ RCC_APB2ENR_SYSCFGEN, 0x00000001
+.equ SYSCFG_CFGR1, 0x40010000
+.equ SYSCFG_MEM_MODE_SRAM, 0x00000003
+
 .word _sidata
 .word _sdata
 .word _edata
@@ -16,6 +23,35 @@
 .weak Reset_Handler
 .type Reset_Handler, %function
 Reset_Handler:
+    /* Remap the application vector table before early startup code runs.
+       The bootloader may leave pending interrupts enabled; on STM32F030 there
+       is no VTOR, so any early exception would otherwise fall back to the
+       bootloader vector table. */
+    ldr r0, =g_pfnVectors
+    ldr r1, =RAM_VECTOR_BASE
+    movs r2, #APP_VECTOR_WORDS
+0:
+    ldr r3, [r0]
+    str r3, [r1]
+    adds r0, r0, #4
+    adds r1, r1, #4
+    subs r2, r2, #1
+    bne 0b
+
+    ldr r0, =RCC_APB2ENR
+    ldr r1, [r0]
+    ldr r2, =RCC_APB2ENR_SYSCFGEN
+    orrs r1, r2
+    str r1, [r0]
+
+    ldr r0, =SYSCFG_CFGR1
+    ldr r1, [r0]
+    movs r2, #3
+    bics r1, r2
+    movs r2, #SYSCFG_MEM_MODE_SRAM
+    orrs r1, r2
+    str r1, [r0]
+
     ldr r0, =_sidata
     ldr r1, =_sdata
     ldr r2, =_edata

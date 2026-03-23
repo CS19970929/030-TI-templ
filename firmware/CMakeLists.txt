@@ -7,9 +7,9 @@ project(stm32f030_bq769x0_app C ASM)
 set(PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(APP_ENABLE_LTO "Enable link time optimization for firmware build" OFF)
-set(APP_OPT_LEVEL "1" CACHE STRING "Firmware optimization level for GCC builds (0,1,2,3,s,g)")
-set(APP_HEAP_SIZE "0x200" CACHE STRING "Reserved heap bytes in linker script")
+option(APP_ENABLE_LTO "Enable link time optimization for firmware build" ON)
+set(APP_OPT_LEVEL "s" CACHE STRING "Firmware optimization level for GCC builds (0,1,2,3,s,g)")
+set(APP_HEAP_SIZE "0x0" CACHE STRING "Reserved heap bytes in linker script")
 set(APP_STACK_SIZE "0xC00" CACHE STRING "Reserved stack bytes in linker script")
 
 set(APP_LINKER_TEMPLATE "${CMAKE_CURRENT_LIST_DIR}/linker/stm32f030c8_bq769x0_app.ld")
@@ -18,6 +18,7 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
 configure_file("${APP_LINKER_TEMPLATE}" "${APP_LINKER_SCRIPT}" @ONLY)
 
 set(FIRMWARE_SOURCES
+    "${CMAKE_CURRENT_LIST_DIR}/startup/startup_stm32f0xx_gcc.S"
     "${PROJECT_ROOT}/Code/Drivers/stm32f0xx_it.c"
     "${PROJECT_ROOT}/Code/Drivers/system_stm32f0xx.c"
     "${PROJECT_ROOT}/Code/Source/ADC.c"
@@ -51,7 +52,6 @@ set(FIRMWARE_SOURCES
     "${PROJECT_ROOT}/Code/Source/bsp/bsp_cpu_flash.c"
     "${PROJECT_ROOT}/Code/Source/bsp/param.c"
     "${PROJECT_ROOT}/Code/Source/conf/conf.c"
-    "${CMAKE_CURRENT_LIST_DIR}/startup/startup_stm32f0xx_gcc.S"
     "${PROJECT_ROOT}/Code/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_adc.c"
     "${PROJECT_ROOT}/Code/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_can.c"
     "${PROJECT_ROOT}/Code/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_cec.c"
@@ -92,7 +92,7 @@ target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
     STM32F0XX
 )
 
-set(APP_GCC_OPT_FLAG "-O1")
+set(APP_GCC_OPT_FLAG "-Os")
 if(APP_OPT_LEVEL STREQUAL "0")
     set(APP_GCC_OPT_FLAG "-O0")
 elseif(APP_OPT_LEVEL STREQUAL "1")
@@ -113,12 +113,14 @@ target_compile_options(${PROJECT_NAME}.elf PRIVATE
     -g3
     -ffunction-sections
     -fdata-sections
+    -fno-unwind-tables
+    -fno-asynchronous-unwind-tables
     -fno-common
     -fno-strict-aliasing
     -fmessage-length=0
     -std=gnu99
     $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:${APP_GCC_OPT_FLAG}>
-    $<$<CONFIG:Debug>:-Og>
+    $<$<CONFIG:Debug>:-Os>
     $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration>
     $<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-pointer-types>
     $<$<COMPILE_LANGUAGE:C>:-Wno-builtin-declaration-mismatch>
@@ -129,7 +131,7 @@ target_compile_options(${PROJECT_NAME}.elf PRIVATE
 
 if(APP_ENABLE_LTO)
     target_compile_options(${PROJECT_NAME}.elf PRIVATE
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-flto>
+        -flto
     )
 endif()
 
@@ -137,6 +139,8 @@ target_link_options(${PROJECT_NAME}.elf PRIVATE
     -T${APP_LINKER_SCRIPT}
     -mcpu=cortex-m0
     -mthumb
+    -nostartfiles
+    -Wl,--nmagic
     -Wl,--gc-sections
     -Wl,-Map=${CMAKE_BINARY_DIR}/CommomBQ769x0_16series_030C8T6_C.map
     --specs=nano.specs
@@ -145,7 +149,7 @@ target_link_options(${PROJECT_NAME}.elf PRIVATE
 
 if(APP_ENABLE_LTO)
     target_link_options(${PROJECT_NAME}.elf PRIVATE
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-flto>
+        -flto
     )
 endif()
 

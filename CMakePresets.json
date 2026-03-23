@@ -16,8 +16,8 @@
         "BUILD_FIRMWARE": "ON",
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/toolchains/arm-none-eabi-gcc.cmake",
-        "APP_ENABLE_LTO": "OFF",
-        "APP_OPT_LEVEL": "g"
+        "APP_ENABLE_LTO": "ON",
+        "APP_OPT_LEVEL": "s"
       }
     },
     {
@@ -30,8 +30,8 @@
         "BUILD_FIRMWARE": "ON",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/toolchains/arm-none-eabi-gcc.cmake",
-        "APP_ENABLE_LTO": "OFF",
-        "APP_OPT_LEVEL": "1"
+        "APP_ENABLE_LTO": "ON",
+        "APP_OPT_LEVEL": "s"
       }
     }
   ],

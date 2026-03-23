@@ -4,7 +4,7 @@ vars:
   PYTHON: '{{default (ternary "py -3.12" "python3" (eq OS "windows")) .PYTHON}}'
   CMAKE: '{{default (ternary "C:/Program Files/CMake/bin/cmake.exe" "cmake" (eq OS "windows")) .CMAKE}}'
   ARM_GNU_TOOLCHAIN_ROOT: '{{default (ternary "" (printf "%s/.local/toolchains/arm-gnu-toolchain-15.2.rel1-darwin-arm64-arm-none-eabi" (env "HOME")) (eq OS "windows")) .ARM_GNU_TOOLCHAIN_ROOT}}'
-  APP_HEAP_SIZE: '{{default "0x200" .APP_HEAP_SIZE}}'
+  APP_HEAP_SIZE: '{{default "0x0" .APP_HEAP_SIZE}}'
   APP_STACK_SIZE: '{{default "0xC00" .APP_STACK_SIZE}}'
   MAP_FILE: '{{default "CommomBQ769x0_16series_030C8T6_C.map" .MAP_FILE}}'
   DEVICE: '{{default "STM32F030C8" .DEVICE}}'

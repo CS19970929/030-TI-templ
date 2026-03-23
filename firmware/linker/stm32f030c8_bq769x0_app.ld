@@ -1,12 +1,13 @@
 ENTRY(Reset_Handler)
 
-_estack = ORIGIN(RAM) + LENGTH(RAM);
+_estack = 0x20001B80;
 
 MEMORY
 {
     RAM_VECTOR (xrw) : ORIGIN = 0x20000000, LENGTH = 0x000000C0
-    RAM        (xrw) : ORIGIN = 0x200000C0, LENGTH = 0x00001F40
-    FLASH      (rx)  : ORIGIN = 0x08001C00, LENGTH = 0x0000E400
+    RAM        (xrw) : ORIGIN = 0x200000C0, LENGTH = 0x00001AC0
+    RAM_TOP_RSVD (xrw) : ORIGIN = 0x20001B80, LENGTH = 0x00000480
+    FLASH      (rx)  : ORIGIN = 0x08001C00, LENGTH = 0x0000D400
 }
 
 SECTIONS
@@ -21,6 +22,8 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
+        KEEP(*(.text.Reset_Handler))
+        KEEP(*(.text.Default_Handler))
         *(.text)
         *(.text*)
         *(.rodata)
@@ -30,41 +33,6 @@ SECTIONS
         *(.eh_frame)
         . = ALIGN(4);
         _etext = .;
-    } > FLASH
-
-    .ARM.extab :
-    {
-        *(.ARM.extab* .gnu.linkonce.armextab.*)
-    } > FLASH
-
-    .ARM.exidx :
-    {
-        __exidx_start = .;
-        *(.ARM.exidx*)
-        __exidx_end = .;
-    } > FLASH
-
-    .preinit_array :
-    {
-        PROVIDE_HIDDEN(__preinit_array_start = .);
-        KEEP(*(.preinit_array*))
-        PROVIDE_HIDDEN(__preinit_array_end = .);
-    } > FLASH
-
-    .init_array :
-    {
-        PROVIDE_HIDDEN(__init_array_start = .);
-        KEEP(*(SORT(.init_array.*)))
-        KEEP(*(.init_array*))
-        PROVIDE_HIDDEN(__init_array_end = .);
-    } > FLASH
-
-    .fini_array :
-    {
-        PROVIDE_HIDDEN(__fini_array_start = .);
-        KEEP(*(.fini_array*))
-        KEEP(*(SORT(.fini_array.*)))
-        PROVIDE_HIDDEN(__fini_array_end = .);
     } > FLASH
 
     .RAMVectorTable (NOLOAD) :
@@ -108,6 +76,11 @@ SECTIONS
 
     /DISCARD/ :
     {
+        *(.ARM.extab*)
+        *(.ARM.exidx*)
+        *(.preinit_array*)
+        *(.init_array*)
+        *(.fini_array*)
         *(.note*)
         *(.comment*)
     }
