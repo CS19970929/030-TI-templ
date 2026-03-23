@@ -509,6 +509,11 @@
               <FilePath>.\Code\Source\PubFunc.c</FilePath>
             </File>
             <File>
+              <FileName>P12_Protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\P12_Protocol.c</FilePath>
+            </File>
+            <File>
               <FileName>RTC.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\RTC.c</FilePath>

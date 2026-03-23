@@ -17,6 +17,11 @@ enum RS485_CMD_E {
 	UART_CLIENT_CMD_0x02 = 0xA2,	
 };
 
+enum SCI_FRAME_PROTOCOL_E {
+	SCI_FRAME_PROTOCOL_MODBUS = 0,
+	SCI_FRAME_PROTOCOL_P12 = 1,
+};
+
 
 struct SOC_CAL_ELEMENT_UPPER {
 	UINT16 u16Soc;                 	//��ǰ���SOC     0��100 Ϊ��������ٷֱ�
@@ -105,6 +110,7 @@ struct stCell_Info {
 struct RS485MSG {
 	UINT8	ptr_no;          	// Word stating what state msg is in
 	UINT8	csr;          		// I2C address of slave msg is intended for
+	UINT8	u8FrameProtocol;	// current frame protocol
 	UINT16	u16RdRegStartAddr;	// read reg start addr
 	UINT16	u16RdRegStartAddrActure;	//�Զ����ַ����
 	UINT8	u16RdRegByteNum;    // read byte lenth
