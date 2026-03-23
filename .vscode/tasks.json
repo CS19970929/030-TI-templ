@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "task build",
+      "type": "shell",
+      "command": "task build",
+      "problemMatcher": []
+    },
+    {
+      "label": "task build-debug",
+      "type": "shell",
+      "command": "task build-debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "task flash-jlink-debug",
+      "type": "shell",
+      "command": "task flash-jlink-debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "task flash-stlink",
+      "type": "shell",
+      "command": "task flash-stlink",
+      "problemMatcher": []
+    }
+  ]
+}

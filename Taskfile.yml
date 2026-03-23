@@ -7,6 +7,14 @@ vars:
   APP_HEAP_SIZE: '{{default "0x200" .APP_HEAP_SIZE}}'
   APP_STACK_SIZE: '{{default "0xC00" .APP_STACK_SIZE}}'
   MAP_FILE: '{{default "CommomBQ769x0_16series_030C8T6_C.map" .MAP_FILE}}'
+  DEVICE: '{{default "STM32F030C8" .DEVICE}}'
+  FLASH_ADDR: '{{default "0x08001C00" .FLASH_ADDR}}'
+  FIRMWARE_ELF: '{{default "artifacts/cmake/firmware-debug/firmware/CommomBQ769x0_16series_030C8T6_C.elf" .FIRMWARE_ELF}}'
+  FIRMWARE_BIN: '{{default "artifacts/cmake/firmware-release/CommomBQ769x0_16series_030C8T6_C.bin" .FIRMWARE_BIN}}'
+  FIRMWARE_BIN_DEBUG: '{{default "artifacts/cmake/firmware-debug/CommomBQ769x0_16series_030C8T6_C.bin" .FIRMWARE_BIN_DEBUG}}'
+  JLINK: '{{default "C:/Program Files/SEGGER/JLink_V818/JLink.exe" .JLINK}}'
+  OPENOCD: '{{default "C:/Users/Administrator/AppData/Local/Microsoft/WinGet/Packages/xpack-dev-tools.openocd-xpack_Microsoft.Winget.Source_8wekyb3d8bbwe/xpack-openocd-0.12.0-7/bin/openocd.exe" .OPENOCD}}'
+  OPENOCD_SCRIPTS: '{{default "C:/Users/Administrator/AppData/Local/Microsoft/WinGet/Packages/xpack-dev-tools.openocd-xpack_Microsoft.Winget.Source_8wekyb3d8bbwe/xpack-openocd-0.12.0-7/openocd/scripts" .OPENOCD_SCRIPTS}}'
 
 tasks:
   default:
@@ -15,7 +23,7 @@ tasks:
       - task --list
 
   doctor:
-    desc: 检查当前机器上的 Python/CMake/Ninja/Arm GNU Toolchain
+    desc: 检查当前机器上的 Python/CMake/Ninja/Arm GNU Toolchain/J-Link/OpenOCD
     cmds:
       - "{{.PYTHON}} scripts/check_toolchain.py"
 
@@ -26,22 +34,28 @@ tasks:
       - uv sync --no-install-project
 
   build:
-    desc: 使用 GCC/CMake 构建 STM32F030 固件
+    desc: 使用 GCC/CMake Release Preset 构建固件
     cmds:
       - '"{{.CMAKE}}" --fresh --preset firmware-release {{if .ARM_GNU_TOOLCHAIN_ROOT}}-DARM_GNU_TOOLCHAIN_ROOT="{{.ARM_GNU_TOOLCHAIN_ROOT}}"{{end}} -DAPP_HEAP_SIZE="{{.APP_HEAP_SIZE}}" -DAPP_STACK_SIZE="{{.APP_STACK_SIZE}}"'
       - '"{{.CMAKE}}" --build --preset build-firmware-release'
 
   build-debug:
-    desc: 使用 GCC/CMake Debug Preset 构建 STM32F030 固件
+    desc: 使用 GCC/CMake Debug Preset 构建固件
     cmds:
       - '"{{.CMAKE}}" --fresh --preset firmware-debug {{if .ARM_GNU_TOOLCHAIN_ROOT}}-DARM_GNU_TOOLCHAIN_ROOT="{{.ARM_GNU_TOOLCHAIN_ROOT}}"{{end}} -DAPP_HEAP_SIZE="{{.APP_HEAP_SIZE}}" -DAPP_STACK_SIZE="{{.APP_STACK_SIZE}}"'
       - '"{{.CMAKE}}" --build --preset build-firmware-debug'
 
   rebuild:
-    desc: 清理后重新执行固件构建
+    desc: 清理后重新执行 Release 构建
     cmds:
       - task: clean
       - task: build
+
+  rebuild-debug:
+    desc: 清理后重新执行 Debug 构建
+    cmds:
+      - task: clean
+      - task: build-debug
 
   clean:
     desc: 清理自动化构建产物目录
@@ -54,8 +68,30 @@ tasks:
       - "{{.PYTHON}} scripts/check_toolchain.py"
       - "{{.PYTHON}} scripts/analyze_map.py --help"
       - "{{.PYTHON}} scripts/export_artifacts.py --help"
+      - "{{.PYTHON}} scripts/flash_jlink.py --help"
+      - "{{.PYTHON}} scripts/flash_openocd.py --help"
 
   map:
     desc: 分析 Keil 或 GCC 生成的 map 文件热点
     cmds:
       - '{{.PYTHON}} scripts/analyze_map.py --map "{{.MAP_FILE}}" --top 20 --json artifacts/map-summary.json'
+
+  flash-jlink:
+    desc: 使用 J-Link 烧录 Release 固件
+    cmds:
+      - '{{.PYTHON}} scripts/flash_jlink.py --jlink "{{.JLINK}}" --device "{{.DEVICE}}" --artifact "{{.FIRMWARE_BIN}}" --address "{{.FLASH_ADDR}}"'
+
+  flash-jlink-debug:
+    desc: 使用 J-Link 烧录 Debug 固件
+    cmds:
+      - '{{.PYTHON}} scripts/flash_jlink.py --jlink "{{.JLINK}}" --device "{{.DEVICE}}" --artifact "{{.FIRMWARE_BIN_DEBUG}}" --address "{{.FLASH_ADDR}}"'
+
+  flash-stlink:
+    desc: 使用 ST-Link + OpenOCD 烧录 Release 固件
+    cmds:
+      - '{{.PYTHON}} scripts/flash_openocd.py --openocd "{{.OPENOCD}}" --scripts-dir "{{.OPENOCD_SCRIPTS}}" --artifact "{{.FIRMWARE_BIN}}" --address "{{.FLASH_ADDR}}"'
+
+  flash:
+    desc: 默认使用 ST-Link + OpenOCD 烧录 Release 固件
+    cmds:
+      - task: flash-stlink

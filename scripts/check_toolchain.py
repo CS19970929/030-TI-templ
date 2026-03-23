@@ -19,9 +19,29 @@ FALLBACKS = {
     "arm-none-eabi-gcc": [
         r"C:\Program Files (x86)\Arm GNU Toolchain arm-none-eabi\14.2 rel1\bin\arm-none-eabi-gcc.exe",
     ],
+    "JLink": [
+        r"C:\Program Files\SEGGER\JLink_V818\JLink.exe",
+        r"C:\Program Files\SEGGER\JLink_V796h\JLink.exe",
+    ],
+    "JLinkGDBServerCL": [
+        r"C:\Program Files\SEGGER\JLink_V818\JLinkGDBServerCL.exe",
+        r"C:\Program Files\SEGGER\JLink_V796h\JLinkGDBServerCL.exe",
+    ],
+    "openocd": [
+        r"C:\Users\Administrator\AppData\Local\Microsoft\WinGet\Packages\xpack-dev-tools.openocd-xpack_Microsoft.Winget.Source_8wekyb3d8bbwe\xpack-openocd-0.12.0-7\bin\openocd.exe",
+    ],
 }
 
-TOOLS = ["python", "uv", "cmake", "ninja", "arm-none-eabi-gcc"]
+TOOLS = [
+    "python",
+    "uv",
+    "cmake",
+    "ninja",
+    "arm-none-eabi-gcc",
+    "JLink",
+    "JLinkGDBServerCL",
+    "openocd",
+]
 
 
 def resolve_tool(tool: str):
@@ -69,7 +89,7 @@ def main() -> int:
     for tool in TOOLS:
         path = resolve_tool(tool)
         report["tools"][tool] = path
-        if path is None and tool != "uv":
+        if path is None and tool not in {"uv", "openocd"}:
             missing.append(tool)
 
     arm_gcc = report["tools"].get("arm-none-eabi-gcc")

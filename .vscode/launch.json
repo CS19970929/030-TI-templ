@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "STM32F030 Debug (ST-Link/OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "armToolchainPath": "C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin",
+      "executable": "${workspaceFolder}/artifacts/cmake/firmware-debug/firmware/CommomBQ769x0_16series_030C8T6_C.elf",
+      "runToEntryPoint": "main",
+      "configFiles": [
+        "interface/stlink.cfg",
+        "target/stm32f0x.cfg"
+      ],
+      "searchDir": [
+        "C:/Users/Administrator/AppData/Local/Microsoft/WinGet/Packages/xpack-dev-tools.openocd-xpack_Microsoft.Winget.Source_8wekyb3d8bbwe/xpack-openocd-0.12.0-7/openocd/scripts"
+      ],
+      "preLaunchTask": "task build-debug"
+    },
+    {
+      "name": "STM32F030 Debug (J-Link)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "jlink",
+      "device": "STM32F030C8",
+      "interface": "swd",
+      "cwd": "${workspaceFolder}",
+      "armToolchainPath": "C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin",
+      "executable": "${workspaceFolder}/artifacts/cmake/firmware-debug/firmware/CommomBQ769x0_16series_030C8T6_C.elf",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "task build-debug"
+    }
+  ]
+}
