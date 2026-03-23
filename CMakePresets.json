@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "firmware-debug",
+      "displayName": "Firmware Debug",
+      "description": "GCC Debug build for the BQ769x0 STM32F030 application",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/artifacts/cmake/firmware-debug",
+      "cacheVariables": {
+        "BUILD_FIRMWARE": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/toolchains/arm-none-eabi-gcc.cmake",
+        "APP_ENABLE_LTO": "OFF",
+        "APP_OPT_LEVEL": "g"
+      }
+    },
+    {
+      "name": "firmware-release",
+      "displayName": "Firmware Release",
+      "description": "Board-safe GCC build aligned with the Keil target memory layout",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/artifacts/cmake/firmware-release",
+      "cacheVariables": {
+        "BUILD_FIRMWARE": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/toolchains/arm-none-eabi-gcc.cmake",
+        "APP_ENABLE_LTO": "OFF",
+        "APP_OPT_LEVEL": "1"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-firmware-debug",
+      "configurePreset": "firmware-debug"
+    },
+    {
+      "name": "build-firmware-release",
+      "configurePreset": "firmware-release"
+    }
+  ]
+}

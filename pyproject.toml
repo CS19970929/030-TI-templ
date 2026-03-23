@@ -1,0 +1,13 @@
+[project]
+name = "bq769x0-toolchain-bootstrap"
+version = "0.1.0"
+description = "STM32F030 BQ769x0 项目的跨平台工具链入口"
+requires-python = ">=3.8"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+default-groups = []

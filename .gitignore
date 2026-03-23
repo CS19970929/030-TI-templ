@@ -17,3 +17,8 @@ JLinkSettings.ini
 CommomBQ769x0_16series_030C8T6_C.uvguix.Administrator
 .vscode/settings.json
 EventRecorderStub.scvd
+artifacts/
+.venv/
+compile_commands.json
+CMakeUserPresets.json
+uv.lock

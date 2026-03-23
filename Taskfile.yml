@@ -1,0 +1,61 @@
+version: "3"
+
+vars:
+  PYTHON: '{{default (ternary "py -3.12" "python3" (eq OS "windows")) .PYTHON}}'
+  CMAKE: '{{default (ternary "C:/Program Files/CMake/bin/cmake.exe" "cmake" (eq OS "windows")) .CMAKE}}'
+  ARM_GNU_TOOLCHAIN_ROOT: '{{default (ternary "" (printf "%s/.local/toolchains/arm-gnu-toolchain-15.2.rel1-darwin-arm64-arm-none-eabi" (env "HOME")) (eq OS "windows")) .ARM_GNU_TOOLCHAIN_ROOT}}'
+  APP_HEAP_SIZE: '{{default "0x200" .APP_HEAP_SIZE}}'
+  APP_STACK_SIZE: '{{default "0xC00" .APP_STACK_SIZE}}'
+  MAP_FILE: '{{default "CommomBQ769x0_16series_030C8T6_C.map" .MAP_FILE}}'
+
+tasks:
+  default:
+    desc: 显示可用任务
+    cmds:
+      - task --list
+
+  doctor:
+    desc: 检查当前机器上的 Python/CMake/Ninja/Arm GNU Toolchain
+    cmds:
+      - "{{.PYTHON}} scripts/check_toolchain.py"
+
+  init:
+    desc: 初始化 Python 工具环境
+    cmds:
+      - '{{if eq OS "windows"}}{{.PYTHON}} -m pip install uv{{else}}python3 -c "import shutil, sys; sys.exit(0 if shutil.which(\"uv\") else 1)" || python3 -m pip install --user uv{{end}}'
+      - uv sync --no-install-project
+
+  build:
+    desc: 使用 GCC/CMake 构建 STM32F030 固件
+    cmds:
+      - '"{{.CMAKE}}" --fresh --preset firmware-release {{if .ARM_GNU_TOOLCHAIN_ROOT}}-DARM_GNU_TOOLCHAIN_ROOT="{{.ARM_GNU_TOOLCHAIN_ROOT}}"{{end}} -DAPP_HEAP_SIZE="{{.APP_HEAP_SIZE}}" -DAPP_STACK_SIZE="{{.APP_STACK_SIZE}}"'
+      - '"{{.CMAKE}}" --build --preset build-firmware-release'
+
+  build-debug:
+    desc: 使用 GCC/CMake Debug Preset 构建 STM32F030 固件
+    cmds:
+      - '"{{.CMAKE}}" --fresh --preset firmware-debug {{if .ARM_GNU_TOOLCHAIN_ROOT}}-DARM_GNU_TOOLCHAIN_ROOT="{{.ARM_GNU_TOOLCHAIN_ROOT}}"{{end}} -DAPP_HEAP_SIZE="{{.APP_HEAP_SIZE}}" -DAPP_STACK_SIZE="{{.APP_STACK_SIZE}}"'
+      - '"{{.CMAKE}}" --build --preset build-firmware-debug'
+
+  rebuild:
+    desc: 清理后重新执行固件构建
+    cmds:
+      - task: clean
+      - task: build
+
+  clean:
+    desc: 清理自动化构建产物目录
+    cmds:
+      - '{{.PYTHON}} scripts/export_artifacts.py --source-root . --output artifacts/build-plan.json --clean'
+
+  test:
+    desc: 执行自动化工具自检
+    cmds:
+      - "{{.PYTHON}} scripts/check_toolchain.py"
+      - "{{.PYTHON}} scripts/analyze_map.py --help"
+      - "{{.PYTHON}} scripts/export_artifacts.py --help"
+
+  map:
+    desc: 分析 Keil 或 GCC 生成的 map 文件热点
+    cmds:
+      - '{{.PYTHON}} scripts/analyze_map.py --map "{{.MAP_FILE}}" --top 20 --json artifacts/map-summary.json'
