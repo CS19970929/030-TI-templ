@@ -873,7 +873,7 @@ void SOC_Update_StartUp(void)
 		// 第一次烧代码，上位机升级都会跑这个，用keil或者脱机烧写工具第二次烧写只会跑POWEROFF的路，目前这个问题无解
 		// SOC_Calculate_Element.u8SOC_Now = GetEndValue(SOC_Table_LiFePO, (UINT16)SOC_Size_LiFePO, (UINT16)g_stCellInfoReport.u16VCellMin);
 		// SOC_Calculate_Element.u8SOC_Now = Get_OpenCircuit_Value();
-		SOC_Calculate_Element.u8SOC_Now = 80;
+		SOC_Calculate_Element.u8SOC_Now = 66;
 		// InitSOC_IntEnhance()已处理这两个
 		// SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 		// SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever*100;

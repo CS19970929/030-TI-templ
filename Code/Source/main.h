@@ -3,7 +3,7 @@
 
 #include "stm32f0xx.h"
 #include "bqMaximo_Ctrl_G2553.h"
-#include "stm32f0xx_it.h"			//������һЩӲ������֮����жϣ�������Ҫ��
+#include "stm32f0xx_it.h"			//������һЩӲ������֮����жϣ��������?��
 #include "string.h"
 
 #include "DataDeal.h"
@@ -32,6 +32,7 @@
 #include "lk8625.h"
 #include "conf_gpio.h"
 #include "conf.h"
+#include "P12_Protocol.h"
 
 
 
