@@ -140,17 +140,12 @@ struct OTHER_ELEMENT {
 #define  BMS_SOFTWARE_VERDION_DEFAULT   "a002-20250916-c089"  //32
 #define  BMS_SERIAL_NUMBER_DEFAULT  	"hanstar"
 
-#define SNum 			4
+#define SNum 			8
 
 
 
-#if (LEVEL_CURR == CURR_100A)
 #define CS_Res			2
-#define CS_Res_Num		8
-#else
-#define CS_Res			2
-#define CS_Res_Num		10
-#endif
+#define CS_Res_Num		3
 
 #define CS_Cur_CHGmax	((INT32)CS_Res_Num*1250/CS_Res-10)
 #define CS_Cur_DSGmax	CS_Cur_CHGmax
@@ -159,8 +154,8 @@ struct OTHER_ELEMENT {
 #define CBC_DelayT		4000
 #define CBC_Cur_DSG		5000	
 #else
-#define CBC_DelayT		4000
-#define CBC_Cur_DSG		11000	
+#define CBC_DelayT		2000
+#define CBC_Cur_DSG		1000	
 #endif
 
 
@@ -184,7 +179,7 @@ struct OTHER_ELEMENT {
 	                             CS_Cur_CHGmax,	CS_Cur_DSGmax,CBC_DelayT,CBC_Cur_DSG,\
 	                             SOC_TABLE_LIFEPO,0,1000,30,\
 	                             __SLEEP_VNORMAL__,	__SLEEP_TIMENORMAL__, __SLEEP_VLOW__,	__SLEEP_TIMEVLOW__,		10,	10,	240,0,\
-	                             1500,	3,		3650,	2600,\
+	                             450,	3,		3550,	2800,\
 	                             SNum,CS_Res,CS_Res_Num,10}
 #endif
 

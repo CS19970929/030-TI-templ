@@ -43,7 +43,7 @@ void Sci_WrReg_0x06_BMS_FunctionOFF(struct RS485MSG *s);
 void Sci_WrReg_0x06_SetSocOnce(struct RS485MSG *s);
 
 #define SCI1_COMMON_UPPER_BAUDRATE	((UINT32)115200)
-#define SCI2_COMMON_UPPER_BAUDRATE	((UINT32)19200)
+#define SCI2_COMMON_UPPER_BAUDRATE	((UINT32)115200)
 
 void CRC_verify(struct RS485MSG *s);
 void Sci_Deal_ReadRegs_0x03(struct RS485MSG *s);

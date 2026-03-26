@@ -1,6 +1,8 @@
 #ifndef LEDBAR_H
 #define LEDBAR_H
 
+#include "conf_gpio.h"
+
 typedef enum _LEDBAR_COMMAND {
 	LED_BAR_STARTUP = 0,
     LED_BAR_NORMAL,
@@ -9,6 +11,7 @@ typedef enum _LEDBAR_COMMAND {
 	LED_BAR_FAULT,
 }LEDBAR_COMMAND;
 
+void LedBar_StartUp(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
 

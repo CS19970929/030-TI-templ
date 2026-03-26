@@ -1,5 +1,18 @@
 #include "main.h"
 
+/*
+1、请求电池静态数据（0x80)
+帧头（2 bytes）   地址（2 bytes）   ID    length    checksum（2 bytes）   
+0x 21 AA		   01 03           80    00        sum(byte0~byte N)
+
+2、应答电池静态数据（0x81)
+帧头（2 bytes）   地址（2 bytes）   ID    length    data 	 checksum（2 bytes）   
+0x 21 AA		   01 FF           81    12        			sum(byte0~byte N)
+
+1、请求电池动态数据（0x80)
+2、应答电池动态数据（0x80)
+*/
+
 static UINT16 P12_GetChecksum(const UINT8 *buffer, UINT16 length)
 {
 	UINT32 sum = 0;

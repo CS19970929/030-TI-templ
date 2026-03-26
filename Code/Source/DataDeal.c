@@ -79,7 +79,6 @@ void DataLoad_CellVolt_Test(void)
 		*(&System_ErrFlag.u8ErrFlag_Com_AFE1 + i) = i + 1;
 	}
 #endif
-
 }
 
 // 这里排列好就行，不需要电池位号映射表。>61000为不用
@@ -111,7 +110,6 @@ void DataLoad_CellVolt(void)
 			g_stCellInfoReport.u16VCell[i] = 61001;
 		}
 	}
-
 }
 
 void DataLoad_CellVoltMaxMinFind(void)
@@ -512,7 +510,7 @@ void App_AFEGet(void)
 {
 	static UINT8 ts_u8TempSel = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
+	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag)
 	{
 		return;
 	}
@@ -538,4 +536,6 @@ void App_AFEGet(void)
 	DataLoad_TemperatureMaxMinFind();
 	DataLoad_Current();
 	// test_Autocurrent_cycle();
+	App_BQ769X0_Monitor();
+	App_MOS_Relay_Ctrl();
 }

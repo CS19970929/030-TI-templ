@@ -573,6 +573,11 @@
               <FileType>1</FileType>
               <FilePath>.\Code\Source\lk8625.c</FilePath>
             </File>
+            <File>
+              <FileName>gan_huang_guan_logi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\gan_huang_guan_logi.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
