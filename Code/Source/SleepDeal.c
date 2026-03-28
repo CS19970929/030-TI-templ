@@ -286,23 +286,16 @@ void SleepDeal_Continue(void)
 	switch (s_u8SleepModeSelect)
 	{
 	case NORMAL_MODE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_NORMAL_SLEEP_VALUE))
-		{
-			u8FlashWriteOK_flag = 1;
-		}
+		BootFlag_Write(FLASH_NORMAL_SLEEP_VALUE);
+		u8FlashWriteOK_flag = 1;
 		break;
 	case HICCUP_MODE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_HICCUP_SLEEP_VALUE))
-		{
-			u8FlashWriteOK_flag = 1;
-		}
-
+		BootFlag_Write(FLASH_HICCUP_SLEEP_VALUE);
+		u8FlashWriteOK_flag = 1;
 		break;
 	case DEEP_MODE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_DEEP_SLEEP_VALUE))
-		{
-			u8FlashWriteOK_flag = 1;
-		}
+		BootFlag_Write(FLASH_DEEP_SLEEP_VALUE);
+		u8FlashWriteOK_flag = 1;
 		break;
 	default:
 		break;
@@ -863,6 +856,48 @@ void SleepDeal_Test(void)
 
 void IsSleepStartUp(void)
 {
+	UINT16 sleep_flag;
+
+	sleep_flag = BootFlag_Read();
+	switch (sleep_flag)
+	{
+	case FLASH_HICCUP_SLEEP_VALUE:
+		BootFlag_Clear();
+		Init_RTC();
+
+		IOstatus_RTCMode();
+		InitWakeUp_RTCMode();
+		Sys_StopMode();
+		// Sys_StandbyMode();
+		IORecover_RTCMode();
+		break;
+	case FLASH_NORMAL_SLEEP_VALUE:
+		BootFlag_Clear();
+		IOstatus_NormalMode();
+		InitWakeUp_NormalMode();
+		Sys_StopMode();
+		IORecover_NormalMode();
+		break;
+	case FLASH_DEEP_SLEEP_VALUE:
+		BootFlag_Clear();
+		IOstatus_DeepMode();
+		InitWakeUp_DeepMode();
+		// Sys_StandbyMode();		//??????IO???
+		Sys_StopMode();
+		IORecover_DeepMode();
+		break;
+	case FLASH_SLEEP_RESET_VALUE:
+		// ????
+		break;
+	default:
+		BootFlag_Clear();
+		break;
+	}
+}
+
+#if 0
+void IsSleepStartUp(void)
+{
 	switch (FlashReadOneHalfWord(FLASH_ADDR_SLEEP_FLAG))
 	{
 	case FLASH_HICCUP_SLEEP_VALUE:
@@ -903,13 +938,11 @@ void IsSleepStartUp(void)
 		break;
 	}
 }
+#endif
 
 void App_SleepDeal(void)
 {
-	if (!System_OnOFF_Func.bits.b1OnOFF_Sleep)
-	{			// 有个疑问，是不是立刻关了，不需要�?�原�?，均衡是需要关掉�?�原�?
-		return; // Sleep的话，�?�果直接不进去，后续打开会接着上�?�的步伐
-	} // 暂且先这么做，后�?如果要全盘�?�原，�?�时清零再�?�，�?前是接着上�?�的步伐
+	static uint8_t force_sleep_delay = 0;
 
 	if (reset_sleep_state)
 	{
@@ -987,6 +1020,19 @@ void App_SleepDeal(void)
 		break;
 	}
 
+	if (g_stCellInfoReport.u16VCellMin < 2500)
+	{
+		++force_sleep_delay;
+		if (force_sleep_delay >= 60 * 60)
+		{
+			entersleep(DEEP_MODE);
+		}
+	}
+	else
+	{
+		force_sleep_delay = 0;
+	}
+
 	if (SLEEP_HICCUP_CONTINUE == Sleep_Status)
 	{
 		Sleep_Mode.bits.b1_ToSleepFlag = 1;
@@ -1012,49 +1058,9 @@ void IORecover_TestMode(void)
 	MCU_RESET();
 }
 
-void App_NormalSleepTest(void)
-{
-	static UINT16 s_u16HaltTestCnt = 0;
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1)
-	{ // 休眠起来等待系统初�?�化完成
-		return;
-	}
-
-	if (++s_u16HaltTestCnt >= 5)
-	{ // 10s——Test
-		s_u16HaltTestCnt = 0;
-		IOstatus_TestMode();
-		InitWakeUp_TestMode();
-		TIM_Cmd(TIM17, DISABLE); //
-		Sys_StopMode();
-		// Sys_StandbyMode();
-		IORecover_TestMode();
-	}
-}
-
 void Sys_SleepOnExitMode(void)
 {
 	NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, ENABLE); // 库函数版�?，�?�置SLEEP ON EXIT位为1
 	// SCB->SCR|=1<<1;//寄存器版�?，�?�置SLEEP ON EXIT位为1
 	__ASM volatile("wfi");
-}
-
-void App_RTCSleepTest(void)
-{
-	static UINT16 s_u16HaltTestCnt = 0;
-
-	if (0 == g_st_SysTimeFlag.bits.b1Sys200msFlag1)
-	{ // 休眠起来等待系统初�?�化完成
-		return;
-	}
-
-	if (++s_u16HaltTestCnt >= 3)
-	{ // 10s——Test
-		s_u16HaltTestCnt = 0;
-		IOstatus_RTCMode();
-		InitWakeUp_RTCMode();
-		Sys_StopMode();
-		IORecover_RTCMode();
-	}
 }

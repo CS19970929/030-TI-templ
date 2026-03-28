@@ -98,7 +98,7 @@ enum tagInfoForKBArray {
 struct OTHER_ELEMENT {
     UINT16 u16Balance_OpenVoltage;	//mV�����⿪����ѹ
     UINT16 u16Balance_OpenWindow;	//mV�����⿪��ѹ��
-    UINT16 u16Balance_CloseWindow;	//mV������ر�ѹ��
+    UINT16 u16Balance_CloseWindow;	//mV������ر�ѹ��?
     UINT16 u16Balance_Res1;			//����λ
     UINT16 u16Balance_Res2;			//����λ
     UINT16 u16Balance_Res3;			//����λ
@@ -140,10 +140,10 @@ struct OTHER_ELEMENT {
 #define  BMS_SOFTWARE_VERDION_DEFAULT   "a002-20250916-c089"  //32
 #define  BMS_SERIAL_NUMBER_DEFAULT  	"hanstar"
 
-#define SNum 			4
+#define SNum 			8
 
-//#define TERNARYLI		//��Ԫ﮵�أ���ѡһ
-#define LIFEPO			//������﮵�أ���ѡһ
+//#define TERNARYLI		//��Ԫ﮵�أ���ѡ�?
+#define LIFEPO			//������﮵�أ���ѡ�?
 
 
 #if (LEVEL_CURR == CURR_100A)

@@ -23,6 +23,7 @@
 #define FLASH_HICCUP_SLEEP_VALUE    	((UINT16)0x1236)
 #define FLASH_SLEEP_RESET_VALUE    		((UINT16)0xFFFF)
 
+#define BOOT_FLAG_RESET_VALUE     		FLASH_SLEEP_RESET_VALUE
 
 #define MCU_RESET()	NVIC_SystemReset()
 
@@ -31,6 +32,10 @@ FLASH_Status FlashWriteOneHalfWord(uint32_t StartAddr,uint16_t Buffer);
 UINT16 FlashReadOneHalfWord(UINT32 faddr);
 void App_FlashUpdateDet(void);
 void Init_IAPAPP(void);
+
+void BootFlag_Write(UINT16 flag);
+UINT16 BootFlag_Read(void);
+void BootFlag_Clear(void);
 
 #endif	/* FLASH_H */
 

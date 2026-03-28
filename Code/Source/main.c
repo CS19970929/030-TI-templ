@@ -62,6 +62,8 @@ int main(void)
 		App_LogRecord();
 		App_ProID_Deal();
 
+		// __WFI();
+
 		Feed_IWatchDog;
 #endif
 	}
