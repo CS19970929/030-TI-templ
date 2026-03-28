@@ -188,7 +188,7 @@ void DataLoad_Temperature(void)
 		g_stCellInfoReport.u16Temperature[2] = 0;
 	}
 
-	Select = 1;
+	// Select = 1;
 	for (i = 0; i < Select; i++)
 	{
 		t_i32temp = (INT32)g_stBq769x0_Read_AFE1.u16TempBat[i] / 10 - 40;
@@ -466,8 +466,8 @@ void test_Autocurrent_cycle(void)
 {
 	static uint8_t step = 0;
 #if 1
-	static uint16_t CHG_current = 2000;
-	static uint16_t DSG_current = 4000;
+	static uint16_t CHG_current = 450;
+	static uint16_t DSG_current = 450;
 #else
 	static uint16_t CHG_current = 200;
 	static uint16_t DSG_current = 400;
@@ -536,6 +536,6 @@ void App_AFEGet(void)
 	DataLoad_CellVoltMaxMinFind();
 	DataLoad_Temperature();
 	DataLoad_TemperatureMaxMinFind();
-	DataLoad_Current();
-	// test_Autocurrent_cycle();
+	// DataLoad_Current();
+	test_Autocurrent_cycle();
 }

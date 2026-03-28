@@ -29,6 +29,13 @@ void InitDevice(void);
 void InitSci(void);
 void App_Sci(void);
 
+void lowpower_enter_sleep(void)
+{
+    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+    __WFI();
+}
+
+// #define _DEBUG_CODE
 int main(void)
 {
 	InitDevice(); // 初始化外设，这两个函数的位置需要斟酌一下，现在换回去先
@@ -38,6 +45,7 @@ int main(void)
 	{
 #if (defined _DEBUG_CODE)
 		App_SysTime();
+        lowpower_enter_sleep();
 		// App_NormalSleepTest();
 		Feed_IWatchDog;
 #else
@@ -45,6 +53,7 @@ int main(void)
 		App_Sci();
 		App_AFEGet();
 		App_BQ769X0_Monitor();
+		ganhuangguan_Logi();
 		App_WarnCtrl();
 		App_MOS_Relay_Ctrl();
 		App_AnlogCal();
@@ -53,6 +62,9 @@ int main(void)
 		App_CellBalance();
 		App_SOC();
 		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
+#ifdef __FUNC__LED__
+		APP_LedBar();
+#endif
 #ifdef __FUNC__HEAT__
 		App_Heat_Cool_Ctrl();
 #endif // DEBUG
@@ -62,7 +74,7 @@ int main(void)
 		App_LogRecord();
 		App_ProID_Deal();
 
-		// __WFI();
+		// lowpower_enter_sleep();
 
 		Feed_IWatchDog;
 #endif
@@ -112,6 +124,9 @@ void InitDevice(void)
 	LoadParam();
 
 	InitAFE1();
+#ifdef __FUNC__LED__
+	LedBar_StartUp();
+#endif
 #ifdef wdog_enable
 	Init_IWDG();
 #endif // !1

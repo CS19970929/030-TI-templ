@@ -85,6 +85,13 @@ void InitIO(void)
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 开启GPIOF的外设时钟
 
 	{
+		GPIO_WriteBit(GPIO_M_STB, PIN_M_STB, 1);
+		GPIO_InitStructure.GPIO_Pin = PIN_M_STB;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_Init(GPIO_M_STB, &GPIO_InitStructure);
+
 		GPIO_WriteBit(GPIO_M_CTR, PIN_M_CTR, 1);
 		GPIO_InitStructure.GPIO_Pin = PIN_M_CTR;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -92,12 +99,19 @@ void InitIO(void)
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 		GPIO_Init(GPIO_M_CTR, &GPIO_InitStructure);
 
-		GPIO_WriteBit(GPIO_AD_EN, PIN_AD_EN, 1);
-		GPIO_InitStructure.GPIO_Pin = PIN_AD_EN;
+		GPIO_WriteBit(GPIO_BLE_EN, PIN_BLE_EN, 1);
+		GPIO_InitStructure.GPIO_Pin = PIN_BLE_EN;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_Init(GPIO_AD_EN, &GPIO_InitStructure);
+		GPIO_Init(GPIO_BLE_EN, &GPIO_InitStructure);
+
+		GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, 1);
+		GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
 	}
 	GPIO_InitStructure.GPIO_Pin = PIN_WK_AFE;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;

@@ -4,15 +4,16 @@
 #include "stdio.h"
 #include "stdint.h"
 #include "conf_gpio.h"
+#include "stdbool.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x1777		//Ĭ��0x1133������Լ���Ҫˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x6688		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
 #define  wdog_enable
 // #define __FUNC__HEAT__
 #define __LOAD_REMOVE_SHORT_FUNC__
 
-// #define __VIRTURE_CURRENT__
-// #define __FUNC__LED__
+#define __VIRTURE_CURRENT__
+#define __FUNC__LED__
 // #define __FUNC_RTC__
 
 //#define TERNARYLI		//ï¿½ï¿½Ôªï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò?
@@ -21,7 +22,7 @@
 
 //#define _DI_SWITCH_SYS_ONOFF	//DI??????
 //#define _DI_SWITCH_DSG_ONOFF	//DI?????????????MOS
-#define _DI_SWITCH_longKEY_ONOFF
+// #define _DI_SWITCH_longKEY_ONOFF
 
 #ifdef __FUNC__HEAT__
 #define CHG_LOWTEMP_PARAM   120
@@ -47,10 +48,10 @@
 #define	__SLEEP_TIMEVLOW__		          1440
 #else
 #define __SLEEP_VNORMAL__             	4200
-#define	__SLEEP_TIMENORMAL__	          10080	
+#define	__SLEEP_TIMENORMAL__	          (60 * 2)	
 // #define	__SLEEP_TIMENORMAL__	          (30 * 24 * 60)	
 #define __SLEEP_VLOW__     		          3000
-#define	__SLEEP_TIMEVLOW__		          1440
+#define	__SLEEP_TIMEVLOW__		          (60 * 2)
 
 #endif
 
@@ -125,6 +126,8 @@ typedef struct
   uint16_t cnt_10ms_test_iocontrol;
   uint16_t  cnt_10ms;
   uint16_t   test_sizeof_g_tParam;
+  uint16_t cnt_enter_chg_open;
+  uint16_t cnt_enter_dsg_open;
 
 }Time_T;
 

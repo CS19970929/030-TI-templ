@@ -1,4 +1,5 @@
 #include "main.h"
+#include "gan_huang_guan_logi.h"
 
 LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 
@@ -54,30 +55,35 @@ void LedBar_Show_Normal(void)
 
     case 1:
         // 5s
-        if (++su16_ShowDelay_Tcnt <= 10 * 5)
+        // if (++su16_ShowDelay_Tcnt <= 10 * 5)
         {
-            MCUO_SOC_RUN = 1;
+            // MCUO_SOC_RUN = 1;
             MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc > 0 ? 1 : 0;
             MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0;
             MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0;
             MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0;
             MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc >= 80 ? 1 : 0;
         }
-        else
+
+        if (g_stCellInfoReport.u16Ichg)
         {
-            MCUO_SOC_RUN = 0;
-            MCUO_SOC_20 = 0;
-            MCUO_SOC_40 = 0;
-            MCUO_SOC_60 = 0;
-            MCUO_SOC_80 = 0;
-            MCUO_SOC_100 = 0;
-            su16_ShowDelay_Tcnt = 0;
-            su8_ShowStatus = 0;
+            LedBar_Command = LED_BAR_CHG;
         }
+        // else
+        // {
+        //     MCUO_SOC_RUN = 0;
+        //     MCUO_SOC_20 = 0;
+        //     MCUO_SOC_40 = 0;
+        //     MCUO_SOC_60 = 0;
+        //     MCUO_SOC_80 = 0;
+        //     MCUO_SOC_100 = 0;
+        //     su16_ShowDelay_Tcnt = 0;
+        //     su8_ShowStatus = 0;
+        // }
 
         // 一直按着
-        if (!MCUI_SOC_KEY)
-            su16_ShowDelay_Tcnt = 0;
+        // if (!MCUI_SOC_KEY)
+        //     su16_ShowDelay_Tcnt = 0;
         break;
 
     default:
@@ -114,12 +120,12 @@ void LedBar_Show_CHG(void)
 
     if (g_stCellInfoReport.u16Ichg == 0)
     {
-        MCUO_SOC_RUN = 0;
-        MCUO_SOC_20 = 0;
-        MCUO_SOC_40 = 0;
-        MCUO_SOC_60 = 0;
-        MCUO_SOC_80 = 0;
-        MCUO_SOC_100 = 0;
+        // MCUO_SOC_RUN = 0;
+        // MCUO_SOC_20 = 0;
+        // MCUO_SOC_40 = 0;
+        // MCUO_SOC_60 = 0;
+        // MCUO_SOC_80 = 0;
+        // MCUO_SOC_100 = 0;
 
         LedBar_Command = LED_BAR_NORMAL;
     }
@@ -187,29 +193,50 @@ void APP_LedBar(void)
         return;
     }
 
-    switch (LedBar_Command)
+    // LedBar_Show_Sleep();
+
+    static bool first_reset_status = true;
+
+    if (is_water_in())
     {
-    case LED_BAR_STARTUP:
-        LedBar_StartUp();
-        break;
+        if (first_reset_status)
+        {
+            first_reset_status = false;
+            MCUO_SOC_20 = 0;
+            MCUO_SOC_40 = 0;
+            MCUO_SOC_60 = 0;
+            MCUO_SOC_80 = 0;
+            MCUO_SOC_100 = 0;
+        }
 
-    case LED_BAR_NORMAL:
-        LedBar_Show_Normal();
-        break;
-    case LED_BAR_CHG:
-        LedBar_Show_CHG();
-        break;
-    case LED_BAR_DSG:
-        LedBar_Show_DSG();
-        break;
-    case LED_BAR_FAULT:
-        // 下面长期监控
-        break;
-
-    default:
-        break;
+        MCUO_SOC_20 = !MCUO_SOC_20;
+        MCUO_SOC_40 = !MCUO_SOC_40;
+        MCUO_SOC_60 = !MCUO_SOC_60;
+        MCUO_SOC_80 = !MCUO_SOC_80;
+        MCUO_SOC_100 = !MCUO_SOC_100;
     }
+    else
+    {
+        first_reset_status = true;
 
+        switch (LedBar_Command)
+        {
+        case LED_BAR_NORMAL:
+            LedBar_Show_Normal();
+            break;
+        case LED_BAR_CHG:
+            LedBar_Show_CHG();
+            break;
+        case LED_BAR_DSG:
+            LedBar_Show_DSG();
+            break;
+        case LED_BAR_FAULT:
+            // 下面长期监控
+            break;
+
+        default:
+            break;
+        }
+    }
     LedBar_Show_Fault();
-    LedBar_Show_Sleep();
 }

@@ -201,102 +201,27 @@ struct PRT_E2ROM_PARAS {
 	UINT16	u16SocUp_Filter;
 };
 
-#if (LEVEL_CURR == CURR_80A)
-
 #define _CURR_		80
 #define CURR_1C		(10 * _CURR_)
 #define CURR_5C		(5 * 10 * _CURR_)
 
-#define OCC_1       (CURR_1C - 100) 
-#define OCC_2       (CURR_1C - 50) 
-#define OCC_3       (CURR_1C) 
-#define OCC_recover (OCC_2) 
+#define OCC_1       (400) 
+#define OCC_2       (400) 
+#define OCC_3       (400) 
+#define OCC_recover (10) 
 #define OCC_filter1  300 
 #define OCC_filter2  300 
-#define OCC_filter3  300 
+#define OCC_filter3  30 
 
-#define ODC_1       (CURR_5C - 100) 
-#define ODC_2       (CURR_5C - 50) 
-#define ODC_3       (CURR_5C) 
-#define ODC_recover (ODC_2) 
+#define ODC_1       (400) 
+#define ODC_2       (400) 
+#define ODC_3       (400) 
+#define ODC_recover (10) 
 #define ODC_filter1  30 
 #define ODC_filter2  30 
 #define ODC_filter3  30 
 
-
-#elif (LEVEL_CURR == CURR_100A)
-
-#define OCC_1       (900) 
-#define OCC_2       (950) 
-#define OCC_3       (1000) 
-#define OCC_recover (950) 
-#define OCC_filter1  300 
-#define OCC_filter2  300 
-#define OCC_filter3  300 
-
-#define ODC_1       (6900) 
-#define ODC_2       (6950) 
-#define ODC_3       (7000) 
-#define ODC_recover (6950) 
-#define ODC_filter1  30 
-#define ODC_filter2  30 
-#define ODC_filter3  30 
-
-#elif (LEVEL_CURR == CURR_150A)
-
-#define OCC_1       (1400) 
-#define OCC_2       (1450) 
-#define OCC_3       (1500) 
-#define OCC_recover (1450) 
-#define OCC_filter1  300 
-#define OCC_filter2  300 
-#define OCC_filter3  300 
-
-#define ODC_1       (7900) 
-#define ODC_2       (7950) 
-#define ODC_3       (8000) 
-#define ODC_recover (7950) 
-#define ODC_filter1  30 
-#define ODC_filter2  30 
-#define ODC_filter3  30 
-
-#elif (LEVEL_CURR == CURR_200A)
-
-#define OCC_1       (1900) 
-#define OCC_2       (1950) 
-#define OCC_3       (2000) 
-#define OCC_recover (1950) 
-#define OCC_filter1  300 
-#define OCC_filter2  300 
-#define OCC_filter3  300 
-
-#define ODC_1       (8900) 
-#define ODC_2       (8950) 
-#define ODC_3       (9000) 
-#define ODC_recover (8950) 
-#define ODC_filter1  30 
-#define ODC_filter2  30 
-#define ODC_filter3  30 
-
-#elif (LEVEL_CURR == CURR_250A)
-
-#define OCC_1       (2400) 
-#define OCC_2       (2450) 
-#define OCC_3       (2500) 
-#define OCC_recover (2450) 
-#define OCC_filter1  300 
-#define OCC_filter2  300 
-#define OCC_filter3  300 
-
-#define ODC_1       (8900) 
-#define ODC_2       (8950) 
-#define ODC_3       (9000) 
-#define ODC_recover (8950) 
-#define ODC_filter1  30 
-#define ODC_filter2  30 
-#define ODC_filter3  30 
-
-#endif				
+		
 
 #define E2P_PROTECT_MIN_PRT		{/*单节过压*/1000,	1000,	1000,	1000,	1,\
 								 /*单节低压*/1000,	1000,	1000,	1000,	1,\

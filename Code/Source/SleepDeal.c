@@ -304,8 +304,8 @@ void SleepDeal_Continue(void)
 	if (u8FlashWriteOK_flag)
 	{
 		App_AFEshutdown();
-		lk8625_SendAT("AT+DISCON");
-		lk8625_SendAT("AT+DSLEEP");
+		// lk8625_SendAT("AT+DISCON");
+		// lk8625_SendAT("AT+DSLEEP");
 		MCU_RESET();
 	}
 }

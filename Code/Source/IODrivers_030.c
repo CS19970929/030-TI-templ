@@ -2863,10 +2863,10 @@ void Drivers_RelayDiffDoor_HavePreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl)
 
 void Drivers_MosSameDoor_NoPreChg(UINT8 TimeBase_10ms, UINT8 OnOFF_Ctrl)
 {
-	if (0 == TimeBase_10ms)
-	{
-		return;
-	}
+	// if (0 == TimeBase_10ms)
+	// {
+	// 	return;
+	// }
 	MosCtrl_SameDoor_NoPreChg(OnOFF_Ctrl);
 }
 

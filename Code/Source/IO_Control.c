@@ -186,7 +186,7 @@ void App_DI1_Switch(void)
 		if (++su16_AntiShake_Cnt1 >= 2)
 		{
 			su16_AntiShake_Cnt1 = 2;
-			Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+			Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
 		}
 	}
 	else
@@ -220,20 +220,19 @@ void App_DI1_Switch(void)
 
 void Drivers_External_Ctrl(void)
 {
-	static UINT8 su8_Ctrl_Tcnt = 0;
-
 	if (Driver_Element.u8_DriverCtrl_Right)
 	{
-		// 100ms¿ØÖÆÒ»´Î
-		if (++su8_Ctrl_Tcnt >= 10)
+		if (SystemStatus.bits.b1Status_MOS_CHG != Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG)
 		{
-			su8_Ctrl_Tcnt = 0;
+			sys_time.cnt_enter_chg_open++;
 			BQ769X0_DriverMos_Ctrl(GPIO_CHG, Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG);
+		}
+		if (SystemStatus.bits.b1Status_MOS_DSG != Driver_Element.MosRelay_Status.bits.b1Status_MOS_DSG)
+		{
+			sys_time.cnt_enter_dsg_open++;
 			BQ769X0_DriverMos_Ctrl(GPIO_DSG, Driver_Element.MosRelay_Status.bits.b1Status_MOS_DSG);
 		}
 	}
-
-	// MCUO_MOS_PRE = Driver_Element.MosRelay_Status.bits.b1Status_MOS_PRE;
 }
 
 void InitMosRelay_DOx(void)
