@@ -9,6 +9,8 @@ struct RS485MSG g_stCurrentMsgPtr_SCI2;
 UINT16 gu16_CommuErrCnt_SCI2 = 0; // SCI通信异常计数
 UINT8 gu8_TxEnable_SCI2 = 0;
 UINT8 gu8_TxFinishFlag_SCI2 = 0;
+UINT8 gu8_RxTimeoutTick_SCI1 = 0;
+UINT8 gu8_RxTimeoutTick_SCI2 = 0;
 
 UINT8 g_u8SCITxBuff[SCI_TX_BUF_LEN];
 
@@ -49,6 +51,7 @@ static UINT32 P12_GetStatusFlags(void);
 static void P12_CopyAsciiField(UINT8 *dst, UINT8 dstLen, const UINT8 *src, UINT16 srcLen);
 static UINT8 P12_VerifyFrame(struct RS485MSG *s);
 static UINT8 P12_BuildResponse(struct RS485MSG *s);
+static void Sci_ResetFrameState(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEnablePtr, UINT8 *timeoutTickPtr);
 
 void Sci_DataInit(struct RS485MSG *s)
 {
@@ -426,6 +429,24 @@ static UINT8 P12_BuildResponse(struct RS485MSG *s)
 	s->AckType = RS485_ACK_POS;
 	s->ptr_no = 0;
 	return 1;
+}
+
+static void Sci_ResetFrameState(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEnablePtr, UINT8 *timeoutTickPtr)
+{
+	Sci_DataInit(s);
+	if (timeoutTickPtr)
+	{
+		*timeoutTickPtr = 0;
+	}
+	if (txEnablePtr)
+	{
+		*txEnablePtr = 0;
+	}
+	if (usart)
+	{
+		usart->CR1 |= (1 << 2);
+		usart->CR1 |= (1 << 5);
+	}
 }
 
 void CRC_verify(struct RS485MSG *s)
@@ -1338,6 +1359,13 @@ void InitSCI1_CommonUpper(void)
 
 void App_CommonUpperSCI1(struct RS485MSG *s)
 {
+	if ((RS485_STA_IDLE == s->csr) && (s->ptr_no > 0) && g_st_SysTimeFlag.bits.b1Sys10msFlag1)
+	{
+		if (++gu8_RxTimeoutTick_SCI1 >= 3)
+		{
+			Sci_ResetFrameState(s, USART1, &gu8_TxEnable_SCI1, &gu8_RxTimeoutTick_SCI1);
+		}
+	}
 	switch (s->csr)
 	{
 	// IDLE-空闲态，保持50ms后使能接收（物理层）receive set
@@ -1402,6 +1430,7 @@ void App_CommonUpperSCI1(struct RS485MSG *s)
 			s->u16Buffer[2] = 0;
 			s->u16Buffer[3] = 0;
 			gu8_TxFinishFlag_SCI1 = 0;
+			gu8_RxTimeoutTick_SCI1 = 0;
 			s->ptr_no = 0;
 			USART1->CR1 |= (1 << 2); // 使能接收
 			USART1->CR1 |= (1 << 5); // 使能接收中断
@@ -1478,6 +1507,7 @@ void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s)
 
 	USART2->CR1 &= ~(1 << 5);			   // ?????????
 	s->u16Buffer[s->ptr_no] = USART2->RDR; // ?RXFIFO ?????????
+	gu8_RxTimeoutTick_SCI2 = 0;
 	if (0 == s->ptr_no)
 	{
 		s->u8FrameDataLength = 0;
@@ -1713,6 +1743,13 @@ void InitSCI2_CommonUpper(void)
 
 void App_CommonUpperSCI2(struct RS485MSG *s)
 {
+	if ((RS485_STA_IDLE == s->csr) && (s->ptr_no > 0) && g_st_SysTimeFlag.bits.b1Sys10msFlag1)
+	{
+		if (++gu8_RxTimeoutTick_SCI2 >= 3)
+		{
+			Sci_ResetFrameState(s, USART2, &gu8_TxEnable_SCI2, &gu8_RxTimeoutTick_SCI2);
+		}
+	}
 	switch (s->csr)
 	{
 	case RS485_STA_IDLE:
@@ -1728,13 +1765,11 @@ void App_CommonUpperSCI2(struct RS485MSG *s)
 			if (P12_VerifyFrame(s) && P12_BuildResponse(s))
 			{
 				s->csr = RS485_STA_RX_OK;
+				gu8_RxTimeoutTick_SCI2 = 0;
 			}
 			else
 			{
-				Sci_DataInit(s);
-				USART2->CR1 |= (1 << 2);
-				USART2->CR1 |= (1 << 5);
-				gu8_TxEnable_SCI2 = 0;
+				Sci_ResetFrameState(s, USART2, &gu8_TxEnable_SCI2, &gu8_RxTimeoutTick_SCI2);
 			}
 		}
 		else
@@ -1761,6 +1796,7 @@ void App_CommonUpperSCI2(struct RS485MSG *s)
 				}
 			}
 			s->csr = RS485_STA_RX_OK;
+			gu8_RxTimeoutTick_SCI2 = 0;
 		}
 		break;
 	}
@@ -1801,6 +1837,7 @@ void App_CommonUpperSCI2(struct RS485MSG *s)
 			s->u16Buffer[2] = 0;
 			s->u16Buffer[3] = 0;
 			gu8_TxFinishFlag_SCI2 = 0;
+			gu8_RxTimeoutTick_SCI2 = 0;
 			s->ptr_no = 0;
 			s->u8FrameProtocol = SCI_FRAME_PROTOCOL_MODBUS;
 			s->u8FrameDataLength = 0;
