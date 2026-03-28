@@ -17,6 +17,21 @@ enum RS485_CMD_E {
 	UART_CLIENT_CMD_0x02 = 0xA2,	
 };
 
+enum SCI_FRAME_PROTOCOL_E {
+	SCI_FRAME_PROTOCOL_MODBUS = 0,
+	SCI_FRAME_PROTOCOL_P12 = 1,
+};
+
+#define P12_FRAME_HEAD0                  ((UINT8)0x21)
+#define P12_FRAME_HEAD1                  ((UINT8)0xAA)
+#define P12_HOST_ADDR                    ((UINT16)0xFF01)
+#define P12_BMS_ADDR_DEFAULT             ((UINT16)0x0301)
+#define P12_BMS_ADDR_EXAMPLE_ALIAS       ((UINT16)0x0201)
+
+#define P12_CMD_REQ_STATIC               ((UINT8)0x80)
+#define P12_CMD_RSP_STATIC               ((UINT8)0x81)
+#define P12_CMD_REQ_DYNAMIC              ((UINT8)0x82)
+#define P12_CMD_RSP_DYNAMIC              ((UINT8)0x83)
 
 struct SOC_CAL_ELEMENT_UPPER {
 	UINT16 u16Soc;                 	//��ǰ���SOC     0��100 Ϊ��������ٷֱ�
@@ -111,6 +126,10 @@ struct RS485MSG {
 	UINT8	AckLenth;			// ack byte lenth
 	UINT8	AckType;			// ack type
 	UINT8	ErrorType;			// error type
+	UINT8	u8FrameProtocol;	// current protocol type
+	UINT8	u8FrameDataLength;	// current frame data length
+	UINT8	u8FrameCommand;		// current frame command
+	UINT16	u16FrameAddress;	// current frame address
 	UINT8 	u16Buffer[RS485_MAX_BUFFER_SIZE];    // Array holding msg data - max that
 	enum RS485_CMD_E enRs485CmdType;
 };
