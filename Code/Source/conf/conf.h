@@ -6,7 +6,7 @@
 #include "conf_gpio.h"
 #include "stdbool.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x6688		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x0331		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
 #define  wdog_enable
 // #define __FUNC__HEAT__

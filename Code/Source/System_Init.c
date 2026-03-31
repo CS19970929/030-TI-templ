@@ -131,7 +131,24 @@ void InitIO(void)
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIO_KEY1, &GPIO_InitStructure);
 
-	lk8625_init();
+	GPIO_InitStructure.GPIO_Pin = PIN_GAN1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_GAN1, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = PIN_GAN2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_GAN2, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = PIN_GAN3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_GAN3, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = PIN_GAN4;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_GAN4, &GPIO_InitStructure);
+
+	// lk8625_init();
 }
 
 void InitTimer(void)

@@ -155,18 +155,6 @@ void CellBalance_DataInit(void)
 	Registers_AFE1.CellBal3.CellBal3Byte = 0;
 	I2CWriteBlockWithCRC(DEVICE_ADDR_AFE1, CELLBAL1, &(Registers_AFE1.CellBal1.CellBal1Byte), 3);
 
-	if (SeriesNum % 10 == 6)
-	{
-		// PB7_CB_6_16
-		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_Init(GPIOB, &GPIO_InitStructure);
-		MCUO_CB_6_16 = 0;
-	}
-
-	// if(SeriesNum == 16)MCUO_EXT_CB = 0;
 	g_enBalanceState = BALANCE_ST_MONITOR;
 }
 

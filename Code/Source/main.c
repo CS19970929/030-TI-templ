@@ -53,7 +53,7 @@ int main(void)
 		App_Sci();
 		App_AFEGet();
 		App_BQ769X0_Monitor();
-		ganhuangguan_Logi();
+		// ganhuangguan_Logi();
 		App_WarnCtrl();
 		App_MOS_Relay_Ctrl();
 		App_AnlogCal();

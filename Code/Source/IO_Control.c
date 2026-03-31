@@ -31,6 +31,8 @@ void RefreshData_Drivers(void)
 		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
 	}
 
+	ganhuangguan_Logi();
+
 	// 这个写法很巧妙，刚开始执行一个动作，如果执行了，转向下一个动作，不执行则继续等待。相互切换
 	switch (su8_OnOFF_Status)
 	{

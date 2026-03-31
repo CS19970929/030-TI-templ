@@ -39,9 +39,13 @@ void ganhuangguan_Logi(void)
         {
             Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
         }
-        else if (is_open_gan3())
+        else
         {
-            // 2hÐÝÃß
+            Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE;
         }
+        // else if (is_open_gan3())
+        // {
+        //     // 2hÐÝÃß
+        // }
     }
 }
