@@ -47,7 +47,7 @@ void InitWakeUp_Base(void)
 	// 配置PA1_WKUP外部上升沿中�?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line13;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
 	// �?�?嵌�?��?��??
@@ -63,16 +63,17 @@ void InitWakeUp_NormalMode(void)
 	NVIC_InitTypeDef NVIC_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure;
 
+	InitWakeUp_Base();
 	// 串口1的RX唤醒
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10; // 选择要用的GPIO引脚
+	GPIO_InitStructure.GPIO_Pin = PIN_INT_WK_CMNT; // 选择要用的GPIO引脚
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_Init(GPIO_INT_WK_CMNT, &GPIO_InitStructure);
 
 	// 设置�?�?�?1，EXTI1和PA1挂钩
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource10);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource14);
 	// 配置PA1_WKUP外部上升沿中�?
-	EXTI_InitStruct.EXTI_Line = EXTI_Line10;
+	EXTI_InitStruct.EXTI_Line = EXTI_Line14;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
 	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿中�?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
@@ -103,7 +104,6 @@ void InitWakeUp_NormalMode(void)
 	//  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		//使能外部�?�?通道
 	//  	NVIC_Init(&NVIC_InitStructure);
 
-	InitWakeUp_Base();
 }
 
 void InitWakeUp_RTCMode(void)
@@ -303,6 +303,7 @@ void SleepDeal_Continue(void)
 
 	if (u8FlashWriteOK_flag)
 	{
+		//todo ????
 		App_AFEshutdown();
 		// lk8625_SendAT("AT+DISCON");
 		// lk8625_SendAT("AT+DSLEEP");

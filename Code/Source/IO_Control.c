@@ -17,7 +17,11 @@ void RefreshData_Drivers(void)
 	Driver_Element.u16_CurDsg = g_stCellInfoReport.u16IDischg;
 
 	// 信息交换区
-	if (SystemStatus.bits.b1Status_BnCloseIO || SystemStatus.bits.b1Status_HeatCloseIO || SystemStatus.bits.b1Status_CBCCloseIO || System_ErrFlag.u8ErrFlag_Com_AFE1 || System_ErrFlag.u8ErrFlag_Com_AFE2 || System_ErrFlag.u8ErrFlag_Com_EEPROM || System_ErrFlag.u8ErrFlag_Store_EEPROM || CBC_Element.u8CBC_CHG_ErrFlag || CBC_Element.u8CBC_DSG_ErrFlag || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) /*|| Sleep_Mode.all & 0x2F != 0*/)
+	if (SystemStatus.bits.b1Status_BnCloseIO || SystemStatus.bits.b1Status_HeatCloseIO || SystemStatus.bits.b1Status_CBCCloseIO 
+	|| System_ErrFlag.u8ErrFlag_Com_AFE1 || System_ErrFlag.u8ErrFlag_Com_AFE2 || System_ErrFlag.u8ErrFlag_Com_EEPROM 
+	|| System_ErrFlag.u8ErrFlag_Store_EEPROM || CBC_Element.u8CBC_CHG_ErrFlag || CBC_Element.u8CBC_DSG_ErrFlag 
+	|| System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) 
+	|| is_water_in()/*|| Sleep_Mode.all & 0x2F != 0*/)
 	{
 
 		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE; // CBC保护放到这里

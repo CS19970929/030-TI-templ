@@ -56,13 +56,16 @@ void LedBar_Show_Normal(void)
     case 1:
         // 5s
         // if (++su16_ShowDelay_Tcnt <= 10 * 5)
+        if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
+            break;
+
         {
             // MCUO_SOC_RUN = 1;
-            MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc > 0 ? 1 : 0;
-            MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0;
-            MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0;
-            MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0;
-            MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc >= 80 ? 1 : 0;
+            MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc >= 0 ? 1 : 0;
+            MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc > 20 ? 1 : 0;
+            MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc > 40 ? 1 : 0;
+            MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc > 60 ? 1 : 0;
+            MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc > 80 ? 1 : 0;
         }
 
         if (g_stCellInfoReport.u16Ichg)
@@ -158,11 +161,16 @@ void LedBar_Show_Fault(void)
     if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
     {
         MCUO_SOC_ALARM = !MCUO_SOC_ALARM;
+        // MCUO_SOC_20 = 0;
+        MCUO_SOC_40 = 0;
+        MCUO_SOC_60 = 0;
+        MCUO_SOC_80 = 0;
+        MCUO_SOC_100 = 0;
     }
-    else
-    {
-        MCUO_SOC_ALARM = 0;
-    }
+    // else
+    // {
+    //     MCUO_SOC_ALARM = 0;
+    // }
 }
 
 void LedBar_Show_Sleep(void)

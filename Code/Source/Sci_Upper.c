@@ -108,6 +108,7 @@ static UINT16 P12_GetVersionWord(void)
 	UINT8 dotCount = 0;
 	UINT8 hasDigit = 0;
 
+#if 0
 	if ((0 == length) || (length > PRODUCT_ID_LENGTH_MAX))
 	{
 		length = PRODUCT_ID_LENGTH_MAX;
@@ -171,6 +172,8 @@ static UINT16 P12_GetVersionWord(void)
 	mainVer %= 10;
 	minorVer %= 10;
 	buildVer %= 100;
+
+#endif
 	return (UINT16)(mainVer * 1000 + minorVer * 100 + buildVer);
 }
 
@@ -252,6 +255,14 @@ static UINT32 P12_GetStatusFlags(void)
 	{
 		flags |= (1ul << 12);
 	}
+	if (is_water_in())
+	{
+		flags |= (1ul << 13);
+	}
+	if (is_open_gan1())
+		flags |= (1ul << 14);
+	if (is_open_gan2())
+		flags |= (1ul << 15);
 
 	return flags;
 }
@@ -1724,7 +1735,7 @@ void InitSCI2_CommonUpper(void)
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	// 串口初始化
-	USART_InitStructure.USART_BaudRate = 115200;										// 设置串口波特率
+	USART_InitStructure.USART_BaudRate = 115200;									// 设置串口波特率
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;						// 设置数据位
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;							// 设置停止位
 	USART_InitStructure.USART_Parity = USART_Parity_No;								// 设置效验位

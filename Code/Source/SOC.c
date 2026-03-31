@@ -111,65 +111,6 @@ void InitData_SOC(void)
 	// SOC_Enhance_Element.SOC_E2P_Adress = E2P_ADDR_E2POS_ENHANCE_SOC;
 }
 
-void SOC_OCV_Fix(void)
-{
-	static UINT8 su8_OCV_Cali_Flag = 0;
-	static UINT16 gu16_RTC_TimeCnt = 0;
-
-	switch (su8_OCV_Cali_Flag)
-	{
-	case 0:
-		// 太麻烦了，直接卡休眠前那个点进行操作便可
-		if (Sleep_Mode.bits.b1_ToSleepFlag)
-		{
-			su8_OCV_Cali_Flag = 1;
-		}
-		break;
-
-	case 1:
-		// 开机统计+1
-		gu16_RTC_TimeCnt = ReadEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT);
-		if (gu8_WakeUp_Type == FLASH_VALUE_WAKE_RTC)
-		{
-			gu16_RTC_TimeCnt++;
-		}
-		else
-		{
-			// 别的情况唤醒，就不是RTC唤醒，则清空。
-			// 只在RTC唤醒的时候操作，别的时候不校准。
-			// 因为在深度休眠的时候，大概率RTC已经校准为0了。
-			gu16_RTC_TimeCnt = 0;
-		}
-		WriteEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
-		su8_OCV_Cali_Flag = 2;
-		break;
-
-	case 2:
-		// 原来是电流和通讯不会校准，现在改为RTC次数统计(已经包含电流和通讯的情况)
-		if (gu16_RTC_TimeCnt >= 2 * 60 * 24 * 20)
-		{ // 20天
-			// if(gu16_RTC_TimeCnt >= 4) {		//4h
-			gu16_RTC_TimeCnt = 0;
-
-			// 校准后更新次数
-			WriteEEPROM_Word_NoZone(E2P_ADDR_SOC_RTC_CNT, gu16_RTC_TimeCnt);
-
-			SOC_Enhance_Element.u16_RefreshData_Flag = 1;
-		}
-
-		su8_OCV_Cali_Flag = 3;
-		break;
-
-	case 3:
-		// 释放，进入休眠
-		Sleep_Mode.bits.b1_ToSleepFlag = 0;
-		break;
-
-	default:
-		break;
-	}
-}
-
 void App_SOC(void)
 {
 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_SOC))
@@ -190,11 +131,10 @@ void App_SOC(void)
 	}
 
 	toggleLed();
-	// SOC_OCV_Fix();
 	
 	RefreshData_SOC();
-	GetData_SOC();
 	SOC_IntEnhance_Ctrl(gu8_200msAccClock_Flag);
+	GetData_SOC();
 
 	gu8_200msAccClock_Flag = 0;
 

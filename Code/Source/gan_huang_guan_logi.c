@@ -1,13 +1,16 @@
 #include "main.h"
 
+//插头在位干簧管
 bool is_open_gan1(void)
 {
     return 0 == GPIO_ReadInputDataBit(GPIO_GAN1, PIN_GAN1);
 }
+//提手在位干簧管
 bool is_open_gan2(void)
 {
     return 0 == GPIO_ReadInputDataBit(GPIO_GAN2, PIN_GAN2);
 }
+//灯板开机控制
 bool is_open_gan3(void)
 {
     return 0 == GPIO_ReadInputDataBit(GPIO_GAN3, PIN_GAN3);
@@ -18,7 +21,7 @@ bool is_open_gan4(void)
 }
 bool is_water_in(void)
 {
-    //todo
+    // todo
     return 0 == GPIO_ReadInputDataBit(GPIO_SWT_AD, PIN_SWT_AD);
 }
 
@@ -28,7 +31,7 @@ void ganhuangguan_Logi(void)
     {
         Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE;
         // todo led±¨¾¯
-		GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, 0);
+        GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, 0);
     }
     else
     {

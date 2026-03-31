@@ -12,7 +12,7 @@
 // #define __FUNC__HEAT__
 #define __LOAD_REMOVE_SHORT_FUNC__
 
-#define __VIRTURE_CURRENT__
+// #define __VIRTURE_CURRENT__
 #define __FUNC__LED__
 // #define __FUNC_RTC__
 
@@ -20,7 +20,7 @@
 #define LIFEPO			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò?
 
 
-//#define _DI_SWITCH_SYS_ONOFF	//DI??????
+#define _DI_SWITCH_SYS_ONOFF	//DI??????
 //#define _DI_SWITCH_DSG_ONOFF	//DI?????????????MOS
 // #define _DI_SWITCH_longKEY_ONOFF
 
