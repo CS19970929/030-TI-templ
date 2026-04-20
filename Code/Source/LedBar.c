@@ -8,6 +8,10 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 #define LEDBAR_SHORT_PRESS_MAX_TICKS_100MS ((UINT8)10)
 #define LEDBAR_SHORT_SHOW_PHASE_TICKS_100MS ((UINT8)10)
 #define LEDBAR_SHORT_SHOW_CYCLE_COUNT ((UINT8)5)
+#define LEDBAR_SHORT_PRESS_MIN_TICKS_100MS ((UINT8)2)
+#define LEDBAR_KEY_DEBOUNCE_TICKS_100MS ((UINT8)2)
+#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)3)
+#define LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS ((UINT8)20)
 
 typedef enum _LEDBAR_UI_MODE
 {
@@ -22,11 +26,17 @@ static UINT8 s_anim_step = 0;
 static UINT8 s_short_phase = 0;
 static UINT8 s_short_phase_ticks = 0;
 static UINT8 s_short_cycle_cnt = 0;
+static UINT8 s_pending_shutdown_sleep = 0;
 
 static UINT8 s_key_press_ticks = 0;
 static UINT8 s_key_prev_pressed = 0;
 static UINT8 s_key_long_handled = 0;
 static UINT8 s_key_wait_release = 0;
+static UINT8 s_key_stable_pressed = 0;
+static UINT8 s_key_debounce_ticks = 0;
+static UINT8 s_anim_step_ticks = 0;
+static UINT8 s_short_press_block_ticks = 0;
+static UINT8 s_ignore_next_release_short = 0;
 
 static UINT8 LedBar_GetSocMask(void)
 {
@@ -68,7 +78,8 @@ static UINT8 LedBar_IsPowerOn(void)
 
 static UINT8 LedBar_IsKeyPressed(void)
 {
-    return (UINT8)(MCUI_SOC_KEY == 0);
+    // 与开关机逻辑保持一致，使用PC13干簧管输入，避免PB14通信唤醒脚干扰
+    return (UINT8)(MCUI_ENI_DI1 == 0);
 }
 
 static void LedBar_StartShortShow(void)
@@ -84,17 +95,42 @@ static void LedBar_StartPowerAnim(UINT8 power_on_before_toggle)
     if (power_on_before_toggle)
     {
         s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
+        s_pending_shutdown_sleep = 1;
     }
     else
     {
         s_led_ui_mode = LED_UI_BOOT_ANIM;
+        s_pending_shutdown_sleep = 0;
     }
     s_anim_step = 0;
+    s_anim_step_ticks = (UINT8)(LEDBAR_ANIM_STEP_TICKS_100MS - 1);
 }
 
 static void LedBar_ProcessKeyEvent(void)
 {
-    UINT8 key_pressed = LedBar_IsKeyPressed();
+    UINT8 key_pressed_raw = LedBar_IsKeyPressed();
+    UINT8 key_pressed;
+
+    if (s_short_press_block_ticks > 0)
+    {
+        --s_short_press_block_ticks;
+    }
+
+    // 100ms粒度去抖，避免输入毛刺频繁触发短按逻辑
+    if (key_pressed_raw != s_key_stable_pressed)
+    {
+        if (++s_key_debounce_ticks >= LEDBAR_KEY_DEBOUNCE_TICKS_100MS)
+        {
+            s_key_stable_pressed = key_pressed_raw;
+            s_key_debounce_ticks = 0;
+        }
+    }
+    else
+    {
+        s_key_debounce_ticks = 0;
+    }
+
+    key_pressed = s_key_stable_pressed;
 
     if (key_pressed)
     {
@@ -115,7 +151,7 @@ static void LedBar_ProcessKeyEvent(void)
 
             s_key_long_handled = 1;
             s_key_wait_release = 1;
-            Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+            s_ignore_next_release_short = 1;
             LedBar_StartPowerAnim(power_on_before_toggle);
         }
     }
@@ -125,8 +161,11 @@ static void LedBar_ProcessKeyEvent(void)
         {
             if (!s_key_long_handled &&
                 s_key_press_ticks > 0 &&
-                s_key_press_ticks <= LEDBAR_SHORT_PRESS_MAX_TICKS_100MS &&
-                LedBar_IsPowerOn())
+                s_key_press_ticks < LEDBAR_LONG_PRESS_TICKS_100MS &&
+                LedBar_IsPowerOn() &&
+                s_led_ui_mode == LED_UI_NORMAL &&
+                !s_ignore_next_release_short &&
+                s_short_press_block_ticks == 0)
             {
                 LedBar_StartShortShow();
             }
@@ -135,6 +174,7 @@ static void LedBar_ProcessKeyEvent(void)
         s_key_press_ticks = 0;
         s_key_long_handled = 0;
         s_key_wait_release = 0;
+        s_ignore_next_release_short = 0;
     }
 
     s_key_prev_pressed = key_pressed;
@@ -142,6 +182,12 @@ static void LedBar_ProcessKeyEvent(void)
 
 static void LedBar_RunBootAnim(void)
 {
+    if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
+    {
+        return;
+    }
+    s_anim_step_ticks = 0;
+
     if (s_anim_step < 5)
     {
         LedBar_SetByMask((UINT8)((1U << (s_anim_step + 1U)) - 1U));
@@ -151,10 +197,17 @@ static void LedBar_RunBootAnim(void)
 
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
+    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
 }
 
 static void LedBar_RunShutdownAnim(void)
 {
+    if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
+    {
+        return;
+    }
+    s_anim_step_ticks = 0;
+
     if (s_anim_step == 0)
     {
         LedBar_SetByMask(LEDBAR_MASK_ALL);
@@ -168,9 +221,14 @@ static void LedBar_RunShutdownAnim(void)
         ++s_anim_step;
         return;
     }
-
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
+    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
+    if (s_pending_shutdown_sleep)
+    {
+        s_pending_shutdown_sleep = 0;
+        Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+    }
 }
 
 static void LedBar_RunShortShow(void)
@@ -218,15 +276,20 @@ void LedBar_StartUp(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
     LedBar_Command = LED_BAR_NORMAL;
-    s_led_ui_mode = LED_UI_NORMAL;
+    s_led_ui_mode = LED_UI_BOOT_ANIM;
     s_anim_step = 0;
     s_short_phase = 0;
     s_short_phase_ticks = 0;
     s_short_cycle_cnt = 0;
+    s_anim_step_ticks = 0;
+    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
+    s_ignore_next_release_short = 0;
     s_key_press_ticks = 0;
     s_key_prev_pressed = 0;
     s_key_long_handled = 0;
     s_key_wait_release = 0;
+    s_key_stable_pressed = 0;
+    s_key_debounce_ticks = 0;
 }
 
 void LedBar_Show_Normal(void)
@@ -406,5 +469,9 @@ void APP_LedBar(void)
         }
     }
 
-    LedBar_Show_Fault();
+    if (s_led_ui_mode == LED_UI_NORMAL)
+    {
+        LedBar_Show_Fault();
+    }
 }
+

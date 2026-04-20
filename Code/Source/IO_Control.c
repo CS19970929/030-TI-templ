@@ -184,9 +184,9 @@ void App_DI1_Switch(void)
 #endif
 #endif
 
-#ifdef _DI_SWITCH_SYS_ONOFF
+#if defined(_DI_SWITCH_SYS_ONOFF) && !defined(__FUNC__LED__)
 	static UINT16 su16_AntiShake_Cnt1 = 0;
-	static UINT8 su8_KeyReleased = 1;
+	static UINT8 su8_KeyReleased = 0;
 
 	if (0 == MCUI_ENI_DI1)
 	{
@@ -209,7 +209,7 @@ void App_DI1_Switch(void)
 	}
 #endif
 
-#ifdef _DI_SWITCH_longKEY_ONOFF
+#if defined(_DI_SWITCH_longKEY_ONOFF) && !defined(__FUNC__LED__)
 	static UINT16 su16_AntiShake_Cnt2 = 0;
 
 	if (0 == MCUI_ENI_DI1)
@@ -294,3 +294,4 @@ void App_MOS_Relay_Ctrl(void)
 
 	Drivers_External_Ctrl();
 }
+
