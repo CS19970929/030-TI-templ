@@ -53,6 +53,57 @@ static UINT8 IsSleepWakeupValid(void)
 }
 
 // 閫氳??鍞ら啋瀵规繁搴︿紤鐪犱笉璧锋晥鏋溿�備笉鑳藉啀Base鍔犲叆閫氳??鍞ら啋銆?
+
+/*
+ * 休眠策略钩子：为了便于后续移植，仅需改以下3个函数即可迁移“空闲且正常进入RTC周期休眠”逻辑。
+ */
+static UINT8 SleepDeal_HasBlockingFault(void)
+{
+	if (is_water_in())
+	{
+		return 1;
+	}
+
+	if (g_stCellInfoReport.unMdlFault_Third.all != 0)
+	{
+		return 1;
+	}
+
+	if (System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) ||
+		System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG) ||
+		System_ERROR_UserCallback(ERROR_STATUS_CBC_CHG))
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+static UINT8 SleepDeal_IsIdleCurrent(void)
+{
+	return (UINT8)((g_stCellInfoReport.u16Ichg <= OtherElement.u16Sleep_VirCur_Chg) &&
+					   (g_stCellInfoReport.u16IDischg <= OtherElement.u16Sleep_VirCur_Dsg));
+}
+
+static UINT8 SleepDeal_IsRtcIdleNormal(void)
+{
+	if (OtherElement.u16Sleep_TimeRTC == 0)
+	{
+		return 0;
+	}
+
+	if (!SleepDeal_IsIdleCurrent())
+	{
+		return 0;
+	}
+
+	if (SleepDeal_HasBlockingFault())
+	{
+		return 0;
+	}
+
+	return (UINT8)(g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal);
+}
 void InitWakeUp_Base(void)
 {
 	EXTI_InitTypeDef EXTI_InitStruct;
@@ -812,27 +863,27 @@ void SleepDeal_Normal_Select(void)
 		return;
 	}
 
-	if (g_stCellInfoReport.u16Ichg <= OtherElement.u16Sleep_VirCur_Chg && g_stCellInfoReport.u16IDischg <= OtherElement.u16Sleep_VirCur_Chg)
+	if (SleepDeal_IsIdleCurrent())
 	{
 		if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow)
 		{
 			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L3;
 		}
-		// else if (g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
-		// {
-		// 	Sleep_Mode.bits.b1NormalSleep_L1 = 1;
-		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
-		// }
+		else if (SleepDeal_IsRtcIdleNormal())
+		{
+			Sleep_Mode.bits.b1NormalSleep_L1 = 1;
+			Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
+		}
 		else
-		{ // 绛夊彿鍧囩撼鍏?L2
+		{ // 空闲但非RTC正常区间，走普通低功耗节奏
 			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L2;
 		}
 	}
 	else
 	{
-		// 鏈夌數娴佸垯缁х画鍦ㄨ繖涓?鍑芥暟寰?鐜?
+		// 电池有充放电电流，保持运行
 	}
 }
 
@@ -1049,9 +1100,9 @@ void App_SleepDeal(void)
 	case SLEEP_HICCUP_FORCED:
 		SleepDeal_Forced(); // 杩樻病鍐?
 		break;
-	// case SLEEP_HICCUP_NORMAL_L1:
-	// 	SleepDeal_Normal_L1();
-	// 	break;
+	case SLEEP_HICCUP_NORMAL_L1:
+		SleepDeal_Normal_L1();
+		break;
 	case SLEEP_HICCUP_NORMAL_L2:
 		SleepDeal_Normal_L2();
 		break;

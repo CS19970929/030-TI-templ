@@ -78,6 +78,27 @@ UINT8 RTC_TimeConfig(void)
 }
 
 // 还没调好，不知道效果如何，中断就没搞定
+
+static void RTC_BuildAlarmBySleepInterval(void)
+{
+	RTC_TimeTypeDef now_time;
+	UINT16 interval_min = OtherElement.u16Sleep_RTC_WakeUpTime;
+	UINT32 total_sec;
+
+	if (interval_min == 0)
+	{
+		interval_min = 1;
+	}
+
+	RTC_GetTime(RTC_Format_BIN, &now_time);
+	total_sec = (UINT32)now_time.RTC_Hours * 3600U + (UINT32)now_time.RTC_Minutes * 60U + (UINT32)now_time.RTC_Seconds;
+	total_sec += (UINT32)interval_min * 60U;
+	total_sec %= (24U * 3600U);
+
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = (UINT8)(total_sec / 3600U);
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = (UINT8)((total_sec % 3600U) / 60U);
+	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = (UINT8)(total_sec % 60U);
+}
 void RTC_AlarmConfig(void)
 {
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -86,20 +107,7 @@ void RTC_AlarmConfig(void)
 	RTC_AlarmCmd(RTC_Alarm_A, DISABLE);					   // Disable the Alarm A
 	RTC_AlarmStructure.RTC_AlarmTime.RTC_H12 = RTC_H12_AM; // 24小时制
 
-#if 0
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = RTC_time.RTC_Alarm_Hour + (OtherElement.u16Sleep_RTC_WakeUpTime/60);
-	UPDNLMT16(RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours,23,0);
-	
-	//下面那个不会超过59
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = RTC_time.RTC_Alarm_Minute + (OtherElement.u16Sleep_RTC_WakeUpTime%60);
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = RTC_time.RTC_Alarm_Second;
-#endif
-
-#if 1
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = RTC_time.RTC_Alarm_Hour + 0;
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = RTC_time.RTC_Alarm_Minute + 0;
-	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = RTC_time.RTC_Alarm_Second + 30;
-#endif
+	RTC_BuildAlarmBySleepInterval();
 
 	// Set the Alarm A
 	RTC_AlarmStructure.RTC_AlarmDateWeekDay = 31;
