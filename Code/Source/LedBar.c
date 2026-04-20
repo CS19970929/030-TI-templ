@@ -3,6 +3,209 @@
 
 LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 
+#define LEDBAR_MASK_ALL ((UINT8)0x1F)
+#define LEDBAR_LONG_PRESS_TICKS_100MS ((UINT8)30)
+#define LEDBAR_SHORT_PRESS_MAX_TICKS_100MS ((UINT8)10)
+#define LEDBAR_SHORT_SHOW_PHASE_TICKS_100MS ((UINT8)10)
+#define LEDBAR_SHORT_SHOW_CYCLE_COUNT ((UINT8)5)
+
+typedef enum _LEDBAR_UI_MODE
+{
+    LED_UI_NORMAL = 0,
+    LED_UI_BOOT_ANIM,
+    LED_UI_SHUTDOWN_ANIM,
+    LED_UI_SHORT_SHOW
+} LEDBAR_UI_MODE;
+
+static LEDBAR_UI_MODE s_led_ui_mode = LED_UI_NORMAL;
+static UINT8 s_anim_step = 0;
+static UINT8 s_short_phase = 0;
+static UINT8 s_short_phase_ticks = 0;
+static UINT8 s_short_cycle_cnt = 0;
+
+static UINT8 s_key_press_ticks = 0;
+static UINT8 s_key_prev_pressed = 0;
+static UINT8 s_key_long_handled = 0;
+static UINT8 s_key_wait_release = 0;
+
+static UINT8 LedBar_GetSocMask(void)
+{
+    UINT8 mask = 0;
+
+    if (g_stCellInfoReport.SocElement.u16Soc >= 0)
+        mask |= 0x01;
+    if (g_stCellInfoReport.SocElement.u16Soc > 20)
+        mask |= 0x02;
+    if (g_stCellInfoReport.SocElement.u16Soc > 40)
+        mask |= 0x04;
+    if (g_stCellInfoReport.SocElement.u16Soc > 60)
+        mask |= 0x08;
+    if (g_stCellInfoReport.SocElement.u16Soc > 80)
+        mask |= 0x10;
+
+    return mask;
+}
+
+static void LedBar_SetByMask(UINT8 mask)
+{
+    MCUO_SOC_20 = (mask & 0x01) ? 1 : 0;
+    MCUO_SOC_40 = (mask & 0x02) ? 1 : 0;
+    MCUO_SOC_60 = (mask & 0x04) ? 1 : 0;
+    MCUO_SOC_80 = (mask & 0x08) ? 1 : 0;
+    MCUO_SOC_100 = (mask & 0x10) ? 1 : 0;
+    MCUO_SOC_RUN = (mask != 0) ? 1 : 0;
+}
+
+static void LedBar_SetAllOff(void)
+{
+    LedBar_SetByMask(0);
+}
+
+static UINT8 LedBar_IsPowerOn(void)
+{
+    return (UINT8)System_OnOFF_Func.bits.b1OnOFF_MOS_Relay;
+}
+
+static UINT8 LedBar_IsKeyPressed(void)
+{
+    return (UINT8)(MCUI_SOC_KEY == 0);
+}
+
+static void LedBar_StartShortShow(void)
+{
+    s_led_ui_mode = LED_UI_SHORT_SHOW;
+    s_short_phase = 0;
+    s_short_phase_ticks = 0;
+    s_short_cycle_cnt = 0;
+}
+
+static void LedBar_StartPowerAnim(UINT8 power_on_before_toggle)
+{
+    if (power_on_before_toggle)
+    {
+        s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
+    }
+    else
+    {
+        s_led_ui_mode = LED_UI_BOOT_ANIM;
+    }
+    s_anim_step = 0;
+}
+
+static void LedBar_ProcessKeyEvent(void)
+{
+    UINT8 key_pressed = LedBar_IsKeyPressed();
+
+    if (key_pressed)
+    {
+        if (!s_key_prev_pressed)
+        {
+            s_key_press_ticks = 0;
+            s_key_long_handled = 0;
+        }
+
+        if (s_key_press_ticks < 0xFF)
+        {
+            ++s_key_press_ticks;
+        }
+
+        if (!s_key_wait_release && !s_key_long_handled && s_key_press_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
+        {
+            UINT8 power_on_before_toggle = LedBar_IsPowerOn();
+
+            s_key_long_handled = 1;
+            s_key_wait_release = 1;
+            Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+            LedBar_StartPowerAnim(power_on_before_toggle);
+        }
+    }
+    else
+    {
+        if (s_key_prev_pressed)
+        {
+            if (!s_key_long_handled &&
+                s_key_press_ticks > 0 &&
+                s_key_press_ticks <= LEDBAR_SHORT_PRESS_MAX_TICKS_100MS &&
+                LedBar_IsPowerOn())
+            {
+                LedBar_StartShortShow();
+            }
+        }
+
+        s_key_press_ticks = 0;
+        s_key_long_handled = 0;
+        s_key_wait_release = 0;
+    }
+
+    s_key_prev_pressed = key_pressed;
+}
+
+static void LedBar_RunBootAnim(void)
+{
+    if (s_anim_step < 5)
+    {
+        LedBar_SetByMask((UINT8)((1U << (s_anim_step + 1U)) - 1U));
+        ++s_anim_step;
+        return;
+    }
+
+    s_anim_step = 0;
+    s_led_ui_mode = LED_UI_NORMAL;
+}
+
+static void LedBar_RunShutdownAnim(void)
+{
+    if (s_anim_step == 0)
+    {
+        LedBar_SetByMask(LEDBAR_MASK_ALL);
+        ++s_anim_step;
+        return;
+    }
+
+    if (s_anim_step <= 5)
+    {
+        LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
+        ++s_anim_step;
+        return;
+    }
+
+    s_anim_step = 0;
+    s_led_ui_mode = LED_UI_NORMAL;
+}
+
+static void LedBar_RunShortShow(void)
+{
+    if (s_short_phase == 0)
+    {
+        LedBar_SetByMask(LedBar_GetSocMask());
+    }
+    else
+    {
+        LedBar_SetAllOff();
+    }
+
+    if (++s_short_phase_ticks < LEDBAR_SHORT_SHOW_PHASE_TICKS_100MS)
+    {
+        return;
+    }
+
+    s_short_phase_ticks = 0;
+
+    if (s_short_phase == 0)
+    {
+        s_short_phase = 1;
+        return;
+    }
+
+    s_short_phase = 0;
+    if (++s_short_cycle_cnt >= LEDBAR_SHORT_SHOW_CYCLE_COUNT)
+    {
+        s_short_cycle_cnt = 0;
+        s_led_ui_mode = LED_UI_NORMAL;
+        LedBar_SetAllOff();
+    }
+}
+
 void LedBar_StartUp(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -15,71 +218,33 @@ void LedBar_StartUp(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
     LedBar_Command = LED_BAR_NORMAL;
+    s_led_ui_mode = LED_UI_NORMAL;
+    s_anim_step = 0;
+    s_short_phase = 0;
+    s_short_phase_ticks = 0;
+    s_short_cycle_cnt = 0;
+    s_key_press_ticks = 0;
+    s_key_prev_pressed = 0;
+    s_key_long_handled = 0;
+    s_key_wait_release = 0;
 }
 
 void LedBar_Show_Normal(void)
 {
-    static UINT8 su8_ShowStatus = 1; // 开机亮5s
-    static UINT16 su16_ShowDelay_Tcnt = 0;
-
-    switch (su8_ShowStatus)
+    if (g_stCellInfoReport.u16Ichg)
     {
-    case 0:
-        if (MCUI_SOC_KEY == 0)
-        {
-            su8_ShowStatus = 1;
-        }
-
-        if (g_stCellInfoReport.u16Ichg)
-        {
-            LedBar_Command = LED_BAR_CHG;
-        }
-
-        if (g_stCellInfoReport.u16IDischg)
-        {
-            LedBar_Command = LED_BAR_DSG;
-        }
-        break;
-
-    case 1:
-        // 5s
-        // if (++su16_ShowDelay_Tcnt <= 10 * 5)
-        if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
-            break;
-
-        {
-            // MCUO_SOC_RUN = 1;
-            MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc >= 0 ? 1 : 0;
-            MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc > 20 ? 1 : 0;
-            MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc > 40 ? 1 : 0;
-            MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc > 60 ? 1 : 0;
-            MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc > 80 ? 1 : 0;
-        }
-
-        if (g_stCellInfoReport.u16Ichg)
-        {
-            LedBar_Command = LED_BAR_CHG;
-        }
-        // else
-        // {
-        //     MCUO_SOC_RUN = 0;
-        //     MCUO_SOC_20 = 0;
-        //     MCUO_SOC_40 = 0;
-        //     MCUO_SOC_60 = 0;
-        //     MCUO_SOC_80 = 0;
-        //     MCUO_SOC_100 = 0;
-        //     su16_ShowDelay_Tcnt = 0;
-        //     su8_ShowStatus = 0;
-        // }
-
-        // 一直按着
-        // if (!MCUI_SOC_KEY)
-        //     su16_ShowDelay_Tcnt = 0;
-        break;
-
-    default:
-        break;
+        LedBar_Command = LED_BAR_CHG;
+        return;
     }
+
+    if (g_stCellInfoReport.u16IDischg)
+    {
+        LedBar_Command = LED_BAR_DSG;
+        return;
+    }
+
+    // 常态不持续显示SOC，由短按触发显示
+    LedBar_SetAllOff();
 }
 
 void LedBar_Show_CHG(void)
@@ -111,13 +276,6 @@ void LedBar_Show_CHG(void)
 
     if (g_stCellInfoReport.u16Ichg == 0)
     {
-        // MCUO_SOC_RUN = 0;
-        // MCUO_SOC_20 = 0;
-        // MCUO_SOC_40 = 0;
-        // MCUO_SOC_60 = 0;
-        // MCUO_SOC_80 = 0;
-        // MCUO_SOC_100 = 0;
-
         LedBar_Command = LED_BAR_NORMAL;
     }
 }
@@ -149,16 +307,11 @@ void LedBar_Show_Fault(void)
     if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
     {
         MCUO_SOC_ALARM = !MCUO_SOC_ALARM;
-        // MCUO_SOC_20 = 0;
         MCUO_SOC_40 = 0;
         MCUO_SOC_60 = 0;
         MCUO_SOC_80 = 0;
         MCUO_SOC_100 = 0;
     }
-    // else
-    // {
-    //     MCUO_SOC_ALARM = 0;
-    // }
 }
 
 void LedBar_Show_Sleep(void)
@@ -179,6 +332,8 @@ void LedBar_Show_Sleep(void)
 
 void APP_LedBar(void)
 {
+    static bool first_reset_status = true;
+
     if (0 == g_st_SysTimeFlag.bits.b1Sys100msFlag)
     {
         return;
@@ -189,9 +344,7 @@ void APP_LedBar(void)
         return;
     }
 
-    // LedBar_Show_Sleep();
-
-    static bool first_reset_status = true;
+    LedBar_ProcessKeyEvent();
 
     if (is_water_in())
     {
@@ -215,24 +368,43 @@ void APP_LedBar(void)
     {
         first_reset_status = true;
 
-        switch (LedBar_Command)
+        switch (s_led_ui_mode)
         {
-        case LED_BAR_NORMAL:
-            LedBar_Show_Normal();
+        case LED_UI_BOOT_ANIM:
+            LedBar_RunBootAnim();
             break;
-        case LED_BAR_CHG:
-            LedBar_Show_CHG();
+
+        case LED_UI_SHUTDOWN_ANIM:
+            LedBar_RunShutdownAnim();
             break;
-        case LED_BAR_DSG:
-            LedBar_Show_DSG();
+
+        case LED_UI_SHORT_SHOW:
+            LedBar_RunShortShow();
             break;
-        case LED_BAR_FAULT:
-            // 下面长期监控
+
+        case LED_UI_NORMAL:
+            switch (LedBar_Command)
+            {
+            case LED_BAR_NORMAL:
+                LedBar_Show_Normal();
+                break;
+            case LED_BAR_CHG:
+                LedBar_Show_CHG();
+                break;
+            case LED_BAR_DSG:
+                LedBar_Show_DSG();
+                break;
+            case LED_BAR_FAULT:
+                break;
+            default:
+                break;
+            }
             break;
 
         default:
             break;
         }
     }
+
     LedBar_Show_Fault();
 }

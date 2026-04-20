@@ -7,6 +7,50 @@ UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
 uint8_t reset_sleep_state = 0;
+#define DI1_LONG_PRESS_WAKE_10MS ((UINT16)300) // PC13持续3秒闭合才认为有效
+
+static UINT8 IsPA0WakeupActive(void)
+{
+	return (UINT8)PORT_IN_GPIOA->bit0;
+}
+
+static UINT8 IsDI1Pressed(void)
+{
+	// PC13开关闭合为低电平（与EXTI13下降沿唤醒保持一致）
+	return (UINT8)(MCUI_ENI_DI1 == 0);
+}
+
+static UINT8 IsSleepWakeupValid(void)
+{
+	UINT16 hold_cnt = 0;
+
+	// PA0充电唤醒保持立即生效
+	if (IsPA0WakeupActive())
+	{
+		return 1;
+	}
+
+	if (!IsDI1Pressed())
+	{
+		return 0;
+	}
+
+	while (IsDI1Pressed())
+	{
+		if (IsPA0WakeupActive())
+		{
+			return 1;
+		}
+
+		__delay_ms(10);
+		if (++hold_cnt >= DI1_LONG_PRESS_WAKE_10MS)
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
 
 // 閫氳??鍞ら啋瀵规繁搴︿紤鐪犱笉璧锋晥鏋溿�備笉鑳藉啀Base鍔犲叆閫氳??鍞ら啋銆?
 void InitWakeUp_Base(void)
@@ -868,7 +912,10 @@ void IsSleepStartUp(void)
 
 		IOstatus_RTCMode();
 		InitWakeUp_RTCMode();
-		Sys_StopMode();
+		do
+		{
+			Sys_StopMode();
+		} while (!IsSleepWakeupValid());
 		// Sys_StandbyMode();
 		IORecover_RTCMode();
 		break;
@@ -876,7 +923,10 @@ void IsSleepStartUp(void)
 		BootFlag_Clear();
 		IOstatus_NormalMode();
 		InitWakeUp_NormalMode();
-		Sys_StopMode();
+		do
+		{
+			Sys_StopMode();
+		} while (!IsSleepWakeupValid());
 		IORecover_NormalMode();
 		break;
 	case FLASH_DEEP_SLEEP_VALUE:
@@ -884,7 +934,10 @@ void IsSleepStartUp(void)
 		IOstatus_DeepMode();
 		InitWakeUp_DeepMode();
 		// Sys_StandbyMode();		//??????IO???
-		Sys_StopMode();
+		do
+		{
+			Sys_StopMode();
+		} while (!IsSleepWakeupValid());
 		IORecover_DeepMode();
 		break;
 	case FLASH_SLEEP_RESET_VALUE:

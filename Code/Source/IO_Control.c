@@ -186,23 +186,26 @@ void App_DI1_Switch(void)
 
 #ifdef _DI_SWITCH_SYS_ONOFF
 	static UINT16 su16_AntiShake_Cnt1 = 0;
+	static UINT8 su8_KeyReleased = 1;
 
-	if (1 == MCUI_ENI_DI1)
+	if (0 == MCUI_ENI_DI1)
 	{
-		if (++su16_AntiShake_Cnt1 >= 2)
+		if (!su8_KeyReleased)
 		{
-			su16_AntiShake_Cnt1 = 2;
+			return;
+		}
+
+		if (++su16_AntiShake_Cnt1 >= 300)
+		{
+			su16_AntiShake_Cnt1 = 300;
 			Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+			su8_KeyReleased = 0;
 		}
 	}
 	else
 	{
-		if (su16_AntiShake_Cnt1)
-		{
-			--su16_AntiShake_Cnt1;
-			return;
-		}
-		// SleepElement.Sleep_Mode.bits.b1ForceToSleep_L2_L2 = 0;
+		su16_AntiShake_Cnt1 = 0;
+		su8_KeyReleased = 1;
 	}
 #endif
 
