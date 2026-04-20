@@ -411,6 +411,12 @@ void APP_LedBar(void)
 
     if (is_water_in())
     {
+        if (s_led_ui_mode == LED_UI_SHUTDOWN_ANIM)
+        {
+            LedBar_RunShutdownAnim();
+            return;
+        }
+
         if (first_reset_status)
         {
             first_reset_status = false;
