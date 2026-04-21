@@ -8,11 +8,11 @@
 
 #define EEPROM_VALUE_BEGIN_FLAG				0x0331		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
-// #define  wdog_enable
+#define  wdog_enable
 // #define __FUNC__HEAT__
 #define __LOAD_REMOVE_SHORT_FUNC__
 
-#define __VIRTURE_CURRENT__
+// #define __VIRTURE_CURRENT__
 #define __FUNC__LED__
 // #define __FUNC_RTC__
 

@@ -870,11 +870,11 @@ void SleepDeal_Normal_Select(void)
 			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L3;
 		}
-		else if (SleepDeal_IsRtcIdleNormal())
-		{
-			Sleep_Mode.bits.b1NormalSleep_L1 = 1;
-			Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
-		}
+		// else if (SleepDeal_IsRtcIdleNormal())
+		// {
+		// 	Sleep_Mode.bits.b1NormalSleep_L1 = 1;
+		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
+		// }
 		else
 		{ // 空闲但非RTC正常区间，走普通低功耗节奏
 			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
@@ -1100,9 +1100,9 @@ void App_SleepDeal(void)
 	case SLEEP_HICCUP_FORCED:
 		SleepDeal_Forced(); // 杩樻病鍐?
 		break;
-	case SLEEP_HICCUP_NORMAL_L1:
-		SleepDeal_Normal_L1();
-		break;
+	// case SLEEP_HICCUP_NORMAL_L1:
+	// 	SleepDeal_Normal_L1();
+	// 	break;
 	case SLEEP_HICCUP_NORMAL_L2:
 		SleepDeal_Normal_L2();
 		break;

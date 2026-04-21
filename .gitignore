@@ -20,3 +20,4 @@ EventRecorderStub.scvd
 artifacts/
 *.bak
 ~$*
+_doc_sync_hub
