@@ -35,7 +35,8 @@ void ganhuangguan_Logi(void)
     }
     else
     {
-        if (is_open_gan1() && is_open_gan2() && is_open_gan3())
+        // if (is_open_gan1() && is_open_gan2() && is_open_gan3())
+        if (is_open_gan1() && is_open_gan2())
         {
             Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
         }
