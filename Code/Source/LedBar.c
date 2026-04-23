@@ -42,7 +42,7 @@ static UINT8 s_anim_step = 0;
 static UINT8 s_anim_step_ticks = 0;
 static UINT8 s_ui_ticks = 0;
 static UINT8 s_pending_shutdown_sleep = 0;
-static UINT8 s_wake_preview_pending = 0;
+static UINT8 s_boot_sequence_pending = 0;
 static UINT16 s_cached_soc = 0;
 
 static UINT8 s_key_press_ticks = 0;
@@ -128,7 +128,8 @@ static UINT8 LedBar_IsKeyPressed(void)
 
 UINT8 LedBar_IsWakePreviewPending(void)
 {
-    return s_wake_preview_pending;
+    /* 保留旧接口，避免再通过该标志改动系统开机功能位。 */
+    return 0;
 }
 
 static void LedBar_InitOutputPins(void)
@@ -167,7 +168,7 @@ static void LedBar_StartWakePreview(void)
 static void LedBar_StartPowerOnAnim(void)
 {
     s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
-    s_anim_step = 0;
+    s_anim_step = 1;
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
     s_pending_shutdown_sleep = 0;
@@ -175,7 +176,7 @@ static void LedBar_StartPowerOnAnim(void)
     s_key_long_handled = 1;
     s_ignore_next_release_short = 1;
     System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1;
-    LedBar_SetAllOff();
+    LedBar_SetByMask(0x01);
 }
 
 static void LedBar_StartShutdownAnim(void)
@@ -330,7 +331,7 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
 
 static void LedBar_RunWakePreviewShow(void)
 {
-    s_wake_preview_pending = 0;
+    s_boot_sequence_pending = 0;
     s_led_ui_mode = LED_UI_NORMAL;
     s_wake_preview_hold_ticks = 0;
     LedBar_SetAllOff();
@@ -391,7 +392,7 @@ static void LedBar_RunBootPostShow(void)
 
     s_ui_ticks = 0;
     s_led_ui_mode = LED_UI_NORMAL;
-    s_wake_preview_pending = 0;
+    s_boot_sequence_pending = 0;
     s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS;
     LedBar_SetAllOff();
 }
@@ -434,7 +435,7 @@ void LedBar_StartUp(void)
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
     s_pending_shutdown_sleep = 0;
-    s_wake_preview_pending = 0;
+    s_boot_sequence_pending = 0;
     s_cached_soc = 0;
     s_key_press_ticks = 0;
     s_key_prev_pressed = 0;
@@ -457,10 +458,10 @@ void LedBar_StartUp(void)
 
     if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE)
     {
-        s_wake_preview_pending = 1;
+        s_boot_sequence_pending = 1;
         s_key_stable_pressed = LedBar_IsKeyPressed();
         s_key_prev_pressed = s_key_stable_pressed;
-        LedBar_StartPowerOnAnim();
+        LedBar_SetAllOff();
     }
     else
     {
@@ -581,6 +582,12 @@ void APP_LedBar(void)
     if (SystemStatus.bits.b1StartUpBMS)
     {
         return;
+    }
+
+    if (s_boot_sequence_pending && s_led_ui_mode == LED_UI_NORMAL)
+    {
+        s_boot_sequence_pending = 0;
+        LedBar_StartPowerOnAnim();
     }
 
     LedBar_ProcessKeyEvent();
