@@ -1,32 +1,46 @@
 #include "main.h"
+#include "Flash.h"
 #include "gan_huang_guan_logi.h"
+
+#ifndef WAKE_DISPLAY_MODE_NONE
+#define WAKE_DISPLAY_MODE_NONE            ((UINT16)0x0000)
+#endif
+#ifndef WAKE_DISPLAY_MODE_SOC_PREVIEW
+#define WAKE_DISPLAY_MODE_SOC_PREVIEW     ((UINT16)0x0001)
+#endif
+
+extern UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc);
+extern void WakeDisplayState_Clear(void);
 
 LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 
 #define LEDBAR_MASK_ALL ((UINT8)0x1F)
 #define LEDBAR_LONG_PRESS_TICKS_100MS ((UINT8)30)
-#define LEDBAR_SHORT_PRESS_MAX_TICKS_100MS ((UINT8)10)
-#define LEDBAR_SHORT_SHOW_PHASE_TICKS_100MS ((UINT8)10)
-#define LEDBAR_SHORT_SHOW_CYCLE_COUNT ((UINT8)5)
-#define LEDBAR_SHORT_PRESS_MIN_TICKS_100MS ((UINT8)2)
-#define LEDBAR_KEY_DEBOUNCE_TICKS_100MS ((UINT8)2)
-#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)3)
-#define LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS ((UINT8)20)
+#define LEDBAR_SHORT_SHOW_TICKS_100MS ((UINT8)50)
+#define LEDBAR_BOOT_PREVIEW_SHOW_TICKS_100MS ((UINT8)30)
+#define LEDBAR_BOOT_POST_SHOW_TICKS_100MS ((UINT8)30)
+#define LEDBAR_KEY_DEBOUNCE_TICKS_100MS ((UINT8)1)
+#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)2)
+#define LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS ((UINT8)10)
 
 typedef enum _LEDBAR_UI_MODE
 {
     LED_UI_NORMAL = 0,
-    LED_UI_BOOT_ANIM,
-    LED_UI_SHUTDOWN_ANIM,
-    LED_UI_SHORT_SHOW
+    LED_UI_SHORT_SHOW,
+    LED_UI_WAKE_PREVIEW_SHOW,
+    LED_UI_BOOT_ANIM_ON,
+    LED_UI_BOOT_ANIM_OFF,
+    LED_UI_BOOT_POST_SHOW,
+    LED_UI_SHUTDOWN_ANIM
 } LEDBAR_UI_MODE;
 
 static LEDBAR_UI_MODE s_led_ui_mode = LED_UI_NORMAL;
 static UINT8 s_anim_step = 0;
-static UINT8 s_short_phase = 0;
-static UINT8 s_short_phase_ticks = 0;
-static UINT8 s_short_cycle_cnt = 0;
+static UINT8 s_anim_step_ticks = 0;
+static UINT8 s_ui_ticks = 0;
 static UINT8 s_pending_shutdown_sleep = 0;
+static UINT8 s_wake_preview_pending = 0;
+static UINT16 s_cached_soc = 0;
 
 static UINT8 s_key_press_ticks = 0;
 static UINT8 s_key_prev_pressed = 0;
@@ -34,26 +48,53 @@ static UINT8 s_key_long_handled = 0;
 static UINT8 s_key_wait_release = 0;
 static UINT8 s_key_stable_pressed = 0;
 static UINT8 s_key_debounce_ticks = 0;
-static UINT8 s_anim_step_ticks = 0;
 static UINT8 s_short_press_block_ticks = 0;
 static UINT8 s_ignore_next_release_short = 0;
 
-static UINT8 LedBar_GetSocMask(void)
+static UINT8 LedBar_ClampSoc(UINT16 soc)
+{
+    if (soc > 100)
+    {
+        return 100;
+    }
+
+    return (UINT8)soc;
+}
+
+static UINT8 LedBar_GetSocMaskFromValue(UINT16 soc)
 {
     UINT8 mask = 0;
+    UINT8 soc_clamped = LedBar_ClampSoc(soc);
 
-    if (g_stCellInfoReport.SocElement.u16Soc >= 0)
-        mask |= 0x01;
-    if (g_stCellInfoReport.SocElement.u16Soc > 20)
+    mask |= 0x01;
+    if (soc_clamped > 20)
+    {
         mask |= 0x02;
-    if (g_stCellInfoReport.SocElement.u16Soc > 40)
+    }
+    if (soc_clamped > 40)
+    {
         mask |= 0x04;
-    if (g_stCellInfoReport.SocElement.u16Soc > 60)
+    }
+    if (soc_clamped > 60)
+    {
         mask |= 0x08;
-    if (g_stCellInfoReport.SocElement.u16Soc > 80)
+    }
+    if (soc_clamped > 80)
+    {
         mask |= 0x10;
+    }
 
     return mask;
+}
+
+static UINT8 LedBar_GetLiveSocMask(void)
+{
+    return LedBar_GetSocMaskFromValue(g_stCellInfoReport.SocElement.u16Soc);
+}
+
+static UINT8 LedBar_GetCachedSocMask(void)
+{
+    return LedBar_GetSocMaskFromValue(s_cached_soc);
 }
 
 static void LedBar_SetByMask(UINT8 mask)
@@ -78,37 +119,54 @@ static UINT8 LedBar_IsPowerOn(void)
 
 static UINT8 LedBar_IsKeyPressed(void)
 {
-    // 与开关机逻辑保持一致，使用PC13干簧管输入，避免PB14通信唤醒脚干扰
     return (UINT8)(MCUI_ENI_DI1 == 0);
+}
+
+UINT8 LedBar_IsWakePreviewPending(void)
+{
+    return s_wake_preview_pending;
 }
 
 static void LedBar_StartShortShow(void)
 {
     s_led_ui_mode = LED_UI_SHORT_SHOW;
-    s_short_phase = 0;
-    s_short_phase_ticks = 0;
-    s_short_cycle_cnt = 0;
+    s_ui_ticks = 0;
 }
 
-static void LedBar_StartPowerAnim(UINT8 power_on_before_toggle)
+static void LedBar_StartWakePreview(void)
 {
-    if (power_on_before_toggle)
-    {
-        s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
-        s_pending_shutdown_sleep = 1;
-    }
-    else
-    {
-        s_led_ui_mode = LED_UI_BOOT_ANIM;
-        s_pending_shutdown_sleep = 0;
-    }
+    s_led_ui_mode = LED_UI_WAKE_PREVIEW_SHOW;
+    s_ui_ticks = 0;
+    LedBar_SetByMask(LedBar_GetCachedSocMask());
+}
+
+static void LedBar_StartPowerOnAnim(void)
+{
+    s_wake_preview_pending = 0;
+    s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
     s_anim_step = 0;
-    s_anim_step_ticks = (UINT8)(LEDBAR_ANIM_STEP_TICKS_100MS - 1);
+    s_anim_step_ticks = 0;
+    s_ui_ticks = 0;
+    s_pending_shutdown_sleep = 0;
+    s_ignore_next_release_short = 1;
+    System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1;
+    LedBar_SetAllOff();
+}
+
+static void LedBar_StartShutdownAnim(void)
+{
+    s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
+    s_anim_step = 0;
+    s_anim_step_ticks = 0;
+    s_ui_ticks = 0;
+    s_pending_shutdown_sleep = 1;
+    s_ignore_next_release_short = 1;
+    LedBar_SetByMask(LEDBAR_MASK_ALL);
 }
 
 static void LedBar_ProcessKeyEvent(void)
 {
-    UINT8 key_pressed_raw = LedBar_IsKeyPressed();
+    UINT8 key_pressed_raw;
     UINT8 key_pressed;
 
     if (s_short_press_block_ticks > 0)
@@ -116,7 +174,7 @@ static void LedBar_ProcessKeyEvent(void)
         --s_short_press_block_ticks;
     }
 
-    // 100ms粒度去抖，避免输入毛刺频繁触发短按逻辑
+    key_pressed_raw = LedBar_IsKeyPressed();
     if (key_pressed_raw != s_key_stable_pressed)
     {
         if (++s_key_debounce_ticks >= LEDBAR_KEY_DEBOUNCE_TICKS_100MS)
@@ -145,25 +203,27 @@ static void LedBar_ProcessKeyEvent(void)
             ++s_key_press_ticks;
         }
 
-        if (!s_key_wait_release && !s_key_long_handled && s_key_press_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
+        if (LedBar_IsPowerOn() &&
+            s_led_ui_mode == LED_UI_NORMAL &&
+            !s_key_wait_release &&
+            !s_key_long_handled &&
+            s_key_press_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
         {
-            UINT8 power_on_before_toggle = LedBar_IsPowerOn();
-
             s_key_long_handled = 1;
             s_key_wait_release = 1;
             s_ignore_next_release_short = 1;
-            LedBar_StartPowerAnim(power_on_before_toggle);
+            LedBar_StartShutdownAnim();
         }
     }
     else
     {
         if (s_key_prev_pressed)
         {
-            if (!s_key_long_handled &&
+            if (LedBar_IsPowerOn() &&
+                s_led_ui_mode == LED_UI_NORMAL &&
+                !s_key_long_handled &&
                 s_key_press_ticks > 0 &&
                 s_key_press_ticks < LEDBAR_LONG_PRESS_TICKS_100MS &&
-                LedBar_IsPowerOn() &&
-                s_led_ui_mode == LED_UI_NORMAL &&
                 !s_ignore_next_release_short &&
                 s_short_press_block_ticks == 0)
             {
@@ -180,7 +240,44 @@ static void LedBar_ProcessKeyEvent(void)
     s_key_prev_pressed = key_pressed;
 }
 
-static void LedBar_RunBootAnim(void)
+static void LedBar_RunShortShow(void)
+{
+    LedBar_SetByMask(LedBar_GetLiveSocMask());
+
+    if (++s_ui_ticks < LEDBAR_SHORT_SHOW_TICKS_100MS)
+    {
+        return;
+    }
+
+    s_ui_ticks = 0;
+    s_led_ui_mode = LED_UI_NORMAL;
+    LedBar_SetAllOff();
+}
+
+static void LedBar_RunWakePreviewShow(void)
+{
+    LedBar_SetByMask(LedBar_GetCachedSocMask());
+
+    if (++s_ui_ticks < LEDBAR_BOOT_PREVIEW_SHOW_TICKS_100MS)
+    {
+        return;
+    }
+
+    s_ui_ticks = 0;
+    LedBar_SetAllOff();
+
+    if (s_key_stable_pressed)
+    {
+        LedBar_StartPowerOnAnim();
+        return;
+    }
+
+    s_wake_preview_pending = 0;
+    s_led_ui_mode = LED_UI_NORMAL;
+    Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+}
+
+static void LedBar_RunBootAnimOn(void)
 {
     if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
     {
@@ -190,14 +287,53 @@ static void LedBar_RunBootAnim(void)
 
     if (s_anim_step < 5)
     {
-        LedBar_SetByMask((UINT8)((1U << (s_anim_step + 1U)) - 1U));
         ++s_anim_step;
+        LedBar_SetByMask((UINT8)((1U << s_anim_step) - 1U));
+    }
+
+    if (s_anim_step >= 5)
+    {
+        s_anim_step = 0;
+        s_led_ui_mode = LED_UI_BOOT_ANIM_OFF;
+    }
+}
+
+static void LedBar_RunBootAnimOff(void)
+{
+    if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
+    {
+        return;
+    }
+    s_anim_step_ticks = 0;
+
+    if (s_anim_step < 5)
+    {
+        ++s_anim_step;
+        LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
+    }
+
+    if (s_anim_step >= 5)
+    {
+        s_anim_step = 0;
+        s_ui_ticks = 0;
+        s_led_ui_mode = LED_UI_BOOT_POST_SHOW;
+        LedBar_SetByMask(LedBar_GetCachedSocMask());
+    }
+}
+
+static void LedBar_RunBootPostShow(void)
+{
+    LedBar_SetByMask(LedBar_GetCachedSocMask());
+
+    if (++s_ui_ticks < LEDBAR_BOOT_POST_SHOW_TICKS_100MS)
+    {
         return;
     }
 
-    s_anim_step = 0;
+    s_ui_ticks = 0;
     s_led_ui_mode = LED_UI_NORMAL;
-    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
+    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS;
+    LedBar_SetAllOff();
 }
 
 static void LedBar_RunShutdownAnim(void)
@@ -208,22 +344,16 @@ static void LedBar_RunShutdownAnim(void)
     }
     s_anim_step_ticks = 0;
 
-    if (s_anim_step == 0)
+    if (s_anim_step < 5)
     {
-        LedBar_SetByMask(LEDBAR_MASK_ALL);
         ++s_anim_step;
+        LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
         return;
     }
 
-    if (s_anim_step <= 5)
-    {
-        LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
-        ++s_anim_step;
-        return;
-    }
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
-    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
+    LedBar_SetAllOff();
     if (s_pending_shutdown_sleep)
     {
         s_pending_shutdown_sleep = 0;
@@ -231,42 +361,11 @@ static void LedBar_RunShutdownAnim(void)
     }
 }
 
-static void LedBar_RunShortShow(void)
-{
-    if (s_short_phase == 0)
-    {
-        LedBar_SetByMask(LedBar_GetSocMask());
-    }
-    else
-    {
-        LedBar_SetAllOff();
-    }
-
-    if (++s_short_phase_ticks < LEDBAR_SHORT_SHOW_PHASE_TICKS_100MS)
-    {
-        return;
-    }
-
-    s_short_phase_ticks = 0;
-
-    if (s_short_phase == 0)
-    {
-        s_short_phase = 1;
-        return;
-    }
-
-    s_short_phase = 0;
-    if (++s_short_cycle_cnt >= LEDBAR_SHORT_SHOW_CYCLE_COUNT)
-    {
-        s_short_cycle_cnt = 0;
-        s_led_ui_mode = LED_UI_NORMAL;
-        LedBar_SetAllOff();
-    }
-}
-
 void LedBar_StartUp(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
+    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+    UINT16 wake_soc = 0;
 
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_5;
     GPIO_InitStructure.GPIO_Pin |= GPIO_Pin_12 | GPIO_Pin_13;
@@ -276,20 +375,34 @@ void LedBar_StartUp(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
     LedBar_Command = LED_BAR_NORMAL;
-    s_led_ui_mode = LED_UI_BOOT_ANIM;
+    s_led_ui_mode = LED_UI_NORMAL;
     s_anim_step = 0;
-    s_short_phase = 0;
-    s_short_phase_ticks = 0;
-    s_short_cycle_cnt = 0;
     s_anim_step_ticks = 0;
-    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_BOOT_TICKS_100MS;
-    s_ignore_next_release_short = 0;
+    s_ui_ticks = 0;
+    s_pending_shutdown_sleep = 0;
+    s_wake_preview_pending = 0;
+    s_cached_soc = 0;
     s_key_press_ticks = 0;
     s_key_prev_pressed = 0;
     s_key_long_handled = 0;
     s_key_wait_release = 0;
     s_key_stable_pressed = 0;
     s_key_debounce_ticks = 0;
+    s_short_press_block_ticks = 0;
+    s_ignore_next_release_short = 0;
+
+    if (WakeDisplayState_Read(&wake_mode, &wake_soc) && (wake_mode == WAKE_DISPLAY_MODE_SOC_PREVIEW))
+    {
+        s_cached_soc = wake_soc;
+        s_wake_preview_pending = 1;
+        LedBar_StartWakePreview();
+    }
+    else
+    {
+        LedBar_SetAllOff();
+    }
+
+    WakeDisplayState_Clear();
 }
 
 void LedBar_Show_Normal(void)
@@ -306,7 +419,6 @@ void LedBar_Show_Normal(void)
         return;
     }
 
-    // 常态不持续显示SOC，由短按触发显示
     LedBar_SetAllOff();
 }
 
@@ -317,21 +429,19 @@ void LedBar_Show_CHG(void)
 
     if (++su16_ShowDelay <= 5)
     {
-        su8_temp = ~(1 << (g_stCellInfoReport.SocElement.u16Soc / 20)); // 充电的灭
+        su8_temp = ~(1 << (g_stCellInfoReport.SocElement.u16Soc / 20));
     }
     else if (++su16_ShowDelay <= 10)
     {
-        su8_temp = 0xFF; // 全亮
+        su8_temp = 0xFF;
     }
     else
     {
         su16_ShowDelay = 0;
     }
 
-    // SOC =100的时候，为0x20，运算结果相当于全亮，不会有闪的
-    // SOC =0的时候，也要闪
     MCUO_SOC_RUN = 1;
-    MCUO_SOC_20 = (g_stCellInfoReport.SocElement.u16Soc >= 0 ? 1 : 0) && (su8_temp & 0x01); // 这里的三目运算符为>=，而不是>，因为这个灯一定要亮
+    MCUO_SOC_20 = (su8_temp & 0x01) ? 1 : 0;
     MCUO_SOC_40 = (g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0) && (su8_temp & 0x02);
     MCUO_SOC_60 = (g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0) && (su8_temp & 0x04);
     MCUO_SOC_80 = (g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0) && (su8_temp & 0x08);
@@ -380,6 +490,7 @@ void LedBar_Show_Fault(void)
 void LedBar_Show_Sleep(void)
 {
     static UINT16 su16_SleepDelay_Tcnt = 0;
+
     if (!MCUI_SOC_KEY)
     {
         if (++su16_SleepDelay_Tcnt >= 30)
@@ -439,16 +550,28 @@ void APP_LedBar(void)
 
         switch (s_led_ui_mode)
         {
-        case LED_UI_BOOT_ANIM:
-            LedBar_RunBootAnim();
+        case LED_UI_SHORT_SHOW:
+            LedBar_RunShortShow();
+            break;
+
+        case LED_UI_WAKE_PREVIEW_SHOW:
+            LedBar_RunWakePreviewShow();
+            break;
+
+        case LED_UI_BOOT_ANIM_ON:
+            LedBar_RunBootAnimOn();
+            break;
+
+        case LED_UI_BOOT_ANIM_OFF:
+            LedBar_RunBootAnimOff();
+            break;
+
+        case LED_UI_BOOT_POST_SHOW:
+            LedBar_RunBootPostShow();
             break;
 
         case LED_UI_SHUTDOWN_ANIM:
             LedBar_RunShutdownAnim();
-            break;
-
-        case LED_UI_SHORT_SHOW:
-            LedBar_RunShortShow();
             break;
 
         case LED_UI_NORMAL:
@@ -480,4 +603,3 @@ void APP_LedBar(void)
         LedBar_Show_Fault();
     }
 }
-

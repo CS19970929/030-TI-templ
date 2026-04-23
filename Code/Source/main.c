@@ -140,6 +140,13 @@ void InitDevice(void)
 void InitVar(void)
 {
 	InitSystemMonitorData_EEPROM();
+#ifdef __FUNC__LED__
+	if (LedBar_IsWakePreviewPending())
+	{
+		System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 0;
+		System_OnOFF_Func_StartUpRec.bits.b1OnOFF_MOS_Relay = 0;
+	}
+#endif
 	// 这样写就不用管前面到底读出来还是复位了(在EEPROM很多个地方算)
 	SeriesNum = OtherElement.u16Sys_SeriesNum;
 	g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100; // 算CS检流电阻

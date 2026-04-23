@@ -39,6 +39,44 @@ static void BootFlag_EnableAccess(void)
 	PWR->CR |= PWR_CR_DBP;
 }
 
+static UINT16 WakeDisplay_ClampSoc(UINT16 soc)
+{
+	if (soc > 100)
+	{
+		return 100;
+	}
+
+	return soc;
+}
+
+static void WakeDisplayState_Write(UINT16 mode, UINT16 soc)
+{
+	UINT32 value;
+
+	soc = WakeDisplay_ClampSoc(soc);
+	value = ((UINT32)mode << 16) | soc;
+
+	BootFlag_EnableAccess();
+	RTC->BKP3R = value;
+	RTC->BKP4R = ~value;
+}
+
+static UINT8 WakeDisplayState_ReadRaw(UINT32 *value)
+{
+	UINT32 inverse_value;
+
+	BootFlag_EnableAccess();
+	*value = RTC->BKP3R;
+	inverse_value = RTC->BKP4R;
+	if ((*value ^ inverse_value) != 0xFFFFFFFFu)
+	{
+		*value = 0;
+		return 0;
+	}
+
+	return 1;
+}
+
 void BootFlag_Write(UINT16 flag)
 {
 	BootFlag_EnableAccess();
@@ -65,6 +103,66 @@ UINT16 BootFlag_Read(void)
 void BootFlag_Clear(void)
 {
 	BootFlag_Write(BOOT_FLAG_RESET_VALUE);
+}
+
+void WakeDisplaySocCache_Write(UINT16 soc)
+{
+	UINT32 value = 0;
+	UINT16 mode = WAKE_DISPLAY_MODE_NONE;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		mode = (UINT16)(value >> 16);
+	}
+
+	WakeDisplayState_Write(mode, soc);
+}
+
+void WakeDisplay_RequestSocPreview(void)
+{
+	UINT32 value = 0;
+	UINT16 soc = 0;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		soc = (UINT16)value;
+	}
+
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_SOC_PREVIEW, soc);
+}
+
+UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc)
+{
+	UINT32 value = 0;
+
+	if (!WakeDisplayState_ReadRaw(&value))
+	{
+		if (mode)
+		{
+			*mode = WAKE_DISPLAY_MODE_NONE;
+		}
+		if (soc)
+		{
+			*soc = 0;
+		}
+		return 0;
+	}
+
+	if (mode)
+	{
+		*mode = (UINT16)(value >> 16);
+	}
+	if (soc)
+	{
+		*soc = WakeDisplay_ClampSoc((UINT16)value);
+	}
+
+	return 1;
+}
+
+void WakeDisplayState_Clear(void)
+{
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_NONE, 0);
 }
 
 void App_FlashUpdateDet(void)

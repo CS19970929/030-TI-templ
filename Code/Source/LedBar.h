@@ -9,9 +9,10 @@ typedef enum _LEDBAR_COMMAND {
     LED_BAR_CHG,
     LED_BAR_DSG,
 	LED_BAR_FAULT,
-}LEDBAR_COMMAND;
+} LEDBAR_COMMAND;
 
 void LedBar_StartUp(void);
+UINT8 LedBar_IsWakePreviewPending(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
 

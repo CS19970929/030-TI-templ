@@ -25,6 +25,9 @@
 
 #define BOOT_FLAG_RESET_VALUE     		FLASH_SLEEP_RESET_VALUE
 
+#define WAKE_DISPLAY_MODE_NONE            ((UINT16)0x0000)
+#define WAKE_DISPLAY_MODE_SOC_PREVIEW     ((UINT16)0x0001)
+
 #define MCU_RESET()	NVIC_SystemReset()
 
 
@@ -37,5 +40,9 @@ void BootFlag_Write(UINT16 flag);
 UINT16 BootFlag_Read(void);
 void BootFlag_Clear(void);
 
-#endif	/* FLASH_H */
+void WakeDisplaySocCache_Write(UINT16 soc);
+void WakeDisplay_RequestSocPreview(void);
+UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc);
+void WakeDisplayState_Clear(void);
 
+#endif	/* FLASH_H */

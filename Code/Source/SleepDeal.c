@@ -7,7 +7,7 @@ UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
 uint8_t reset_sleep_state = 0;
-#define DI1_LONG_PRESS_WAKE_10MS ((UINT16)300) // PC13持续3秒闭合才认为有效
+#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)30) // PC13闭合0.3秒先唤醒到电量预览态
 
 static UINT8 IsPA0WakeupActive(void)
 {
@@ -27,6 +27,7 @@ static UINT8 IsSleepWakeupValid(void)
 	// PA0充电唤醒保持立即生效
 	if (IsPA0WakeupActive())
 	{
+		WakeDisplayState_Clear();
 		return 1;
 	}
 
@@ -39,12 +40,14 @@ static UINT8 IsSleepWakeupValid(void)
 	{
 		if (IsPA0WakeupActive())
 		{
+			WakeDisplayState_Clear();
 			return 1;
 		}
 
 		__delay_ms(10);
-		if (++hold_cnt >= DI1_LONG_PRESS_WAKE_10MS)
+		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
 		{
+			WakeDisplay_RequestSocPreview();
 			return 1;
 		}
 	}
@@ -377,6 +380,8 @@ void SleepDeal_Continue(void)
 	{
 		s_u8SleepModeSelect = NORMAL_MODE;
 	}
+
+	WakeDisplaySocCache_Write(g_stCellInfoReport.SocElement.u16Soc);
 
 	switch (s_u8SleepModeSelect)
 	{
