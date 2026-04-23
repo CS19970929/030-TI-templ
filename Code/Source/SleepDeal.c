@@ -7,7 +7,7 @@ UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
 uint8_t reset_sleep_state = 0;
-#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)30) // PC13闭合0.3秒先唤醒到电量预览态
+#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)5) // PC13闭合50ms先唤醒到电量预览态
 
 static UINT8 IsPA0WakeupActive(void)
 {

@@ -50,6 +50,7 @@ static UINT8 s_key_stable_pressed = 0;
 static UINT8 s_key_debounce_ticks = 0;
 static UINT8 s_short_press_block_ticks = 0;
 static UINT8 s_ignore_next_release_short = 0;
+static UINT8 s_wake_preview_hold_ticks = 0;
 
 static UINT8 LedBar_ClampSoc(UINT16 soc)
 {
@@ -137,6 +138,9 @@ static void LedBar_StartWakePreview(void)
 {
     s_led_ui_mode = LED_UI_WAKE_PREVIEW_SHOW;
     s_ui_ticks = 0;
+    s_wake_preview_hold_ticks = 0;
+    s_key_wait_release = 1;
+    s_ignore_next_release_short = 1;
     LedBar_SetByMask(LedBar_GetCachedSocMask());
 }
 
@@ -260,22 +264,25 @@ static void LedBar_RunWakePreviewShow(void)
 {
     LedBar_SetByMask(LedBar_GetCachedSocMask());
 
-    if (++s_ui_ticks < LEDBAR_BOOT_PREVIEW_SHOW_TICKS_100MS)
-    {
-        return;
-    }
-
-    s_ui_ticks = 0;
-    LedBar_SetAllOff();
-
     if (s_key_stable_pressed)
     {
-        LedBar_StartPowerOnAnim();
+        if (s_wake_preview_hold_ticks < LEDBAR_LONG_PRESS_TICKS_100MS)
+        {
+            ++s_wake_preview_hold_ticks;
+        }
+
+        if (s_wake_preview_hold_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
+        {
+            LedBar_StartPowerOnAnim();
+        }
+
         return;
     }
 
     s_wake_preview_pending = 0;
     s_led_ui_mode = LED_UI_NORMAL;
+    s_wake_preview_hold_ticks = 0;
+    LedBar_SetAllOff();
     Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
 }
 
@@ -368,6 +375,7 @@ void LedBar_StartUp(void)
     GPIO_InitTypeDef GPIO_InitStructure;
     UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
     UINT16 wake_soc = 0;
+    UINT8 startup_key_pressed = 0;
 
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_5;
     GPIO_InitStructure.GPIO_Pin |= GPIO_Pin_12 | GPIO_Pin_13;
@@ -392,11 +400,23 @@ void LedBar_StartUp(void)
     s_key_debounce_ticks = 0;
     s_short_press_block_ticks = 0;
     s_ignore_next_release_short = 0;
+    s_wake_preview_hold_ticks = 0;
 
-    if (WakeDisplayState_Read(&wake_mode, &wake_soc) && (wake_mode == WAKE_DISPLAY_MODE_SOC_PREVIEW))
+    startup_key_pressed = LedBar_IsKeyPressed();
+    if (WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
         s_cached_soc = wake_soc;
+    }
+    else
+    {
+        s_cached_soc = g_stCellInfoReport.SocElement.u16Soc;
+    }
+
+    if ((wake_mode == WAKE_DISPLAY_MODE_SOC_PREVIEW) || startup_key_pressed)
+    {
         s_wake_preview_pending = 1;
+        s_key_stable_pressed = startup_key_pressed;
+        s_key_prev_pressed = startup_key_pressed;
         LedBar_StartWakePreview();
     }
     else
