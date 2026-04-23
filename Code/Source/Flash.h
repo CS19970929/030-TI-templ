@@ -42,6 +42,7 @@ void BootFlag_Clear(void);
 
 void WakeDisplaySocCache_Write(UINT16 soc);
 void WakeDisplay_RequestSocPreview(void);
+void WakeDisplayState_CaptureForBoot(void);
 UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc);
 void WakeDisplayState_Clear(void);
 

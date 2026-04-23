@@ -972,6 +972,7 @@ void IsSleepStartUp(void)
 		{
 			Sys_StopMode();
 		} while (!IsSleepWakeupValid());
+		WakeDisplayState_CaptureForBoot();
 		// Sys_StandbyMode();
 		IORecover_RTCMode();
 		break;
@@ -983,6 +984,7 @@ void IsSleepStartUp(void)
 		{
 			Sys_StopMode();
 		} while (!IsSleepWakeupValid());
+		WakeDisplayState_CaptureForBoot();
 		IORecover_NormalMode();
 		break;
 	case FLASH_DEEP_SLEEP_VALUE:
@@ -994,6 +996,7 @@ void IsSleepStartUp(void)
 		{
 			Sys_StopMode();
 		} while (!IsSleepWakeupValid());
+		WakeDisplayState_CaptureForBoot();
 		IORecover_DeepMode();
 		break;
 	case FLASH_SLEEP_RESET_VALUE:

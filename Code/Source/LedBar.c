@@ -148,6 +148,8 @@ static void LedBar_StartPowerOnAnim(void)
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
     s_pending_shutdown_sleep = 0;
+    s_key_wait_release = 1;
+    s_key_long_handled = 1;
     s_ignore_next_release_short = 1;
     System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1;
     LedBar_SetAllOff();

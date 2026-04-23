@@ -49,6 +49,17 @@ static UINT16 WakeDisplay_ClampSoc(UINT16 soc)
 	return soc;
 }
 
+static UINT8 s_wake_display_shadow_valid = 0;
+static UINT16 s_wake_display_shadow_mode = WAKE_DISPLAY_MODE_NONE;
+static UINT16 s_wake_display_shadow_soc = 0;
+
+static void WakeDisplayState_UpdateShadow(UINT16 mode, UINT16 soc, UINT8 valid)
+{
+	s_wake_display_shadow_valid = valid;
+	s_wake_display_shadow_mode = mode;
+	s_wake_display_shadow_soc = WakeDisplay_ClampSoc(soc);
+}
+
 static void WakeDisplayState_Write(UINT16 mode, UINT16 soc)
 {
 	UINT32 value;
@@ -59,6 +70,7 @@ static void WakeDisplayState_Write(UINT16 mode, UINT16 soc)
 	BootFlag_EnableAccess();
 	RTC->BKP3R = value;
 	RTC->BKP4R = ~value;
+	WakeDisplayState_UpdateShadow(mode, soc, 1);
 }
 
 static UINT8 WakeDisplayState_ReadRaw(UINT32 *value)
@@ -131,9 +143,35 @@ void WakeDisplay_RequestSocPreview(void)
 	WakeDisplayState_Write(WAKE_DISPLAY_MODE_SOC_PREVIEW, soc);
 }
 
+void WakeDisplayState_CaptureForBoot(void)
+{
+	UINT32 value = 0;
+
+	if (!WakeDisplayState_ReadRaw(&value))
+	{
+		WakeDisplayState_UpdateShadow(WAKE_DISPLAY_MODE_NONE, 0, 0);
+		return;
+	}
+
+	WakeDisplayState_UpdateShadow((UINT16)(value >> 16), (UINT16)value, 1);
+}
+
 UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc)
 {
 	UINT32 value = 0;
+
+	if (s_wake_display_shadow_valid)
+	{
+		if (mode)
+		{
+			*mode = s_wake_display_shadow_mode;
+		}
+		if (soc)
+		{
+			*soc = s_wake_display_shadow_soc;
+		}
+		return 1;
+	}
 
 	if (!WakeDisplayState_ReadRaw(&value))
 	{
@@ -148,13 +186,15 @@ UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc)
 		return 0;
 	}
 
+	WakeDisplayState_UpdateShadow((UINT16)(value >> 16), (UINT16)value, 1);
+
 	if (mode)
 	{
-		*mode = (UINT16)(value >> 16);
+		*mode = s_wake_display_shadow_mode;
 	}
 	if (soc)
 	{
-		*soc = WakeDisplay_ClampSoc((UINT16)value);
+		*soc = s_wake_display_shadow_soc;
 	}
 
 	return 1;
@@ -163,6 +203,7 @@ UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc)
 void WakeDisplayState_Clear(void)
 {
 	WakeDisplayState_Write(WAKE_DISPLAY_MODE_NONE, 0);
+	WakeDisplayState_UpdateShadow(WAKE_DISPLAY_MODE_NONE, 0, 0);
 }
 
 void App_FlashUpdateDet(void)
