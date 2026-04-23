@@ -22,6 +22,9 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 #define LEDBAR_KEY_DEBOUNCE_TICKS_100MS ((UINT8)1)
 #define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)2)
 #define LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS ((UINT8)10)
+#define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
+#define LEDBAR_PREBOOT_RELEASE_TICKS_10MS ((UINT16)10)
+#define LEDBAR_PREBOOT_WAKE_TICKS_10MS ((UINT16)5)
 
 typedef enum _LEDBAR_UI_MODE
 {
@@ -128,6 +131,23 @@ UINT8 LedBar_IsWakePreviewPending(void)
     return s_wake_preview_pending;
 }
 
+static void LedBar_InitOutputPins(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Pin |= GPIO_Pin_12 | GPIO_Pin_13;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+}
+
 static void LedBar_StartShortShow(void)
 {
     s_led_ui_mode = LED_UI_SHORT_SHOW;
@@ -146,7 +166,6 @@ static void LedBar_StartWakePreview(void)
 
 static void LedBar_StartPowerOnAnim(void)
 {
-    s_wake_preview_pending = 0;
     s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
     s_anim_step = 0;
     s_anim_step_ticks = 0;
@@ -260,30 +279,61 @@ static void LedBar_RunShortShow(void)
     LedBar_SetAllOff();
 }
 
-static void LedBar_RunWakePreviewShow(void)
+UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
 {
-    LedBar_SetByMask(LedBar_GetCachedSocMask());
+    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+    UINT16 wake_soc = 0;
+    UINT16 hold_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
+    UINT16 release_ticks = 0;
+    UINT8 soc_mask;
 
-    if (s_key_stable_pressed)
+    LedBar_InitOutputPins();
+
+    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
-        if (s_wake_preview_hold_ticks < LEDBAR_LONG_PRESS_TICKS_100MS)
-        {
-            ++s_wake_preview_hold_ticks;
-        }
-
-        if (s_wake_preview_hold_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
-        {
-            LedBar_StartPowerOnAnim();
-        }
-
-        return;
+        wake_soc = 0;
     }
 
+    soc_mask = LedBar_GetSocMaskFromValue(wake_soc);
+    LedBar_SetByMask(soc_mask);
+
+    while (1)
+    {
+        __delay_ms(10);
+
+        if (LedBar_IsKeyPressed())
+        {
+            release_ticks = 0;
+            if (hold_ticks < LEDBAR_PREBOOT_POWERON_TICKS_10MS)
+            {
+                ++hold_ticks;
+            }
+
+            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
+            {
+                WakeDisplay_RequestBootSequence();
+                LedBar_SetAllOff();
+                return 1;
+            }
+        }
+        else
+        {
+            if (++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
+            {
+                WakeDisplayState_Clear();
+                LedBar_SetAllOff();
+                return 0;
+            }
+        }
+    }
+}
+
+static void LedBar_RunWakePreviewShow(void)
+{
     s_wake_preview_pending = 0;
     s_led_ui_mode = LED_UI_NORMAL;
     s_wake_preview_hold_ticks = 0;
     LedBar_SetAllOff();
-    Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
 }
 
 static void LedBar_RunBootAnimOn(void)
@@ -341,6 +391,7 @@ static void LedBar_RunBootPostShow(void)
 
     s_ui_ticks = 0;
     s_led_ui_mode = LED_UI_NORMAL;
+    s_wake_preview_pending = 0;
     s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS;
     LedBar_SetAllOff();
 }
@@ -372,17 +423,10 @@ static void LedBar_RunShutdownAnim(void)
 
 void LedBar_StartUp(void)
 {
-    GPIO_InitTypeDef GPIO_InitStructure;
     UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
     UINT16 wake_soc = 0;
-    UINT8 startup_key_pressed = 0;
 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_5;
-    GPIO_InitStructure.GPIO_Pin |= GPIO_Pin_12 | GPIO_Pin_13;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    LedBar_InitOutputPins();
 
     LedBar_Command = LED_BAR_NORMAL;
     s_led_ui_mode = LED_UI_NORMAL;
@@ -402,7 +446,6 @@ void LedBar_StartUp(void)
     s_ignore_next_release_short = 0;
     s_wake_preview_hold_ticks = 0;
 
-    startup_key_pressed = LedBar_IsKeyPressed();
     if (WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
         s_cached_soc = wake_soc;
@@ -412,12 +455,12 @@ void LedBar_StartUp(void)
         s_cached_soc = g_stCellInfoReport.SocElement.u16Soc;
     }
 
-    if ((wake_mode == WAKE_DISPLAY_MODE_SOC_PREVIEW) || startup_key_pressed)
+    if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE)
     {
         s_wake_preview_pending = 1;
-        s_key_stable_pressed = startup_key_pressed;
-        s_key_prev_pressed = startup_key_pressed;
-        LedBar_StartWakePreview();
+        s_key_stable_pressed = LedBar_IsKeyPressed();
+        s_key_prev_pressed = s_key_stable_pressed;
+        LedBar_StartPowerOnAnim();
     }
     else
     {

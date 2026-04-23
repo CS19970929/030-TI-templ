@@ -143,6 +143,19 @@ void WakeDisplay_RequestSocPreview(void)
 	WakeDisplayState_Write(WAKE_DISPLAY_MODE_SOC_PREVIEW, soc);
 }
 
+void WakeDisplay_RequestBootSequence(void)
+{
+	UINT32 value = 0;
+	UINT16 soc = 0;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		soc = (UINT16)value;
+	}
+
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_BOOT_SEQUENCE, soc);
+}
+
 void WakeDisplayState_CaptureForBoot(void)
 {
 	UINT32 value = 0;

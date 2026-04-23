@@ -13,6 +13,7 @@ typedef enum _LEDBAR_COMMAND {
 
 void LedBar_StartUp(void);
 UINT8 LedBar_IsWakePreviewPending(void);
+UINT8 LedBar_HandleWakePreviewBeforeBoot(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
 

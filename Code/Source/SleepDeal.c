@@ -6,6 +6,7 @@ enum SLEEP_STATUS Sleep_Status = SLEEP_HICCUP_SHIFT;
 UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
+static UINT8 s_sleep_wakeup_by_di1 = 0;
 uint8_t reset_sleep_state = 0;
 #define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)5) // PC13闭合50ms先唤醒到电量预览态
 
@@ -27,6 +28,7 @@ static UINT8 IsSleepWakeupValid(void)
 	// PA0充电唤醒保持立即生效
 	if (IsPA0WakeupActive())
 	{
+		s_sleep_wakeup_by_di1 = 0;
 		WakeDisplayState_Clear();
 		return 1;
 	}
@@ -39,14 +41,16 @@ static UINT8 IsSleepWakeupValid(void)
 	while (IsDI1Pressed())
 	{
 		if (IsPA0WakeupActive())
-		{
-			WakeDisplayState_Clear();
-			return 1;
-		}
+	{
+		s_sleep_wakeup_by_di1 = 0;
+		WakeDisplayState_Clear();
+		return 1;
+	}
 
 		__delay_ms(10);
 		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
 		{
+			s_sleep_wakeup_by_di1 = 1;
 			WakeDisplay_RequestSocPreview();
 			return 1;
 		}
@@ -968,11 +972,24 @@ void IsSleepStartUp(void)
 
 		IOstatus_RTCMode();
 		InitWakeUp_RTCMode();
-		do
+		while (1)
 		{
-			Sys_StopMode();
-		} while (!IsSleepWakeupValid());
-		WakeDisplayState_CaptureForBoot();
+			do
+			{
+				Sys_StopMode();
+			} while (!IsSleepWakeupValid());
+#ifdef __FUNC__LED__
+			if (s_sleep_wakeup_by_di1)
+			{
+				s_sleep_wakeup_by_di1 = 0;
+				if (!LedBar_HandleWakePreviewBeforeBoot())
+				{
+					continue;
+				}
+			}
+#endif
+			break;
+		}
 		// Sys_StandbyMode();
 		IORecover_RTCMode();
 		break;
@@ -980,11 +997,24 @@ void IsSleepStartUp(void)
 		BootFlag_Clear();
 		IOstatus_NormalMode();
 		InitWakeUp_NormalMode();
-		do
+		while (1)
 		{
-			Sys_StopMode();
-		} while (!IsSleepWakeupValid());
-		WakeDisplayState_CaptureForBoot();
+			do
+			{
+				Sys_StopMode();
+			} while (!IsSleepWakeupValid());
+#ifdef __FUNC__LED__
+			if (s_sleep_wakeup_by_di1)
+			{
+				s_sleep_wakeup_by_di1 = 0;
+				if (!LedBar_HandleWakePreviewBeforeBoot())
+				{
+					continue;
+				}
+			}
+#endif
+			break;
+		}
 		IORecover_NormalMode();
 		break;
 	case FLASH_DEEP_SLEEP_VALUE:
@@ -992,11 +1022,24 @@ void IsSleepStartUp(void)
 		IOstatus_DeepMode();
 		InitWakeUp_DeepMode();
 		// Sys_StandbyMode();		//??????IO???
-		do
+		while (1)
 		{
-			Sys_StopMode();
-		} while (!IsSleepWakeupValid());
-		WakeDisplayState_CaptureForBoot();
+			do
+			{
+				Sys_StopMode();
+			} while (!IsSleepWakeupValid());
+#ifdef __FUNC__LED__
+			if (s_sleep_wakeup_by_di1)
+			{
+				s_sleep_wakeup_by_di1 = 0;
+				if (!LedBar_HandleWakePreviewBeforeBoot())
+				{
+					continue;
+				}
+			}
+#endif
+			break;
+		}
 		IORecover_DeepMode();
 		break;
 	case FLASH_SLEEP_RESET_VALUE:
