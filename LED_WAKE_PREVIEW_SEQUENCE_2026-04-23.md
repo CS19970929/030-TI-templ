@@ -128,3 +128,13 @@
     - 开机序列改成 `BOOT_DELAY -> BOOT_ANIM_ON -> BOOT_ANIM_OFF -> BOOT_POST_SHOW`。
     - `BOOT_DELAY` 在 `APP_LedBar()` 内部延时 `1s` 后再启动跑马灯，避免刚复位完成时动画又被其它初始化过程打断。
     - 同时这整个阶段持续保持“必须先松手”的门控，不再由 `LedBar` 主动改动 `System_OnOFF_Func`，避免同一次长按又被判成关机长按。
+
+## 六次修正
+
+- 2026-04-23 根据最新板上现象继续收敛了两点：
+  - 休眠态短按查看 `SOC`，显示时间补足到 `3s`：
+    - 预览阶段新增 `LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS`。
+    - 如果不到 `3s` 就松手，不再立刻熄灯回休眠，而是继续保持本次 `SOC` 显示，直到累计满 `3s` 后才熄灯并返回休眠。
+  - 开机后仍然没有看到跑马灯：
+    - 在 [RTC.c](/E:/TODO/030%20+%20TI/Code/Source/RTC.c:181) 的 `Init_RTC()` 最前面增加 `WakeDisplayState_CaptureForBoot()`，先把备份域中的唤醒显示状态抓到 RAM 阴影区，再做 RTC 时钟初始化，避免 `BOOT_SEQUENCE` 被后续初始化覆盖。
+    - 同时在 [LedBar.c](/E:/TODO/030%20+%20TI/Code/Source/LedBar.c:499) 增加了一个兜底入口：如果启动时 `BOOT_SEQUENCE` 丢失，但干簧管在启动瞬间仍然闭合，也会继续进入开机跑马灯流程，避免出现“已经开机但完全没有动画”的现象。

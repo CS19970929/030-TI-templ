@@ -24,6 +24,7 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_STARTUP;
 #define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)2)
 #define LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS ((UINT8)10)
 #define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
+#define LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_RELEASE_TICKS_10MS ((UINT16)10)
 #define LEDBAR_PREBOOT_WAKE_TICKS_10MS ((UINT16)5)
 
@@ -298,6 +299,7 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
     UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
     UINT16 wake_soc = 0;
     UINT16 hold_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
+    UINT16 preview_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
     UINT16 release_ticks = 0;
     UINT8 soc_mask;
 
@@ -322,6 +324,10 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
             {
                 ++hold_ticks;
             }
+            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+            {
+                ++preview_ticks;
+            }
 
             if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
             {
@@ -332,7 +338,18 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
         }
         else
         {
-            if (++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
+            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+            {
+                ++preview_ticks;
+            }
+
+            if (release_ticks < LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
+            {
+                ++release_ticks;
+                continue;
+            }
+
+            if (preview_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
             {
                 WakeDisplayState_Clear();
                 WakeDisplaySocCache_Write(wake_soc);
@@ -479,7 +496,8 @@ void LedBar_StartUp(void)
         s_cached_soc = g_stCellInfoReport.SocElement.u16Soc;
     }
 
-    if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE)
+    if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE ||
+        (wake_mode == WAKE_DISPLAY_MODE_NONE && LedBar_IsKeyPressed()))
     {
         s_key_stable_pressed = LedBar_IsKeyPressed();
         s_key_prev_pressed = s_key_stable_pressed;

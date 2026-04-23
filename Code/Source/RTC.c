@@ -176,6 +176,9 @@ void Init_RTC_HaltWakeUp(void)
 void Init_RTC(void)
 {
 	UINT8 i;
+
+	/* 在 RTC 时钟配置前先抓取唤醒显示状态，避免后续初始化覆盖备份寄存器。 */
+	WakeDisplayState_CaptureForBoot();
 	Init_RTC_HaltWakeUp();
 
 #ifdef _HALT_ACTIVE_MODE
