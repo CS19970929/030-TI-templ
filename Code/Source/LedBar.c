@@ -146,9 +146,6 @@ static void LedBar_InitOutputPins(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 static void LedBar_StartShortShow(void)

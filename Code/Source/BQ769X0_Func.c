@@ -294,11 +294,6 @@ void App_BQ769X0_Monitor(void)
 	static UINT8 su8_AfeFault_Tcnt = 0;
 	static UINT8 su8_AlarmFault_Tcnt = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag3)
-	{
-		return;
-	}
-
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte));
 	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_STAT, &(Registers_AFE1.SysStatus.StatusByte));
 
@@ -311,7 +306,6 @@ void App_BQ769X0_Monitor(void)
 	SystemStatus.bits.b1Status_MOS_DSG = Registers_AFE1.SysCtrl2.SysCtrl2Bit.DSG_ON;
 
 	// hold1 = Registers_AFE1.SysStatus.StatusByte;
-
 	// Alarm引脚被外部拉低。
 	// 这个是硬件问题，先不作处理。就算自己清除了意义也不大。可以让其进入休眠
 	if (Registers_AFE1.SysStatus.StatusBit.OVRD_ALERT)

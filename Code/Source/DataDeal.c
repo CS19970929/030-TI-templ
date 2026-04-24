@@ -512,7 +512,11 @@ void App_AFEGet(void)
 {
 	static UINT8 ts_u8TempSel = 0;
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
+	// if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
+	// {
+	// 	return;
+	// }
+	if (0 == gu8_200msAccClock_Flag)
 	{
 		return;
 	}
@@ -527,9 +531,10 @@ void App_AFEGet(void)
 		return;
 	}
 
-	MonitorAFE(0, UpdateVoltageFromBqMaximo_Partition(DEVICE_ADDR_AFE1, ts_u8TempSel++));
-	if (ts_u8TempSel >= 4)
-		ts_u8TempSel = 0;
+	// MonitorAFE(0, UpdateVoltageFromBqMaximo_Partition(DEVICE_ADDR_AFE1, ts_u8TempSel++));
+	MonitorAFE(0, UpdateVoltageFromBqMaximo(DEVICE_ADDR_AFE1));
+	// if (ts_u8TempSel >= 4)
+	// 	ts_u8TempSel = 0;
 
 	DataLoad_CellVolt();
 	// DataLoad_CellVolt_Test();
@@ -538,4 +543,8 @@ void App_AFEGet(void)
 	DataLoad_TemperatureMaxMinFind();
 	DataLoad_Current();
 	// test_Autocurrent_cycle();
+	App_SOC();
+	App_BQ769X0_Monitor();
+
+	gu8_200msAccClock_Flag = 0;
 }

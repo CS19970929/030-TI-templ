@@ -52,7 +52,6 @@ int main(void)
 		App_SysTime();
 		App_Sci();
 		App_AFEGet();
-		App_BQ769X0_Monitor();
 		// ganhuangguan_Logi();
 		App_WarnCtrl();
 		App_MOS_Relay_Ctrl();
@@ -60,7 +59,6 @@ int main(void)
 		App_E2promDeal();
 		// App_RTC();
 		App_CellBalance();
-		App_SOC();
 		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
 #ifdef __FUNC__LED__
 		APP_LedBar();

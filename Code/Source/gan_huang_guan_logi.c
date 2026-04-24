@@ -4,11 +4,13 @@
 bool is_open_gan1(void)
 {
     return 0 == GPIO_ReadInputDataBit(GPIO_GAN1, PIN_GAN1);
+    // return sys_time.test_1;
 }
 //提手在位干簧管
 bool is_open_gan2(void)
 {
     return 0 == GPIO_ReadInputDataBit(GPIO_GAN2, PIN_GAN2);
+    // return sys_time.test_2;
 }
 //灯板开机控制
 bool is_open_gan3(void)
