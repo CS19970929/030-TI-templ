@@ -22,6 +22,12 @@ static bool rtc_monitor_bq7x(void);
 static bool update_rtc_soc(uint32_t *_sleep_cnt);
 static void doWork_rtcing(uint32_t *_sleep_cnt);
 
+static uint8_t rtc_soc_limit(uint8_t soc);
+static const char *rtc_soc_cali_strategy_name(uint8_t strategy);
+static uint8_t rtc_soc_select_strategy(void);
+static uint8_t rtc_soc_apply_strategy(uint8_t strategy, uint8_t current_soc, uint8_t target_soc);
+static bool rtc_soc_commit_result(uint8_t target_soc);
+
 uint16_t cnt_uart3_irq = 0;
 uint16_t cnt_bms1_keyirq = 0;
 uint16_t cnt_bms2_keyirq = 0;
@@ -33,10 +39,18 @@ uint16_t cnt_485_can_irq = 0;
 typedef struct
 {
     uint32_t rtc_sleepTime;
-    bool rtc_ocv_success;
+    bool rtc_soc_cali_success;
 } infoRTC_T;
 
 infoRTC_T g_rtcInfo;
+
+
+typedef enum
+{
+    RTC_SOC_CALI_STRATEGY_NONE = 0,
+    RTC_SOC_CALI_STRATEGY_OCV_DIRECT,
+    RTC_SOC_CALI_STRATEGY_OCV_REST_DOWN_STEP,
+} RTC_SOC_CALI_STRATEGY_T;
 
 typedef struct
 {
@@ -50,8 +64,15 @@ typedef struct
     uint8_t soc_mean;
 } SOC_T;
 
+typedef struct
+{
+    uint8_t target_soc;
+    uint8_t apply_soc;
+    uint8_t strategy;
+} RTC_SOC_CALI_RESULT_T;
+
 static SOC_T soc_befor_sleep;
-static SOC_T soc_update_wakeup;
+static RTC_SOC_CALI_RESULT_T rtc_soc_cali_result;
 
 static enum _SLEEP_MODE g_sleepModeSelect = NO_SLEEP;
 bool is_wakeup = false;
@@ -770,19 +791,22 @@ static void before_wakeup(uint32_t *_sleep_cnt)
 
     su32_Interval_S_Tcnt += g_rtcInfo.rtc_sleepTime;
 
-    if (g_rtcInfo.rtc_ocv_success)
+    if (g_rtcInfo.rtc_soc_cali_success)
     {
-        log_e("rtc soc ocv success %d old disp_soc %d, real soc %d\n", soc_update_wakeup.soc_disp, soc_befor_sleep.soc_disp, soc_befor_sleep.soc_real);
+        log_e("rtc soc cali success strategy %s target %d apply %d old disp_soc %d, real soc %d\n",
+              rtc_soc_cali_strategy_name(rtc_soc_cali_result.strategy),
+              rtc_soc_cali_result.target_soc,
+              rtc_soc_cali_result.apply_soc,
+              soc_befor_sleep.soc_disp,
+              soc_befor_sleep.soc_real);
 
         if (g_rtcInfo.rtc_sleepTime > LONG_LONG_RTCSLEEP)
         {
-            set_soc_param(soc_update_wakeup.soc_disp, 11, 1);
-            // log_e("sleep_cnt %d, rtc soc ocv success %d old disp_soc %d, real soc %d\n", *_sleep_cnt, soc_update_wakeup.soc_disp, soc_befor_sleep.soc_disp, soc_befor_sleep.soc_real);
-            // log_e("rtc soc ocv success %d old disp_soc %d, real soc %d\n", soc_update_wakeup.soc_disp, soc_befor_sleep.soc_disp, soc_befor_sleep.soc_real);
+            set_soc_param(rtc_soc_cali_result.apply_soc, 11, 1);
         }
         else
         {
-            set_soc_param(soc_update_wakeup.soc_disp, 11, 0);
+            set_soc_param(rtc_soc_cali_result.apply_soc, 11, 0);
         }
     }
     else
@@ -797,7 +821,7 @@ static void before_wakeup(uint32_t *_sleep_cnt)
 
 static void before_rtcsleep(void)
 {
-    g_rtcInfo.rtc_ocv_success = false;
+    g_rtcInfo.rtc_soc_cali_success = false;
 
     extern void err_flag_reset(void);
     err_flag_reset();
@@ -806,6 +830,9 @@ static void before_rtcsleep(void)
     log_e("**************************before_rtcsleep***************************");
     soc_befor_sleep.soc_disp = get_dispsoc();
     soc_befor_sleep.soc_real = get_soc_real();
+    rtc_soc_cali_result.strategy = RTC_SOC_CALI_STRATEGY_NONE;
+    rtc_soc_cali_result.target_soc = soc_befor_sleep.soc_disp;
+    rtc_soc_cali_result.apply_soc = soc_befor_sleep.soc_disp;
     print_soc(false, 0);
 }
 
@@ -836,11 +863,95 @@ static void clear_ocv_state_rtcing(void)
     rtc_ocv_state = 0;
     ocv_cnt_rtcing = 0;
 }
-// todo 滑动滤波
+
+static uint8_t rtc_soc_limit(uint8_t soc)
+{
+    if (soc > 100)
+    {
+        return 100;
+    }
+    return soc;
+}
+
+static const char *rtc_soc_cali_strategy_name(uint8_t strategy)
+{
+    switch ((RTC_SOC_CALI_STRATEGY_T)strategy)
+    {
+    case RTC_SOC_CALI_STRATEGY_OCV_DIRECT:
+        return "ocv_direct";
+    case RTC_SOC_CALI_STRATEGY_OCV_REST_DOWN_STEP:
+        return "ocv_rest_down_step";
+    default:
+        return "none";
+    }
+}
+
+static uint8_t rtc_soc_select_strategy(void)
+{
+    return (uint8_t)RTC_SOC_CALI_STRATEGY_OCV_REST_DOWN_STEP;
+}
+
+static uint8_t rtc_soc_apply_strategy(uint8_t strategy, uint8_t current_soc, uint8_t target_soc)
+{
+    current_soc = rtc_soc_limit(current_soc);
+    target_soc = rtc_soc_limit(target_soc);
+
+    switch ((RTC_SOC_CALI_STRATEGY_T)strategy)
+    {
+    case RTC_SOC_CALI_STRATEGY_OCV_DIRECT:
+        return target_soc;
+
+    case RTC_SOC_CALI_STRATEGY_OCV_REST_DOWN_STEP:
+        if (target_soc >= current_soc)
+        {
+            return current_soc;
+        }
+        if ((uint8_t)(current_soc - target_soc) > 1U)
+        {
+            return (uint8_t)(current_soc - 1U);
+        }
+        return target_soc;
+
+    default:
+        return current_soc;
+    }
+}
+
+static bool rtc_soc_commit_result(uint8_t target_soc)
+{
+    uint8_t strategy;
+    uint8_t apply_soc;
+
+    target_soc = rtc_soc_limit(target_soc);
+    strategy = rtc_soc_select_strategy();
+    apply_soc = rtc_soc_apply_strategy(strategy, soc_befor_sleep.soc_disp, target_soc);
+
+    rtc_soc_cali_result.strategy = strategy;
+    rtc_soc_cali_result.target_soc = target_soc;
+    rtc_soc_cali_result.apply_soc = apply_soc;
+
+    if (apply_soc == soc_befor_sleep.soc_disp)
+    {
+        log_w("rtc soc cali ignored strategy %s target %d old_disp %d",
+              rtc_soc_cali_strategy_name(strategy),
+              target_soc,
+              soc_befor_sleep.soc_disp);
+        return false;
+    }
+
+    log_w("rtc soc cali strategy %s target %d apply %d old_disp %d",
+          rtc_soc_cali_strategy_name(strategy),
+          target_soc,
+          apply_soc,
+          soc_befor_sleep.soc_disp);
+    return true;
+}
+
 bool update_rtc_soc(uint32_t *_sleep_cnt)
 {
     static uint8_t ocv_soc_record[10];
     static uint8_t arrSoc_rtc[N] = {0, 0, 0, 0, 0};
+    uint8_t target_soc;
 
     // if (g_stCellInfoReport.u16Ichg > 2 || g_stCellInfoReport.u16IDischg > 2)
     // {
@@ -879,10 +990,10 @@ bool update_rtc_soc(uint32_t *_sleep_cnt)
                 // extern uint8_t get_ocv_cali(void);
                 extern uint8_t get_ocv_cali(uint8_t *arr_soc);
 
-                soc_update_wakeup.soc_disp = get_ocv_cali(arrSoc_rtc);
-                print_soc(true, soc_update_wakeup.soc_disp);
+                target_soc = get_ocv_cali(arrSoc_rtc);
+                print_soc(true, target_soc);
 
-                g_rtcInfo.rtc_ocv_success = true;
+                g_rtcInfo.rtc_soc_cali_success = rtc_soc_commit_result(target_soc);
             }
         }
         break;
