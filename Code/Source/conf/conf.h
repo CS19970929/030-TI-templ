@@ -6,7 +6,7 @@
 #include "conf_gpio.h"
 #include "stdbool.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x0331		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x0424		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
 #define  wdog_enable
 // #define __FUNC__HEAT__
@@ -48,10 +48,10 @@
 #define	__SLEEP_TIMEVLOW__		          1440
 #else
 #define __SLEEP_VNORMAL__             	4200
-#define	__SLEEP_TIMENORMAL__	          (60 * 2)	
+#define	__SLEEP_TIMENORMAL__	          (30)	
 // #define	__SLEEP_TIMENORMAL__	          (30 * 24 * 60)	
 #define __SLEEP_VLOW__     		          3000
-#define	__SLEEP_TIMEVLOW__		          (60 * 2)
+#define	__SLEEP_TIMEVLOW__		          (30)
 
 #endif
 

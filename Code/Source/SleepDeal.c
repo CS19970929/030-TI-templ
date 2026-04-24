@@ -25,13 +25,12 @@ static UINT8 IsSleepWakeupValid(void)
 {
 	UINT16 hold_cnt = 0;
 
-	// PA0��绽�ѱ���������Ч
-	if (IsPA0WakeupActive())
-	{
-		s_sleep_wakeup_by_di1 = 0;
-		WakeDisplayState_Clear();
-		return 1;
-	}
+	// if (IsPA0WakeupActive())
+	// {
+	// 	s_sleep_wakeup_by_di1 = 0;
+	// 	WakeDisplayState_Clear();
+	// 	return 1;
+	// }
 
 	if (!IsDI1Pressed())
 	{
@@ -40,12 +39,12 @@ static UINT8 IsSleepWakeupValid(void)
 
 	while (IsDI1Pressed())
 	{
-		if (IsPA0WakeupActive())
-	{
-		s_sleep_wakeup_by_di1 = 0;
-		WakeDisplayState_Clear();
-		return 1;
-	}
+		// if (IsPA0WakeupActive())
+		// {
+		// 	s_sleep_wakeup_by_di1 = 0;
+		// 	WakeDisplayState_Clear();
+		// 	return 1;
+		// }
 
 		__delay_ms(10);
 		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
@@ -89,7 +88,7 @@ static UINT8 SleepDeal_HasBlockingFault(void)
 static UINT8 SleepDeal_IsIdleCurrent(void)
 {
 	return (UINT8)((g_stCellInfoReport.u16Ichg <= OtherElement.u16Sleep_VirCur_Chg) &&
-					   (g_stCellInfoReport.u16IDischg <= OtherElement.u16Sleep_VirCur_Dsg));
+				   (g_stCellInfoReport.u16IDischg <= OtherElement.u16Sleep_VirCur_Dsg));
 }
 
 static UINT8 SleepDeal_IsRtcIdleNormal(void)
@@ -118,7 +117,7 @@ void InitWakeUp_Base(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 使能PWR外�?�时钟，待机模式，RTC，看门狗
-	// PA0_WKUP
+#if 0
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0; // 选择要用的GPIO引脚
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
@@ -137,6 +136,7 @@ void InitWakeUp_Base(void)
 	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00; // 抢占优先�?0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	   // 使能外部�?�?通道
 	NVIC_Init(&NVIC_InitStructure);
+#endif
 
 	// DI1
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13; // 选择要用的GPIO引脚
@@ -205,7 +205,6 @@ void InitWakeUp_NormalMode(void)
 	//  	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	//抢占优先�?0
 	//  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		//使能外部�?�?通道
 	//  	NVIC_Init(&NVIC_InitStructure);
-
 }
 
 void InitWakeUp_RTCMode(void)
@@ -407,7 +406,7 @@ void SleepDeal_Continue(void)
 
 	if (u8FlashWriteOK_flag)
 	{
-		//todo ????
+		// todo ????
 		App_AFEshutdown();
 		// lk8625_SendAT("AT+DISCON");
 		// lk8625_SendAT("AT+DSLEEP");
@@ -1096,6 +1095,7 @@ void IsSleepStartUp(void)
 }
 #endif
 
+extern UINT8 gu8_1000msAccClock_Flag ;
 void App_SleepDeal(void)
 {
 	static uint8_t force_sleep_delay = 0;
@@ -1123,10 +1123,12 @@ void App_SleepDeal(void)
 		return;
 	}
 
-	if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
+	// if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
+	if (0 == gu8_1000msAccClock_Flag && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
 	{
 		return; // 如果�?强制进入休眠的则必须�?点进入休眠，不能�?
 	}
+	gu8_1000msAccClock_Flag = 0;
 
 	switch (Sleep_Status)
 	{

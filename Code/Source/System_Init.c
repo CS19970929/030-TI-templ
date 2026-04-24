@@ -12,6 +12,7 @@ UINT8 g_u81msClockCnt = 0;
 
 UINT8 gu8_200msCnt = 0;
 UINT8 gu8_200msAccClock_Flag = 0;
+UINT8 gu8_1000msAccClock_Flag = 0;
 
 void IWDG_HaltConfig(void);
 
@@ -328,6 +329,8 @@ void App_SysTime(void)
 
 void TIM17_IRQHandler(void)
 {
+	static uint16_t count_1000 = 0;
+
 	if (TIM_GetITStatus(TIM17, TIM_IT_Update) != RESET)
 	{												 // 检查TIM3更新中断发生与否
 		TIM_ClearITPendingBit(TIM17, TIM_IT_Update); // 清除TIMx更新中断标志
@@ -350,6 +353,11 @@ void TIM17_IRQHandler(void)
 			{
 				gu8_200msCnt = 0;
 				gu8_200msAccClock_Flag = 1;
+			}
+			if(++count_1000 >= 1000)
+			{
+				count_1000 = 0;
+				gu8_1000msAccClock_Flag = 1;
 			}
 		}
 	}
