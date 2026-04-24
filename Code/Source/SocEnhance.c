@@ -131,6 +131,11 @@ UINT16 DsgValue = 0;
 #define SOC_RESTORE_REASON_STORE        ((UINT8)3)
 #define SOC_RESTORE_REASON_PARAM        ((UINT8)4)
 #define SOC_RESTORE_REASON_MANUAL       ((UINT8)5)
+#define SOC_RESTORE_REASON_OCV_STEP     ((UINT8)6)
+#define SOC_INIT_TARGET_INVALID         ((UINT8)0xFF)
+#define SOC_INIT_STRATEGY_NONE          ((UINT8)0)
+#define SOC_INIT_STRATEGY_OCV_DIRECT    ((UINT8)1)
+#define SOC_INIT_STRATEGY_OCV_REST_DOWN_STEP ((UINT8)2)
 
 struct SOC_PERSIST_SNAPSHOT {
 	UINT16 u16Magic;
@@ -148,16 +153,18 @@ static const UINT8 SOC_PersistWordMap[SOC_PERSIST_SLOT_COUNT * SOC_PERSIST_SLOT_
 };
 
 struct SOC_RUNTIME_STATE {
-	UINT8 u8SocReal;
-	UINT8 u8SocDisplay;
-	UINT8 u8InitConfidence;
-	UINT8 u8RestoreReason;
-	UINT16 u16PersistSeq;
-	UINT8 u8PersistSoc;
-	UINT8 u8PersistDsg;
-	UINT16 u16PersistCycle;
-	UINT16 u16PersistCapFullAh;
-	UINT8 u8PersistReady;
+    UINT8 u8SocReal;
+    UINT8 u8SocDisplay;
+    UINT8 u8InitConfidence;
+    UINT8 u8RestoreReason;
+    UINT8 u8InitStrategy;
+    UINT8 u8InitTargetSoc;
+    UINT16 u16PersistSeq;
+    UINT8 u8PersistSoc;
+    UINT8 u8PersistDsg;
+    UINT16 u16PersistCycle;
+    UINT16 u16PersistCapFullAh;
+    UINT8 u8PersistReady;
 };
 
 static struct SOC_RUNTIME_STATE SOC_Runtime_State;
@@ -519,6 +526,60 @@ static UINT8 SOC_CanUseOcvAtStartup(void)
 		return 0;
 	}
 	return 1;
+}
+
+
+static UINT8 SOC_LimitSocValue(UINT8 soc)
+{
+    if (soc > 100)
+    {
+        return 100;
+    }
+    return soc;
+}
+
+static void SOC_SetRuntimeSoc(UINT8 soc)
+{
+    soc = SOC_LimitSocValue(soc);
+    SOC_Calculate_Element.u8SOC_Now = soc;
+    SOC_Calculate_Element.u32CapNow = (UINT32)soc * SOC_Calculate_Element.u32CapFactory / 100;
+    SOC_Runtime_State.u8SocReal = soc;
+    SOC_Runtime_State.u8SocDisplay = soc;
+}
+
+static UINT8 SOC_SelectStartupCaliStrategy(UINT8 has_history_soc, UINT8 ocv_ready)
+{
+    if (has_history_soc)
+    {
+        return ocv_ready ? SOC_INIT_STRATEGY_OCV_REST_DOWN_STEP : SOC_INIT_STRATEGY_NONE;
+    }
+    return SOC_INIT_STRATEGY_OCV_DIRECT;
+}
+
+static UINT8 SOC_ApplyStartupCaliStrategy(UINT8 strategy, UINT8 current_soc, UINT8 target_soc)
+{
+    current_soc = SOC_LimitSocValue(current_soc);
+    target_soc = SOC_LimitSocValue(target_soc);
+
+    switch (strategy)
+    {
+    case SOC_INIT_STRATEGY_OCV_DIRECT:
+        return target_soc;
+
+    case SOC_INIT_STRATEGY_OCV_REST_DOWN_STEP:
+        if (target_soc >= current_soc)
+        {
+            return current_soc;
+        }
+        if ((UINT8)(current_soc - target_soc) > 1)
+        {
+            return (UINT8)(current_soc - 1);
+        }
+        return target_soc;
+
+    default:
+        return current_soc;
+    }
 }
 
 static void SOC_UpdatePersistMirror(void)
@@ -994,126 +1055,142 @@ void SOC_DealEEPROM_Data(enum EEPROM_COMMAND Command)
 
 void SOC_Update_StartUp(void)
 {
-	struct SOC_PERSIST_SNAPSHOT snap;
-	UINT8 need_save = 0;
-	UINT8 startup_soc;
-	UINT8 confidence;
-	UINT8 reason;
+    struct SOC_PERSIST_SNAPSHOT snap;
+    UINT8 need_save = 0;
+    UINT8 confidence;
+    UINT8 reason;
+    UINT8 has_history_soc;
+    UINT8 ocv_target_soc;
+    UINT8 ocv_ready;
+    UINT8 startup_strategy;
+    UINT8 apply_soc;
 
-	confidence = SOC_INIT_CONFIDENCE_LOW;
-	reason = SOC_RESTORE_REASON_FALLBACK;
+    confidence = SOC_INIT_CONFIDENCE_LOW;
+    reason = SOC_RESTORE_REASON_FALLBACK;
+    has_history_soc = 0;
+    ocv_target_soc = SOC_INIT_TARGET_INVALID;
+    ocv_ready = SOC_CanUseOcvAtStartup();
+    startup_strategy = SOC_INIT_STRATEGY_NONE;
+    apply_soc = 0;
 
-	switch (SOC_E2prom_Par.u16_SeriousFaultFlag)
-	{
-	case EEPROM_VALUE_POWEROFF_FLAG:
-	case EEPROM_VALUE_SLEEP_FLAG:
-		if (SOC_LoadLatestPersistSnapshot(&snap))
-		{
-			SOC_ApplySnapshot(&snap);
-			reason = SOC_RESTORE_REASON_STORE;
-			confidence = SOC_INIT_CONFIDENCE_HIGH;
-		}
-		else if (SOC_LoadLegacySnapshot(&snap))
-		{
-			SOC_ApplySnapshot(&snap);
-			reason = SOC_RESTORE_REASON_STORE;
-			confidence = SOC_INIT_CONFIDENCE_MEDIUM;
-			need_save = 1;
-		}
-		else
-		{
-			startup_soc = SOC_GetLimitedOcvSoc();
-			SOC_Calculate_Element.u8SOC_Now = startup_soc;
-			SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-			SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-			SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-			SOC_Calculate_Element.u32CapNow = (UINT32)startup_soc * SOC_Calculate_Element.u32CapFactory / 100;
-			SOC_Runtime_State.u8SocReal = startup_soc;
-			SOC_Runtime_State.u8SocDisplay = startup_soc;
-			reason = SOC_RESTORE_REASON_OCV;
-			confidence = SOC_CanUseOcvAtStartup() ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_LOW;
-			need_save = 1;
-		}
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
-		WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag, SOC_E2prom_Par.u16_SeriousFaultFlag);
-		break;
+    switch (SOC_E2prom_Par.u16_SeriousFaultFlag)
+    {
+    case EEPROM_VALUE_POWEROFF_FLAG:
+    case EEPROM_VALUE_SLEEP_FLAG:
+        if (SOC_LoadLatestPersistSnapshot(&snap))
+        {
+            SOC_ApplySnapshot(&snap);
+            reason = SOC_RESTORE_REASON_STORE;
+            confidence = SOC_INIT_CONFIDENCE_HIGH;
+            has_history_soc = 1;
+            ocv_target_soc = SOC_GetLimitedOcvSoc();
+        }
+        else if (SOC_LoadLegacySnapshot(&snap))
+        {
+            SOC_ApplySnapshot(&snap);
+            reason = SOC_RESTORE_REASON_STORE;
+            confidence = SOC_INIT_CONFIDENCE_MEDIUM;
+            has_history_soc = 1;
+            ocv_target_soc = SOC_GetLimitedOcvSoc();
+            need_save = 1;
+        }
+        else
+        {
+            SOC_Calculate_Element.u8DSG_SOC_Int = 0;
+            SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+            SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
+            ocv_target_soc = SOC_GetLimitedOcvSoc();
+            reason = SOC_RESTORE_REASON_OCV;
+            confidence = ocv_ready ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_LOW;
+            need_save = 1;
+        }
+        SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
+        WriteEEPROM_Word_NoZone(SOC_E2prom_Adress.u16_SeriousFaultFlag, SOC_E2prom_Par.u16_SeriousFaultFlag);
+        break;
 
-	case EEPROM_VALUE_DATA_UPDATE_FLAG:
-		switch (SOC_Enhance_Element.u16_RefreshData_Flag)
-		{
-		case 1:
-			startup_soc = SOC_GetLimitedOcvSoc();
-			SOC_Calculate_Element.u8SOC_Now = startup_soc;
-			reason = SOC_RESTORE_REASON_OCV;
-			confidence = SOC_CanUseOcvAtStartup() ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_MEDIUM;
-			break;
+    case EEPROM_VALUE_DATA_UPDATE_FLAG:
+        switch (SOC_Enhance_Element.u16_RefreshData_Flag)
+        {
+        case 1:
+            ocv_target_soc = SOC_GetLimitedOcvSoc();
+            reason = SOC_RESTORE_REASON_OCV;
+            confidence = ocv_ready ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_MEDIUM;
+            break;
 
-		case 2:
-			SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-			SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
-			SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-			SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
-			SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-			startup_soc = SOC_GetLimitedOcvSoc();
-			SOC_Calculate_Element.u8SOC_Now = startup_soc;
-			reason = SOC_RESTORE_REASON_PARAM;
-			confidence = SOC_INIT_CONFIDENCE_MEDIUM;
-			break;
+        case 2:
+            SOC_Calculate_Element.u8DSG_SOC_Int = 0;
+            SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
+            SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+            SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+            SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
+            ocv_target_soc = SOC_GetLimitedOcvSoc();
+            reason = SOC_RESTORE_REASON_PARAM;
+            confidence = SOC_INIT_CONFIDENCE_MEDIUM;
+            break;
 
-		case 3:
-			SOC_Calculate_Element.u8SOC_Now = SOC_Enhance_Element.u8_SetSocOnce;
-			reason = SOC_RESTORE_REASON_MANUAL;
-			confidence = SOC_INIT_CONFIDENCE_HIGH;
-			break;
+        case 3:
+            SOC_Calculate_Element.u8SOC_Now = SOC_Enhance_Element.u8_SetSocOnce;
+            reason = SOC_RESTORE_REASON_MANUAL;
+            confidence = SOC_INIT_CONFIDENCE_HIGH;
+            break;
 
-		default:
-			break;
-		}
-		SOC_Calculate_Element.u32CapNow = (UINT32)SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
-		SOC_Runtime_State.u8SocReal = SOC_Calculate_Element.u8SOC_Now;
-		SOC_Runtime_State.u8SocDisplay = SOC_Calculate_Element.u8SOC_Now;
-		SOC_Calculate_Element.u8_DataUpdateOK = 1;
-		need_save = 1;
-		SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
-		break;
+        default:
+            break;
+        }
+        SOC_Calculate_Element.u8_DataUpdateOK = 1;
+        need_save = 1;
+        SOC_E2prom_Par.u16_SeriousFaultFlag = EEPROM_VALUE_POWEROFF_FLAG;
+        break;
 
-	default:
-		startup_soc = SOC_GetLimitedOcvSoc();
-		SOC_Calculate_Element.u8SOC_Now = startup_soc;
-		SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-		SOC_Calculate_Element.u32CapNow = (UINT32)startup_soc * SOC_Calculate_Element.u32CapFactory / 100;
-		SOC_Runtime_State.u8SocReal = startup_soc;
-		SOC_Runtime_State.u8SocDisplay = startup_soc;
-		reason = SOC_RESTORE_REASON_OCV;
-		confidence = SOC_CanUseOcvAtStartup() ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_LOW;
-		need_save = 1;
-		break;
-	}
+    default:
+        SOC_Calculate_Element.u8DSG_SOC_Int = 0;
+        SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
+        SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
+        ocv_target_soc = SOC_GetLimitedOcvSoc();
+        reason = SOC_RESTORE_REASON_OCV;
+        confidence = ocv_ready ? SOC_INIT_CONFIDENCE_HIGH : SOC_INIT_CONFIDENCE_LOW;
+        need_save = 1;
+        break;
+    }
 
-	if (SOC_Calculate_Element.u32CapFull == 0)
-	{
-		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
-	}
-	if (SOC_Calculate_Element.u8SOC_Now > 100)
-	{
-		SOC_Calculate_Element.u8SOC_Now = 100;
-	}
-	SOC_Calculate_Element.u32CapNow = (UINT32)SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
-	SOC_Runtime_State.u8SocReal = SOC_Calculate_Element.u8SOC_Now;
-	SOC_Runtime_State.u8SocDisplay = SOC_Calculate_Element.u8SOC_Now;
-	SOC_Runtime_State.u8InitConfidence = confidence;
-	SOC_Runtime_State.u8RestoreReason = reason;
-	SOC_UpdatePersistMirror();
+    if (ocv_target_soc != SOC_INIT_TARGET_INVALID)
+    {
+        startup_strategy = SOC_SelectStartupCaliStrategy(has_history_soc, ocv_ready);
+        apply_soc = SOC_ApplyStartupCaliStrategy(startup_strategy, SOC_Calculate_Element.u8SOC_Now, ocv_target_soc);
+        if (has_history_soc && (apply_soc != SOC_Calculate_Element.u8SOC_Now))
+        {
+            reason = SOC_RESTORE_REASON_OCV_STEP;
+            confidence = SOC_INIT_CONFIDENCE_HIGH;
+            need_save = 1;
+        }
+        if (startup_strategy != SOC_INIT_STRATEGY_NONE)
+        {
+            SOC_SetRuntimeSoc(apply_soc);
+        }
+    }
 
-	if (need_save)
-	{
-		SOC_SavePersistSnapshot(reason, confidence);
-	}
+    if (SOC_Calculate_Element.u32CapFull == 0)
+    {
+        SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
+    }
+    if (SOC_Calculate_Element.u8SOC_Now > 100)
+    {
+        SOC_Calculate_Element.u8SOC_Now = 100;
+    }
+    SOC_SetRuntimeSoc(SOC_Calculate_Element.u8SOC_Now);
+    SOC_Runtime_State.u8InitConfidence = confidence;
+    SOC_Runtime_State.u8RestoreReason = reason;
+    SOC_Runtime_State.u8InitStrategy = startup_strategy;
+    SOC_Runtime_State.u8InitTargetSoc = (startup_strategy == SOC_INIT_STRATEGY_NONE) ? SOC_INIT_TARGET_INVALID : SOC_LimitSocValue(ocv_target_soc);
+    SOC_UpdatePersistMirror();
 
-	SOC_Enhance_Element.u16_SOC_InitOver = 1;
-	SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
+    if (need_save)
+    {
+        SOC_SavePersistSnapshot(reason, confidence);
+    }
+
+    SOC_Enhance_Element.u16_SOC_InitOver = 1;
+    SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 }
 
 /*
@@ -1350,6 +1427,8 @@ void InitSOC_IntEnhance(void)
 	SOC_Runtime_State.u8SocDisplay = 0;
 	SOC_Runtime_State.u8InitConfidence = 0;
 	SOC_Runtime_State.u8RestoreReason = 0;
+    SOC_Runtime_State.u8InitStrategy = SOC_INIT_STRATEGY_NONE;
+    SOC_Runtime_State.u8InitTargetSoc = SOC_INIT_TARGET_INVALID;
 	SOC_Runtime_State.u16PersistSeq = 0;
 	SOC_Runtime_State.u8PersistReady = 0;
 
