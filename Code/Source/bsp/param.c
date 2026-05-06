@@ -1,15 +1,15 @@
-/*
+ï»¿/*
 *********************************************************************************************************
 *
-*	Ä£¿éÃû³Æ : Ó¦ÓÃ³ÌĞò²ÎÊıÄ£¿é
-*	ÎÄ¼şÃû³Æ : param.c
-*	°æ    ±¾ : V1.0
-*	Ëµ    Ã÷ : ¶ÁÈ¡ºÍ±£´æÓ¦ÓÃ³ÌĞòµÄ²ÎÊı
-*	ĞŞ¸Ä¼ÇÂ¼ :
-*		°æ±¾ºÅ  ÈÕÆÚ        ×÷Õß     ËµÃ÷
-*		V1.0    2013-01-01 armfly  ÕıÊ½·¢²¼
+*	æ¨¡å—åç§° : åº”ç”¨ç¨‹åºå‚æ•°æ¨¡å—
+*	æ–‡ä»¶åç§° : param.c
+*	ç‰ˆ    æœ¬ : V1.0
+*	è¯´    æ˜ : è¯»å–å’Œä¿å­˜åº”ç”¨ç¨‹åºçš„å‚æ•°
+*	ä¿®æ”¹è®°å½• :
+*		ç‰ˆæœ¬å·  æ—¥æœŸ        ä½œè€…     è¯´æ˜
+*		V1.0    2013-01-01 armfly  æ­£å¼å‘å¸ƒ
 *
-*	Copyright (C), 2012-2013, °²¸»À³µç×Ó www.armfly.com
+*	Copyright (C), 2012-2013, å®‰å¯Œè±ç”µå­ www.armfly.com
 *
 *********************************************************************************************************
 */
@@ -21,130 +21,37 @@
 
 PARAM_T g_tParam;
 
-/* ½«16KB Ò»¸öÉÈÇøµÄ¿Õ¼äÔ¤Áô³öÀ´×öÎª²ÎÊıÇø For MDK */
+/* å°†16KB ä¸€ä¸ªæ‰‡åŒºçš„ç©ºé—´é¢„ç•™å‡ºæ¥åšä¸ºå‚æ•°åŒº For MDK */
 //const uint8_t para_flash_area[16*1024] __attribute__((at(ADDR_FLASH_SECTOR_3)));
 
 /*
 *********************************************************************************************************
-*	º¯ Êı Ãû: LoadParam
-*	¹¦ÄÜËµÃ÷: ´ÓFlash¶Á²ÎÊıµ½g_tParam
-*	ĞÎ    ²Î£ºÎŞ
-*	·µ »Ø Öµ: ÎŞ
+*	å‡½ æ•° å: LoadParam
+*	åŠŸèƒ½è¯´æ˜: å°†å½“å‰è¿è¡Œå‚æ•°é•œåƒåˆ°g_tParam
+*	å½¢    å‚ï¼šæ— 
+*	è¿” å› å€¼: æ— 
 *********************************************************************************************************
 */
 void LoadParam(void)
 {
 	sys_time.test_sizeof_g_tParam = sizeof(g_tParam);
-#ifdef PARAM_SAVE_TO_FLASH
-	/* ¶ÁÈ¡CPU FlashÖĞµÄ²ÎÊı */
-	bsp_ReadCpuFlash(PARAM_ADDR, (uint8_t *)&g_tParam, sizeof(PARAM_T));
-#endif
-
-#ifdef PARAM_SAVE_TO_EEPROM
-	/* ¶ÁÈ¡EEPROMÖĞµÄ²ÎÊı */
-	ee_ReadBytes((uint8_t *)&g_tParam, PARAM_ADDR, sizeof(PARAM_T));
-#endif
-
-	/* Ìî³äÈ±Ê¡²ÎÊı */
-	if (g_tParam.ParamVer != PARAM_VER)
-	{
-		PARAM_T Param_default = {
-			.ParamVer = PARAM_VER,
-			.protect = E2P_PROTECT_DEFAULT_PRT,
-			.other   = OtherElement_default,
-			.heat    = HeatCoolElement_Default,
-		};
-		g_tParam.ParamVer = PARAM_VER;
-
-		g_tParam = Param_default;
-		// /* uip  ±¾»úIPµØÖ· */
-		// g_tParam.uip_ip[0] = 192;
-		// g_tParam.uip_ip[1] = 168;
-		// g_tParam.uip_ip[2] = 1;
-		// g_tParam.uip_ip[3] = 85;
-
-		// /* uip  ×ÓÍøÑÚÂë */
-		// g_tParam.uip_net_mask[0] = 255;
-		// g_tParam.uip_net_mask[1] = 255;
-		// g_tParam.uip_net_mask[2] = 255;
-		// g_tParam.uip_net_mask[3] = 0;
-
-		// /* uip  Ä¬ÈÏÍø¹Ø */
-		// g_tParam.uip_gateway[0] = 192;
-		// g_tParam.uip_gateway[1] = 168;
-		// g_tParam.uip_gateway[2] = 1;
-		// g_tParam.uip_gateway[3] = 1;
-
-		// /* lwip  ±¾»úIPµØÖ· */
-		// g_tParam.lwip_ip[0] = 192;
-		// g_tParam.lwip_ip[1] = 168;
-		// g_tParam.lwip_ip[2] = 1;
-		// g_tParam.lwip_ip[3] = 86;
-
-		// /* lwip  ×ÓÍøÑÚÂë */
-		// g_tParam.lwip_net_mask[0] = 255;
-		// g_tParam.lwip_net_mask[1] = 255;
-		// g_tParam.lwip_net_mask[2] = 255;
-		// g_tParam.lwip_net_mask[3] = 0;
-
-		// /* lwip  Ä¬ÈÏÍø¹Ø */
-		// g_tParam.lwip_gateway[0] = 192;
-		// g_tParam.lwip_gateway[1] = 168;
-		// g_tParam.lwip_gateway[2] = 1;
-		// g_tParam.lwip_gateway[3] = 1;
-
-		// g_tParam.ucRadioMode     = 0;				/* 1 = AM »ò 0 = FM */
-		// g_tParam.ucRadioListType = 0;				/* µçÌ¨ÁĞ±íÀàĞÍ¡£0ÎäººµØÇø»ò1È«¹ú */
-		// g_tParam.ucIndexFM       = 0;				/* µ±Ç°FMµçÌ¨Ë÷Òı */
-		// g_tParam.ucIndexAM       = 0;				/* µ±Ç°µçÌ¨Ë÷Òı */
-		// g_tParam.ucRadioVolume   = 30;				/* ÒôÁ¿ */
-		// g_tParam.ucSpkOutEn      = 1;				/* ÑïÉùÆ÷Êä³öÊ¹ÄÜ */
-
-		// /* 485 Í¨ĞÅ²¨ÌØÂÊ */
-		// g_tParam.Baud485 = 9600;
-
-		SaveParam();							/* ½«ĞÂ²ÎÊıĞ´ÈëFlash */
-	}
-
-	// if(g_tParam.protect != PRT_E2ROMParas)
-	// {
-
-	// }
-	if(memcmp(&g_tParam.protect, &PRT_E2ROMParas, sizeof(PRT_E2ROMParas)) != 0)
-	{
-		// System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
-	if(memcmp(&g_tParam.other, &OtherElement, sizeof(OtherElement)) != 0)
-	{
-		// System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
-	if(memcmp(&g_tParam.heat, &Heat_Cool_Element, sizeof(Heat_Cool_Element)) != 0)
-	{
-		// System_ERROR_UserCallback(ERROR_CBC_CHG);
-	}
+	g_tParam.ParamVer = PARAM_VER;
+	g_tParam.protect = PRT_E2ROMParas;
+	g_tParam.other = OtherElement;
+	g_tParam.heat = Heat_Cool_Element;
 }
 
 /*
 *********************************************************************************************************
-*	º¯ Êı Ãû: SaveParam
-*	¹¦ÄÜËµÃ÷: ½«È«¾Ö±äÁ¿g_tParam Ğ´Èëµ½CPUÄÚ²¿Flash
-*	ĞÎ    ²Î: ÎŞ
-*	·µ »Ø Öµ: ÎŞ
+*	å‡½ æ•° å: SaveParam
+*	åŠŸèƒ½è¯´æ˜: åˆ·æ–°g_tParamé•œåƒ
+*	å½¢    å‚: æ— 
+*	è¿” å› å€¼: æ— 
 *********************************************************************************************************
 */
 void SaveParam(void)
 {
-#ifdef PARAM_SAVE_TO_FLASH
-	/* ½«È«¾ÖµÄ²ÎÊı±äÁ¿±£´æµ½ CPU Flash */
-	bsp_WriteCpuFlash(PARAM_ADDR, (unsigned char *)&g_tParam, sizeof(PARAM_T));
-#endif
-
-#ifdef PARAM_SAVE_TO_EEPROM
-	/* ½«È«¾ÖµÄ²ÎÊı±äÁ¿±£´æµ½EEPROM */
-	ee_WriteBytes((uint8_t *)&g_tParam, PARAM_ADDR, sizeof(PARAM_T));
-#endif
-
 	LoadParam();
 }
 
-/***************************** °²¸»À³µç×Ó www.armfly.com (END OF FILE) *********************************/
+/***************************** å®‰å¯Œè±ç”µå­ www.armfly.com (END OF FILE) *********************************/

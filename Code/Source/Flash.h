@@ -1,16 +1,21 @@
-#ifndef FLASH_H
+﻿#ifndef FLASH_H
 #define FLASH_H
 
-//ϵͳ�洢����������ST����������ڲ�Ԥ����һ��BootLoader��Ҳ����ISP��������һ��ROM
-//û��ʲô�е�������Ʒ��ֻ����C8��R8����Ϊ64K��	 ÿҳ1KB��ϵͳ�洢��3KB��
-#define FLASH_ADDR_IAP_START 			0x08000000		//IAP=7K������ط�����һ�����⣬�޸ĺ����6K�����淴ӳ���������Zi-dataҲ��flash�Ķ���
+//系统存储器：出厂由ST在这个区域内部预置了一段BootLoader，也就是ISP程序，这是一块ROM
+//没有什么中低容量产品，只会用C8和R8，均为64K，	 每页1KB。系统存储器3KB。
+#define FLASH_ADDR_IAP_START 			0x08000000		//IAP=7K，这个地方出了一次问题，修改后大于6K，侧面反映编译出来的Zi-data也是flash的东西
 #define FLASH_ADDR_APP_START 			0x08001C00		//APP=64-7-1-1=55K
 
 
-#define FLASH_ADDR_TEST_BMS_PARAM       0x0800F000		//���ѷ�ʽ�ļ�¼
-#define FLASH_ADDR_WAKE_TYPE            0x0800F400		//���ѷ�ʽ�ļ�¼
-#define FLASH_ADDR_UPDATE_FLAG 			0x0800F800		//������־λ��1K
-#define FLASH_ADDR_SLEEP_FLAG           0x0800FC00		//���߹ؼ�ָ�1K
+#define FLASH_STORAGE_PAGE_BYTES        ((UINT32)0x00000400)
+#define FLASH_STORAGE_SLOT_BYTES        ((UINT32)(3u * FLASH_STORAGE_PAGE_BYTES))
+#define FLASH_STORAGE_JOURNAL_BYTES     ((UINT32)(5u * FLASH_STORAGE_PAGE_BYTES))
+#define FLASH_ADDR_STORAGE_SLOT0        ((UINT32)0x0800C400)
+#define FLASH_ADDR_STORAGE_SLOT1        ((UINT32)0x0800D000)
+#define FLASH_ADDR_STORAGE_JOURNAL      ((UINT32)0x0800DC00)
+#define FLASH_ADDR_TEST_BMS_PARAM       FLASH_ADDR_STORAGE_SLOT0	// 旧参数区别名，现用于内部Flash持久化槽0
+#define FLASH_ADDR_WAKE_TYPE            0x0800F400		//唤醒方式的记录
+#define FLASH_ADDR_UPDATE_FLAG 			0x0800F800		//升级标志位，1K
 
 #define FLASH_TO_IAP_VALUE				((UINT16)0x00AB)
 #define FLASH_TO_APP_VALUE				((UINT16)0xFFFF)

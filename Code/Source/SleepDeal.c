@@ -1,6 +1,6 @@
-#include "main.h"
+﻿#include "main.h"
 
-volatile union SLEEP_MODE Sleep_Mode; // 用于外部控制进入休眠标志�?
+volatile union SLEEP_MODE Sleep_Mode; // 鐢ㄤ簬澶栭儴鎺у埗杩涘叆浼戠湢鏍囧織浣?
 enum SLEEP_STATUS Sleep_Status = SLEEP_HICCUP_SHIFT;
 
 UINT8 gu8_SleepStatus = 0;
@@ -8,7 +8,7 @@ UINT8 RTC_ExtComCnt = 0;
 
 static UINT8 s_sleep_wakeup_by_di1 = 0;
 uint8_t reset_sleep_state = 0;
-#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)5) // PC13�պ�50ms�Ȼ��ѵ�����Ԥ��̬
+#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)5) // PC13闭合50ms先唤醒到电量预览态
 
 static UINT8 IsPA0WakeupActive(void)
 {
@@ -17,7 +17,7 @@ static UINT8 IsPA0WakeupActive(void)
 
 static UINT8 IsDI1Pressed(void)
 {
-	// PC13���رպ�Ϊ�͵�ƽ����EXTI13�½��ػ��ѱ���һ�£�
+	// PC13开关闭合为低电平（与EXTI13下降沿唤醒保持一致）
 	return (UINT8)(MCUI_ENI_DI1 == 0);
 }
 
@@ -58,10 +58,10 @@ static UINT8 IsSleepWakeupValid(void)
 	return 0;
 }
 
-// 通�??唤醒对深度休眠不起效果。不能再Base加入通�??唤醒�?
+// 閫氳??鍞ら啋瀵规繁搴︿紤鐪犱笉璧锋晥鏋溿€備笉鑳藉啀Base鍔犲叆閫氳??鍞ら啋銆?
 
 /*
- * ���߲��Թ��ӣ�Ϊ�˱��ں�����ֲ�����������3����������Ǩ�ơ���������������RTC�������ߡ��߼���
+ * 休眠策略钩子：为了便于后续移植，仅需改以下3个函数即可迁移“空闲且正常进入RTC周期休眠”逻辑。
  */
 static UINT8 SleepDeal_HasBlockingFault(void)
 {
@@ -116,46 +116,46 @@ void InitWakeUp_Base(void)
 	NVIC_InitTypeDef NVIC_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 使能PWR外�?�时钟，待机模式，RTC，看门狗
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 浣胯兘PWR澶栬?炬椂閽燂紝寰呮満妯″紡锛孯TC锛岀湅闂ㄧ嫍
 #if 0
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0; // 选择要用的GPIO引脚
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0; // 閫夋嫨瑕佺敤鐨凣PIO寮曡剼
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 璁剧疆寮曡剼妯″紡涓轰笂鎷夎緭鍏ユā寮?
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	// 设置�?�?�?0，EXTI0和PA0挂钩
+	// 璁剧疆涓?鏂?绾?0锛孍XTI0鍜孭A0鎸傞挬
 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
-	// 配置PA0_WKUP外部上升沿中�?
+	// 閰嶇疆PA0_WKUP澶栭儴涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
-	// �?�?嵌�?��?��??
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn; // 使能按键WK_UP所在的外部�?�?通道
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00; // 抢占优先�?0
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	   // 使能外部�?�?通道
+	// 涓?鏂?宓屽?楄?捐??
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn; // 浣胯兘鎸夐敭WK_UP鎵€鍦ㄧ殑澶栭儴涓?鏂?閫氶亾
+	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00; // 鎶㈠崰浼樺厛绾?0
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	   // 浣胯兘澶栭儴涓?鏂?閫氶亾
 	NVIC_Init(&NVIC_InitStructure);
 #endif
 
 	// DI1
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13; // 选择要用的GPIO引脚
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13; // 閫夋嫨瑕佺敤鐨凣PIO寮曡剼
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 璁剧疆寮曡剼妯″紡涓轰笂鎷夎緭鍏ユā寮?
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	// 设置�?�?�?1，EXTI1和PA1挂钩
+	// 璁剧疆涓?鏂?绾?1锛孍XTI1鍜孭A1鎸傞挬
 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource13);
-	// 配置PA1_WKUP外部上升沿中�?
+	// 閰嶇疆PA1_WKUP澶栭儴涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line13;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
-	// �?�?嵌�?��?��??
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
+	// 涓?鏂?宓屽?楄?捐??
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 浣胯兘鎸夐敭WK_UP鎵€鍦ㄧ殑澶栭儴涓?鏂?閫氶亾
+	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 鎶㈠崰浼樺厛绾?0
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 浣胯兘澶栭儴涓?鏂?閫氶亾
 	NVIC_Init(&NVIC_InitStructure);
 }
 
@@ -166,57 +166,57 @@ void InitWakeUp_NormalMode(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	InitWakeUp_Base();
-	// 串口1的RX唤醒
-	GPIO_InitStructure.GPIO_Pin = PIN_INT_WK_CMNT; // 选择要用的GPIO引脚
+	// 涓插彛1鐨凴X鍞ら啋
+	GPIO_InitStructure.GPIO_Pin = PIN_INT_WK_CMNT; // 閫夋嫨瑕佺敤鐨凣PIO寮曡剼
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 璁剧疆寮曡剼妯″紡涓轰笂鎷夎緭鍏ユā寮?
 	GPIO_Init(GPIO_INT_WK_CMNT, &GPIO_InitStructure);
 
-	// 设置�?�?�?1，EXTI1和PA1挂钩
+	// 璁剧疆涓?鏂?绾?1锛孍XTI1鍜孭A1鎸傞挬
 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource14);
-	// 配置PA1_WKUP外部上升沿中�?
+	// 閰嶇疆PA1_WKUP澶栭儴涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_Line = EXTI_Line14;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿中�?
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 涓婂崌娌夸腑鏂?
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStruct);
-	// �?�?嵌�?��?��??
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
+	// 涓?鏂?宓屽?楄?捐??
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 浣胯兘鎸夐敭WK_UP鎵€鍦ㄧ殑澶栭儴涓?鏂?閫氶亾
+	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 鎶㈠崰浼樺厛绾?0
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 浣胯兘澶栭儴涓?鏂?閫氶亾
 	NVIC_Init(&NVIC_InitStructure);
 
-	//	//串口1的RX唤醒
-	//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;		//选择要用的GPIO引脚
+	//	//涓插彛1鐨凴X鍞ら啋
+	//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;		//閫夋嫨瑕佺敤鐨凣PIO寮曡剼
 	//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; 	//设置引脚模式为上拉输入模�?
+	//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; 	//璁剧疆寮曡剼妯″紡涓轰笂鎷夎緭鍏ユā寮?
 	//	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	//	//设置�?�?�?1，EXTI1和PA1挂钩
+	//	//璁剧疆涓?鏂?绾?1锛孍XTI1鍜孭A1鎸傞挬
 	//	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource3);
-	//	//配置PA1_WKUP外部上升沿中�?
+	//	//閰嶇疆PA1_WKUP澶栭儴涓婂崌娌夸腑鏂?
 	//	EXTI_InitStruct.EXTI_Line = EXTI_Line3;
 	//	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	//	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //上升沿中�?
+	//	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //涓婂崌娌夸腑鏂?
 	//	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	//	EXTI_Init(&EXTI_InitStruct);
-	//	//�?�?嵌�?��?��??
-	//  	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_3_IRQn;	//使能按键WK_UP所在的外部�?�?通道
-	//  	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	//抢占优先�?0
-	//  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		//使能外部�?�?通道
+	//	//涓?鏂?宓屽?楄?捐??
+	//  	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_3_IRQn;	//浣胯兘鎸夐敭WK_UP鎵€鍦ㄧ殑澶栭儴涓?鏂?閫氶亾
+	//  	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	//鎶㈠崰浼樺厛绾?0
+	//  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		//浣胯兘澶栭儴涓?鏂?閫氶亾
 	//  	NVIC_Init(&NVIC_InitStructure);
 }
 
 void InitWakeUp_RTCMode(void)
 {
 	// InitWakeUp_Base();
-	InitWakeUp_NormalMode(); // 包含了Base的唤醒方�?
+	InitWakeUp_NormalMode(); // 鍖呭惈浜咮ase鐨勫敜閱掓柟寮?
 	RTC_TimeConfig();
 	RTC_AlarmConfig();
 }
 
-// 如果是standby模式的话，PA0的wkup不用�?
-// 通�??唤醒对深度休眠不能起效果�?
+// 濡傛灉鏄痵tandby妯″紡鐨勮瘽锛孭A0鐨剋kup涓嶇敤閰?
+// 閫氳??鍞ら啋瀵规繁搴︿紤鐪犱笉鑳借捣鏁堟灉銆?
 void InitWakeUp_DeepMode(void)
 {
 	InitWakeUp_Base();
@@ -232,10 +232,10 @@ void IOstatus_Base(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); // 开启GPIOA的�?��?�时�?
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); // 开启GPIOB的�?��?�时�?
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE); // 开启GPIOC的�?��?�时�?
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 开启GPIOF的�?��?�时�?
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); // 寮€鍚疓PIOA鐨勫?栬?炬椂閽?
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); // 寮€鍚疓PIOB鐨勫?栬?炬椂閽?
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE); // 寮€鍚疓PIOC鐨勫?栬?炬椂閽?
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 寮€鍚疓PIOF鐨勫?栬?炬椂閽?
 
 	ADC_DeInit(ADC1);
 
@@ -280,8 +280,8 @@ void IORecover_RTCMode(void)
 
 void IORecover_NormalMode(void)
 {
-	// TIM_Cmd(TIM3, ENABLE);	//用于App_SleepTest()函数
-	MCU_RESET(); // 由于直接走下去�?�致各�?�因为现场破坏无法进入�?�常工作模式，完美的解决办法�?复位再来�?
+	// TIM_Cmd(TIM3, ENABLE);	//鐢ㄤ簬App_SleepTest()鍑芥暟
+	MCU_RESET(); // 鐢变簬鐩存帴璧颁笅鍘诲?艰嚧鍚勭?嶅洜涓虹幇鍦虹牬鍧忔棤娉曡繘鍏ユ?ｅ父宸ヤ綔妯″紡锛屽畬缇庣殑瑙ｅ喅鍔炴硶鏄?澶嶄綅鍐嶆潵杩?
 }
 
 void IORecover_DeepMode(void)
@@ -289,38 +289,38 @@ void IORecover_DeepMode(void)
 	MCU_RESET();
 }
 
-// wkup不用�?
+// wkup涓嶇敤閰?
 void Sys_StandbyMode(void)
 {
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 使能PWR外�?�时钟，这句话是否需要？030不需要也能进入休�?
-	// RCC_APB2PeriphResetCmd(0X01FC,DISABLE);				//复位所有IO�?   //TODO
-	PWR_WakeUpPinCmd(PWR_WakeUpPin_1, ENABLE); // 使能唤醒管脚功能，PWR_CSR�?
-											   // 该引脚会�?强制配置为下拉输入，意味着不需要配�?了？
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 浣胯兘PWR澶栬?炬椂閽燂紝杩欏彞璇濇槸鍚﹂渶瑕侊紵030涓嶉渶瑕佷篃鑳借繘鍏ヤ紤鐪?
+	// RCC_APB2PeriphResetCmd(0X01FC,DISABLE);				//澶嶄綅鎵€鏈塈O鍙?   //TODO
+	PWR_WakeUpPinCmd(PWR_WakeUpPin_1, ENABLE); // 浣胯兘鍞ら啋绠¤剼鍔熻兘锛孭WR_CSR銆?
+											   // 璇ュ紩鑴氫細琚?寮哄埗閰嶇疆涓轰笅鎷夎緭鍏ワ紝鎰忓懗鐫€涓嶉渶瑕侀厤缃?浜嗭紵
 
 	PWR_ClearFlag(PWR_FLAG_WU); // Clear WUF bit in Power Control/Status register (PWR_CSR)
-								// 清PWR_CR相关便能清除PWR_CSR
-	PWR_EnterSTANDBYMode();		// 进入待命（STANDBY）模式，PWR_CR    _PDDS
-								// SCB->SCR设置为SLEEPDEEP = 1
+								// 娓匬WR_CR鐩稿叧渚胯兘娓呴櫎PWR_CSR
+	PWR_EnterSTANDBYMode();		// 杩涘叆寰呭懡锛圫TANDBY锛夋ā寮忥紝PWR_CR    _PDDS
+								// SCB->SCR璁剧疆涓篠LEEPDEEP = 1
 }
 
-// 030也是这样�?
+// 030涔熸槸杩欐牱鍚?
 void Sys_StopMode(void)
 {
 	// RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
 	PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
-// 如果信号到了，没法唤醒，单片机假死状态�?
-// 就是以下这�?�话执�?�出�?题了，�?�部晶振出问�?
+// 濡傛灉淇″彿鍒颁簡锛屾病娉曞敜閱掞紝鍗曠墖鏈哄亣姝荤姸鎬併€?
+// 灏辨槸浠ヤ笅杩欐?佃瘽鎵ц?屽嚭闂?棰樹簡锛屽?栭儴鏅舵尟鍑洪棶棰?
 #if (defined _HSE_8M_PLL_48M) || (defined _HSE_12M_PLL_48M)
-	RCC_HSEConfig(RCC_HSE_ON); // 起来后会�?切换回HSI
+	RCC_HSEConfig(RCC_HSE_ON); // 璧锋潵鍚庝細琚?鍒囨崲鍥濰SI
 	while (RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET)
-		;				// 等待 HSE 准�?�就�?
-	RCC_PLLCmd(ENABLE); // 使能 PLL
+		;				// 绛夊緟 HSE 鍑嗗?囧氨缁?
+	RCC_PLLCmd(ENABLE); // 浣胯兘 PLL
 	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
-		;									   // 等待 PLL 准�?�就�?
-	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); // 选择PLL作为系统时钟�?
+		;									   // 绛夊緟 PLL 鍑嗗?囧氨缁?
+	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); // 閫夋嫨PLL浣滀负绯荤粺鏃堕挓婧?
 	while (RCC_GetSYSCLKSource() != 0x08)
-		; // 等待PLL�?选择为系统时钟源
+		; // 绛夊緟PLL琚?閫夋嫨涓虹郴缁熸椂閽熸簮
 #endif
 }
 
@@ -421,8 +421,8 @@ void SleepDeal_OverCurrent(void)
 	static UINT32 s_u32SleepHiccupCnt = 0;
 
 	if (!Sleep_Mode.bits.b1OverCurSleep)
-	{									   // 加强雍余设�??
-		Sleep_Status = SLEEP_HICCUP_SHIFT; // 其实这个�?以不要，设�?��?�求，除了这�?函数�?以把这个标志位去除�?�，�?的地方不�?以便�?
+	{									   // 鍔犲己闆嶄綑璁捐??
+		Sleep_Status = SLEEP_HICCUP_SHIFT; // 鍏跺疄杩欎釜鍙?浠ヤ笉瑕侊紝璁捐?¤?佹眰锛岄櫎浜嗚繖涓?鍑芥暟鍙?浠ユ妸杩欎釜鏍囧織浣嶅幓闄ゅ?栵紝鍒?鐨勫湴鏂逛笉鍙?浠ヤ究鍙?
 		return;
 	}
 
@@ -430,7 +430,7 @@ void SleepDeal_OverCurrent(void)
 	{
 	case FIRST:
 		if (++s_u32SleepFirstCnt > 0)
-		{ // 留下位置，后�?�?一次后进入需要延时则这里�?
+		{ // 鐣欎笅浣嶇疆锛屽悗缁?绗?涓€娆″悗杩涘叆闇€瑕佸欢鏃跺垯杩欓噷鍔?
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -446,13 +446,13 @@ void SleepDeal_OverCurrent(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
 	if (0)
-	{										// 如果检测到没问题，则退出休�?
-		Sleep_Mode.bits.b1OverCurSleep = 0; // 放到switch�?句�?�面，FIRST和HICCUP两个都有�?
+	{										// 濡傛灉妫€娴嬪埌娌￠棶棰橈紝鍒欓€€鍑轰紤鐪?
+		Sleep_Mode.bits.b1OverCurSleep = 0; // 鏀惧埌switch璇?鍙ュ?栭潰锛孎IRST鍜孒ICCUP涓や釜閮芥湁鏁?
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
 		if (s_u32SleepFirstCnt)
@@ -473,8 +473,8 @@ void SleepDeal_VcellUVP(void)
 	static UINT32 s_u32SleepHiccupCnt = 0;
 
 	if (!Sleep_Mode.bits.b1VcellUVP)
-	{									   // 加强雍余设�??
-		Sleep_Status = SLEEP_HICCUP_SHIFT; // 其实这个�?以不要，设�?��?�求，除了这�?函数�?以把这个标志位去除�?�，�?的地方不�?以便�?
+	{									   // 鍔犲己闆嶄綑璁捐??
+		Sleep_Status = SLEEP_HICCUP_SHIFT; // 鍏跺疄杩欎釜鍙?浠ヤ笉瑕侊紝璁捐?¤?佹眰锛岄櫎浜嗚繖涓?鍑芥暟鍙?浠ユ妸杩欎釜鏍囧織浣嶅幓闄ゅ?栵紝鍒?鐨勫湴鏂逛笉鍙?浠ヤ究鍙?
 		return;
 	}
 
@@ -482,7 +482,7 @@ void SleepDeal_VcellUVP(void)
 	{
 	case FIRST:
 		if (++s_u32SleepFirstCnt > 0)
-		{ // 直接进去
+		{ // 鐩存帴杩涘幓
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -498,15 +498,15 @@ void SleepDeal_VcellUVP(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
 	if (0)
-	{ // 如果检测到没问题，则退出休�?
+	{ // 濡傛灉妫€娴嬪埌娌￠棶棰橈紝鍒欓€€鍑轰紤鐪?
 		// Sleep_Mode.bits.b1ForceToSleep_L2 = 0;
 		// Sleep_Status = SLEEP_HICCUP_SHIFT;
-		s_u8SleepStatus = FIRST; // 直接回到�?一次，force�?有一次，不是打嗝休眠模式
+		s_u8SleepStatus = FIRST; // 鐩存帴鍥炲埌绗?涓€娆★紝force鍙?鏈変竴娆★紝涓嶆槸鎵撳棟浼戠湢妯″紡
 		if (s_u32SleepFirstCnt)
 			s_u32SleepFirstCnt = 0;
 		if (s_u32SleepHiccupCnt)
@@ -521,7 +521,7 @@ void SleepDeal_Vdelta(void)
 	static UINT32 s_u32SleepFirstCnt = 0;
 	static UINT32 s_u32SleepHiccupCnt = 0;
 	
-	if(!Sleep_Mode.bits.b1OverVdeltaSleep) {	//加强雍余设�??
+	if(!Sleep_Mode.bits.b1OverVdeltaSleep) {	//鍔犲己闆嶄綑璁捐??
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		return ;
 	}
@@ -535,8 +535,8 @@ void SleepDeal_Forced(void)
 	static UINT32 s_u32SleepHiccupCnt = 0;
 
 	if (!Sleep_Mode.bits.b1ForceToSleep_L1 && Sleep_Mode.bits.b1ForceToSleep_L2 && Sleep_Mode.bits.b1ForceToSleep_L3)
-	{									   // 加强雍余设�??
-		Sleep_Status = SLEEP_HICCUP_SHIFT; // 其实这个�?以不要，设�?��?�求，除了这�?函数�?以把这个标志位去除�?�，�?的地方不�?以便�?
+	{									   // 鍔犲己闆嶄綑璁捐??
+		Sleep_Status = SLEEP_HICCUP_SHIFT; // 鍏跺疄杩欎釜鍙?浠ヤ笉瑕侊紝璁捐?¤?佹眰锛岄櫎浜嗚繖涓?鍑芥暟鍙?浠ユ妸杩欎釜鏍囧織浣嶅幓闄ゅ?栵紝鍒?鐨勫湴鏂逛笉鍙?浠ヤ究鍙?
 		return;
 	}
 
@@ -544,7 +544,7 @@ void SleepDeal_Forced(void)
 	{
 	case FIRST:
 		if (++s_u32SleepFirstCnt > 0)
-		{ // 直接进去
+		{ // 鐩存帴杩涘幓
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -560,15 +560,15 @@ void SleepDeal_Forced(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
 	if (0)
-	{ // 如果检测到没问题，则退出休�?
+	{ // 濡傛灉妫€娴嬪埌娌￠棶棰橈紝鍒欓€€鍑轰紤鐪?
 		// Sleep_Mode.bits.b1ForceToSleep_L2 = 0;
 		// Sleep_Status = SLEEP_HICCUP_SHIFT;
-		s_u8SleepStatus = FIRST; // 直接回到�?一次，force�?有一次，不是打嗝休眠模式
+		s_u8SleepStatus = FIRST; // 鐩存帴鍥炲埌绗?涓€娆★紝force鍙?鏈変竴娆★紝涓嶆槸鎵撳棟浼戠湢妯″紡
 		if (s_u32SleepFirstCnt)
 			s_u32SleepFirstCnt = 0;
 		if (s_u32SleepHiccupCnt)
@@ -583,8 +583,8 @@ void SleepDeal_CBC(void)
 	static UINT32 s_u32SleepHiccupCnt = 0;
 
 	if (!Sleep_Mode.bits.b1CBCSleep)
-	{									   // 加强雍余设�??
-		Sleep_Status = SLEEP_HICCUP_SHIFT; // 其实这个�?以不要，设�?��?�求，除了这�?函数�?以把这个标志位去除�?�，�?的地方不�?以便�?
+	{									   // 鍔犲己闆嶄綑璁捐??
+		Sleep_Status = SLEEP_HICCUP_SHIFT; // 鍏跺疄杩欎釜鍙?浠ヤ笉瑕侊紝璁捐?¤?佹眰锛岄櫎浜嗚繖涓?鍑芥暟鍙?浠ユ妸杩欎釜鏍囧織浣嶅幓闄ゅ?栵紝鍒?鐨勫湴鏂逛笉鍙?浠ヤ究鍙?
 		return;
 	}
 
@@ -592,7 +592,7 @@ void SleepDeal_CBC(void)
 	{
 	case FIRST:
 		if (++s_u32SleepFirstCnt > 0)
-		{ // 留下位置，后�?�?一次后进入需要延时则这里�?
+		{ // 鐣欎笅浣嶇疆锛屽悗缁?绗?涓€娆″悗杩涘叆闇€瑕佸欢鏃跺垯杩欓噷鍔?
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -608,14 +608,14 @@ void SleepDeal_CBC(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
 	if (0)
-	{									// 如果检测到没问题，则退出休�?
-		Sleep_Mode.bits.b1CBCSleep = 0; // 放到switch�?句�?�面，FIRST和HICCUP两个都有�?
-		// System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1; 		//在这里�?�原�?否更好？
+	{									// 濡傛灉妫€娴嬪埌娌￠棶棰橈紝鍒欓€€鍑轰紤鐪?
+		Sleep_Mode.bits.b1CBCSleep = 0; // 鏀惧埌switch璇?鍙ュ?栭潰锛孎IRST鍜孒ICCUP涓や釜閮芥湁鏁?
+		// System_OnOFF_Func.bits.b1OnOFF_MOS_Relay = 1; 		//鍦ㄨ繖閲屽?嶅師鏄?鍚︽洿濂斤紵
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
 		if (s_u32SleepFirstCnt)
@@ -633,7 +633,7 @@ void SleepDeal_Normal_L1(void)
 	static UINT8 su8_SleepExtComCnt = 0;
 
 	if ((Sleep_Mode.all & 0xFFF1) != 0)
-	{ // 核心
+	{ // 鏍稿績
 		Sleep_Mode.bits.b1NormalSleep_L1 = 0;
 		Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 		Sleep_Mode.bits.b1NormalSleep_L3 = 0;
@@ -659,13 +659,13 @@ void SleepDeal_Normal_L1(void)
 	case FIRST:
 		if (OtherElement.u16Sleep_TimeRTC == 0)
 		{
-			// �?0时默�?RTC不进入休�?
+			// 涓?0鏃堕粯璁?RTC涓嶈繘鍏ヤ紤鐪?
 		}
 		else
 		{
 			if (++s_u32SleepFirstCnt > (UINT32)OtherElement.u16Sleep_TimeRTC * 60)
 			{
-				// if(++s_u32SleepFirstCnt >= 5) {			//这个，�??一次个后面都是一�?
+				// if(++s_u32SleepFirstCnt >= 5) {			//杩欎釜锛岀??涓€娆′釜鍚庨潰閮芥槸涓€鏍?
 				s_u32SleepFirstCnt = 0;
 				s_u8SleepStatus = HICCUP;
 				Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -682,7 +682,7 @@ void SleepDeal_Normal_L1(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
@@ -704,7 +704,7 @@ void SleepDeal_Normal_L1(void)
 		if (s_u32SleepHiccupCnt)
 			s_u32SleepHiccupCnt = 0;
 	}
-	// s_u32SleepFirstCnt = 0;		//还没调好L1不进入休眠�?
+	// s_u32SleepFirstCnt = 0;		//杩樻病璋冨ソL1涓嶈繘鍏ヤ紤鐪犮€?
 }
 
 void SleepDeal_Normal_L2(void)
@@ -741,7 +741,7 @@ void SleepDeal_Normal_L2(void)
 	case FIRST:
 		if (++s_u32SleepFirstCnt > (UINT32)OtherElement.u16Sleep_TimeNormal * 60)
 		{
-			// if(++s_u32SleepFirstCnt >= 3) {			//这个，�??一次个后面都是一�?
+			// if(++s_u32SleepFirstCnt >= 3) {			//杩欎釜锛岀??涓€娆′釜鍚庨潰閮芥槸涓€鏍?
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -758,7 +758,7 @@ void SleepDeal_Normal_L2(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
@@ -772,7 +772,7 @@ void SleepDeal_Normal_L2(void)
 
 	// if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow || g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal)
 	if (g_stCellInfoReport.u16VCellMin < OtherElement.u16Sleep_Vlow)
-	{ // 触发条件才跳�?，别的时间不跳转
+	{ // 瑙﹀彂鏉′欢鎵嶈烦杞?锛屽埆鐨勬椂闂翠笉璺宠浆
 		Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
@@ -816,7 +816,7 @@ void SleepDeal_Normal_L3(void)
 	case FIRST:
 		if (++s_u32SleepFirstCnt > (UINT32)OtherElement.u16Sleep_TimeVlow * 60)
 		{
-			// if(++s_u32SleepFirstCnt >= 1) {			//这个，�??一次个后面都是一�?
+			// if(++s_u32SleepFirstCnt >= 1) {			//杩欎釜锛岀??涓€娆′釜鍚庨潰閮芥槸涓€鏍?
 			s_u32SleepFirstCnt = 0;
 			s_u8SleepStatus = HICCUP;
 			Sleep_Status = SLEEP_HICCUP_CONTINUE;
@@ -833,7 +833,7 @@ void SleepDeal_Normal_L3(void)
 		break;
 
 	default:
-		s_u8SleepStatus = FIRST; // 下个回合再来
+		s_u8SleepStatus = FIRST; // 涓嬩釜鍥炲悎鍐嶆潵
 		break;
 	}
 
@@ -846,7 +846,7 @@ void SleepDeal_Normal_L3(void)
 	}
 
 	if (g_stCellInfoReport.u16VCellMin >= OtherElement.u16Sleep_Vlow)
-	{ // 触发条件才跳�?，别的时间不跳转
+	{ // 瑙﹀彂鏉′欢鎵嶈烦杞?锛屽埆鐨勬椂闂翠笉璺宠浆
 		Sleep_Mode.bits.b1NormalSleep_L3 = 0;
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST;
@@ -857,13 +857,13 @@ void SleepDeal_Normal_L3(void)
 	}
 }
 
-// 这个地方，IO控制策略要改一下，起来延时1s再打开管子会不会更好？不过现象貌似直接打开没问�?
-// 这个作为主循�?，�?�果开头判�?出现了别的错�?，则跳出主循�?，去执�?�别�?
-// 关于这里和IO控制主函数的逻辑�?题，A，最开头关于Sleep的return�?题。B，休眠起�?IO�?否立刻打开的问�?
+// 杩欎釜鍦版柟锛孖O鎺у埗绛栫暐瑕佹敼涓€涓嬶紝璧锋潵寤舵椂1s鍐嶆墦寮€绠″瓙浼氫笉浼氭洿濂斤紵涓嶈繃鐜拌薄璨屼技鐩存帴鎵撳紑娌￠棶棰?
+// 杩欎釜浣滀负涓诲惊鐜?锛屽?傛灉寮€澶村垽鏂?鍑虹幇浜嗗埆鐨勯敊璇?锛屽垯璺冲嚭涓诲惊鐜?锛屽幓鎵ц?屽埆鐨?
+// 鍏充簬杩欓噷鍜孖O鎺у埗涓诲嚱鏁扮殑閫昏緫闂?棰橈紝A锛屾渶寮€澶村叧浜嶴leep鐨剅eturn闂?棰樸€侭锛屼紤鐪犺捣鏉?IO鏄?鍚︾珛鍒绘墦寮€鐨勯棶棰?
 void SleepDeal_Normal_Select(void)
 {
 	if ((Sleep_Mode.all & 0xFFF1) != 0)
-	{ // 核心
+	{ // 鏍稿績
 		Sleep_Mode.bits.b1NormalSleep_L1 = 0;
 		Sleep_Mode.bits.b1NormalSleep_L2 = 0;
 		Sleep_Mode.bits.b1NormalSleep_L3 = 0;
@@ -884,18 +884,18 @@ void SleepDeal_Normal_Select(void)
 		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
 		// }
 		else
-		{ // ���е���RTC�������䣬����ͨ�͹��Ľ���
+		{ // 空闲但非RTC正常区间，走普通低功耗节奏
 			Sleep_Mode.bits.b1NormalSleep_L2 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L2;
 		}
 	}
 	else
 	{
-		// ����г�ŵ��������������
+		// 电池有充放电电流，保持运行
 	}
 }
 
-// 架构决定要改一改，不然后期人员�?难维护了
+// 鏋舵瀯鍐冲畾瑕佹敼涓€鏀癸紝涓嶇劧鍚庢湡浜哄憳澶?闅剧淮鎶や簡
 void SleepDeal_Shift(void)
 {
 	if (Sleep_Mode.bits.b1TestSleep != 0)
@@ -904,7 +904,7 @@ void SleepDeal_Shift(void)
 	}
 	else if (Sleep_Mode.bits.b1OverCurSleep != 0)
 	{
-		// Sleep_Status = SLEEP_HICCUP_CONTINUE;			//架构已改，先跳到相关函数，再进入休眠
+		// Sleep_Status = SLEEP_HICCUP_CONTINUE;			//鏋舵瀯宸叉敼锛屽厛璺冲埌鐩稿叧鍑芥暟锛屽啀杩涘叆浼戠湢
 		Sleep_Status = SLEEP_HICCUP_OVERCUR;
 	}
 	else if (Sleep_Mode.bits.b1OverVdeltaSleep != 0)
@@ -937,7 +937,7 @@ void SleepDeal_Shift(void)
 		Sleep_Status = SLEEP_HICCUP_VCELLUVP;
 	}
 	else
-	{ // 没有以上各�?�保护直接进入主�?�?
+	{ // 娌℃湁浠ヤ笂鍚勭?嶄繚鎶ょ洿鎺ヨ繘鍏ヤ富寰?鐜?
 		Sleep_Status = SLEEP_HICCUP_NORMAL_SELECT;
 	}
 }
@@ -946,13 +946,13 @@ void SleepDeal_Test(void)
 {
 	static UINT16 s_u16HaltTestCnt = 0;
 	if (!Sleep_Mode.bits.b1TestSleep)
-	{ // 加强雍余设�??
+	{ // 鍔犲己闆嶄綑璁捐??
 		Sleep_Status = SLEEP_HICCUP_SHIFT;
 		return;
 	}
 
 	if (++s_u16HaltTestCnt >= 2)
-	{ // 10s——Test
+	{ // 10s鈥斺€擳est
 		s_u16HaltTestCnt = 0;
 		Sleep_Status = SLEEP_HICCUP_CONTINUE;
 	}
@@ -1050,51 +1050,6 @@ void IsSleepStartUp(void)
 	}
 }
 
-#if 0
-void IsSleepStartUp(void)
-{
-	switch (FlashReadOneHalfWord(FLASH_ADDR_SLEEP_FLAG))
-	{
-	case FLASH_HICCUP_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			Init_RTC();
-
-			IOstatus_RTCMode();
-			InitWakeUp_RTCMode();
-
-			Sys_StopMode();
-			// Sys_StandbyMode();
-			IORecover_RTCMode();
-		}
-		break;
-	case FLASH_NORMAL_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			IOstatus_NormalMode();
-			InitWakeUp_NormalMode();
-			Sys_StopMode();
-			IORecover_NormalMode();
-		}
-		break;
-	case FLASH_DEEP_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			IOstatus_DeepMode();
-			InitWakeUp_DeepMode();
-			// Sys_StandbyMode();		//不能掌控外部IO，弃�?
-			Sys_StopMode();
-			IORecover_DeepMode();
-		}
-		break;
-	case FLASH_SLEEP_RESET_VALUE:
-		break;
-	default:
-		break;
-	}
-}
-#endif
-
 extern UINT8 gu8_1000msAccClock_Flag ;
 void App_SleepDeal(void)
 {
@@ -1109,7 +1064,7 @@ void App_SleepDeal(void)
 	}
 
 	if (SystemStatus.bits.b1StartUpBMS)
-	{ // 开机完毕再进入
+	{ // 寮€鏈哄畬姣曞啀杩涘叆
 		return;
 	}
 	else
@@ -1126,14 +1081,14 @@ void App_SleepDeal(void)
 	// if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
 	if (0 == gu8_1000msAccClock_Flag && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
 	{
-		return; // 如果�?强制进入休眠的则必须�?点进入休眠，不能�?
+		return; // 濡傛灉鏄?寮哄埗杩涘叆浼戠湢鐨勫垯蹇呴』蹇?鐐硅繘鍏ヤ紤鐪狅紝涓嶈兘鎷?
 	}
 	gu8_1000msAccClock_Flag = 0;
 
 	switch (Sleep_Status)
 	{
-	case SLEEP_HICCUP_SHIFT: // 先跳到这里，再跳到SleepDeal_Continue()，然后进入别的循�?
-		SleepDeal_Shift();	 // 主控跳转函数，开机执行一遍没事进入核心循�?函数
+	case SLEEP_HICCUP_SHIFT: // 鍏堣烦鍒拌繖閲岋紝鍐嶈烦鍒癝leepDeal_Continue()锛岀劧鍚庤繘鍏ュ埆鐨勫惊鐜?
+		SleepDeal_Shift();	 // 涓绘帶璺宠浆鍑芥暟锛屽紑鏈烘墽琛屼竴閬嶆病浜嬭繘鍏ユ牳蹇冨惊鐜?鍑芥暟
 		break;
 	case SLEEP_HICCUP_NORMAL_SELECT:
 		SleepDeal_Normal_Select();
@@ -1145,13 +1100,13 @@ void App_SleepDeal(void)
 		SleepDeal_OverCurrent();
 		break;
 	case SLEEP_HICCUP_OVDELTA:
-		SleepDeal_Vdelta(); // �?前压�?过大直接进入休眠不起来，�?�?�?
+		SleepDeal_Vdelta(); // 鐩?鍓嶅帇宸?杩囧ぇ鐩存帴杩涘叆浼戠湢涓嶈捣鏉ワ紝浜?涓?鐏?
 		break;
 	case SLEEP_HICCUP_CBC:
 		SleepDeal_CBC();
 		break;
 	case SLEEP_HICCUP_FORCED:
-		SleepDeal_Forced(); // 还没�?
+		SleepDeal_Forced(); // 杩樻病鍐?
 		break;
 	// case SLEEP_HICCUP_NORMAL_L1:
 	// 	SleepDeal_Normal_L1();
@@ -1218,7 +1173,7 @@ void IORecover_TestMode(void)
 
 void Sys_SleepOnExitMode(void)
 {
-	NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, ENABLE); // 库函数版�?，�?�置SLEEP ON EXIT位为1
-	// SCB->SCR|=1<<1;//寄存器版�?，�?�置SLEEP ON EXIT位为1
+	NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, ENABLE); // 搴撳嚱鏁扮増鏈?锛岃?剧疆SLEEP ON EXIT浣嶄负1
+	// SCB->SCR|=1<<1;//瀵勫瓨鍣ㄧ増鏈?锛岃?剧疆SLEEP ON EXIT浣嶄负1
 	__ASM volatile("wfi");
 }

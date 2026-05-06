@@ -1,8 +1,8 @@
-#include "main.h"
+ï»¿#include "main.h"
 
 #ifdef _IAP
 
-// ¸öÊýÎª48£¬¿´.sÎÄ¼þÏà¹Øvector¸öÊý£¬Õâ¸öÎÒÃ»¿´¹ý£¬ºóÃæÑ§Ï°Ò»ÏÂÔõÃ´Ö´ÐÐµÄ
+// ä¸ªæ•°ä¸º48ï¼Œçœ‹.sæ–‡ä»¶ç›¸å…³vectorä¸ªæ•°ï¼Œè¿™ä¸ªæˆ‘æ²¡çœ‹è¿‡ï¼ŒåŽé¢å­¦ä¹ ä¸€ä¸‹æ€Žä¹ˆæ‰§è¡Œçš„
 #if (defined(__CC_ARM))
 __IO uint32_t VectorTable[48] __attribute__((at(0x20000000)));
 #elif (defined(__ICCARM__))
@@ -20,10 +20,10 @@ void Init_IAPAPP(void)
 {
 #ifdef _IAP
 	UINT8 i;
-	// ¾ÍÊÇÕâ¾ä»°£¬µ¼ÖÂÎÞ·¨debug£¬²»°´resetÎÞ·¨ÉÕ´úÂë£¬¾ßÌåÔ­ÒòºóÃæÔÙÏë£¬´íÎó½Ì³Ì£¬º¯Êý¶¼ÓÃ´íÁË
+	// å°±æ˜¯è¿™å¥è¯ï¼Œå¯¼è‡´æ— æ³•debugï¼Œä¸æŒ‰resetæ— æ³•çƒ§ä»£ç ï¼Œå…·ä½“åŽŸå› åŽé¢å†æƒ³ï¼Œé”™è¯¯æ•™ç¨‹ï¼Œå‡½æ•°éƒ½ç”¨é”™äº†
 	// RCC_APB2PeriphResetCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // ÖÐ¶ÏÏòÁ¿±íÖØÓ³ÉäÊ¹ÄÜ
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // ä¸­æ–­å‘é‡è¡¨é‡æ˜ å°„ä½¿èƒ½
 
 	for (i = 0; i < 48; i++)
 	{
@@ -236,12 +236,16 @@ UINT16 FlashReadOneHalfWord(UINT32 faddr)
 
 FLASH_Status FlashWriteOneHalfWord(uint32_t StartAddr, uint16_t Buffer)
 {
-	FLASH_Status result;
+	FLASH_Status result = FLASH_COMPLETE;
 	FLASH_Unlock();
 	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
 	while (FLASH_ErasePage(StartAddr) != FLASH_COMPLETE)
 		;
 	result = FLASH_ProgramHalfWord(StartAddr, Buffer);
+	if (result == FLASH_COMPLETE && *(vu16 *)StartAddr != Buffer)
+	{
+		result = FLASH_ERROR_PROGRAM;
+	}
 	FLASH_Lock();
 	return result;
 }

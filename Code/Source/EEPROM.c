@@ -1,4 +1,4 @@
-#include "main.h"
+ï»¿#include "main.h"
 
 volatile uint32_t sEETimeout = sEE_LONG_TIMEOUT;
 
@@ -17,38 +17,765 @@ UINT8 u8E2P_KB_WritePos = 0;
 
 void InitData_E2prom(void);
 
+#define EEPROM_STORAGE_LOW_BYTES              ((UINT16)2048)
+#define EEPROM_STORAGE_LOW_WORDS              ((UINT16)(EEPROM_STORAGE_LOW_BYTES / 2u))
+#define EEPROM_STORAGE_SPECIAL_WORDS          ((UINT8)3)
+#define EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS  ((UINT16)6)
+#define EEPROM_STORAGE_SNAPSHOT_PAYLOAD_WORDS ((UINT16)(EEPROM_STORAGE_LOW_WORDS + EEPROM_STORAGE_SPECIAL_WORDS))
+#define EEPROM_STORAGE_SNAPSHOT_TOTAL_WORDS   ((UINT16)(EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS + EEPROM_STORAGE_SNAPSHOT_PAYLOAD_WORDS))
+#define EEPROM_STORAGE_JOURNAL_HEADER_WORDS   ((UINT16)8)
+#define EEPROM_STORAGE_JOURNAL_ENTRY_WORDS    ((UINT16)5)
+#define EEPROM_STORAGE_MAGIC_SNAPSHOT         ((UINT16)0xE2F1)
+#define EEPROM_STORAGE_MAGIC_JOURNAL          ((UINT16)0xE2F2)
+#define EEPROM_STORAGE_VERSION                ((UINT16)0x0001)
+#define EEPROM_STORAGE_ENTRY_COMMIT           ((UINT16)0xA55A)
+#define EEPROM_STORAGE_WRITE_FLAG_BYTE        ((UINT16)0x8000)
+#define EEPROM_STORAGE_ADDR_MASK              ((UINT16)0x7FFF)
+#define EEPROM_STORAGE_SNAPSHOT_COMMIT        ((UINT16)(~EEPROM_STORAGE_MAGIC_SNAPSHOT))
+#define EEPROM_STORAGE_JOURNAL_COMMIT         ((UINT16)(~EEPROM_STORAGE_MAGIC_JOURNAL))
+
+static UINT8 s_u8EepromStorageReady = 0;
+static UINT16 s_u16EepromStorageSeq = 0;
+static UINT8 s_u8EepromActiveSnapshotSlot = 0xFF;
+static UINT16 s_u16EepromJournalNextWord = EEPROM_STORAGE_JOURNAL_HEADER_WORDS;
+
+static UINT16 EEPROM_Storage_Crc16Step(UINT16 crc, UINT16 data)
+{
+	UINT8 i;
+
+	crc ^= data;
+	for (i = 0; i < 16; ++i)
+	{
+		if (crc & 1u)
+		{
+			crc = (UINT16)((crc >> 1) ^ 0xA001u);
+		}
+		else
+		{
+			crc >>= 1;
+		}
+	}
+
+	return crc;
+}
+
+static UINT32 EEPROM_Storage_SnapshotBase(UINT8 slot)
+{
+	return (0u == slot) ? FLASH_ADDR_STORAGE_SLOT0 : FLASH_ADDR_STORAGE_SLOT1;
+}
+
+static UINT8 EEPROM_Storage_IsSpecialByteAddress(UINT16 addr)
+{
+	return (UINT8)((addr >= EEPROM_ADDR_SLEEP) && (addr <= (UINT16)(EEPROM_ADDR_FLASHUPDATE + 1u)));
+}
+
+static UINT8 EEPROM_Storage_GetSpecialIndex(UINT16 addr)
+{
+	return (UINT8)(((UINT16)(addr - EEPROM_ADDR_SLEEP)) >> 1);
+}
+
+static UINT16 EEPROM_Storage_CalcJournalCrc(UINT16 seq, UINT16 addr, UINT16 value);
+
+static UINT8 EEPROM_Storage_ReadSnapshotByteByBase(UINT32 base, UINT16 addr)
+{
+	UINT16 word;
+
+	if (addr < EEPROM_STORAGE_LOW_BYTES)
+	{
+		word = FlashReadOneHalfWord(base + ((UINT32)EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS << 1) + (addr & (UINT16)~1u));
+		if (addr & 1u)
+		{
+			return (UINT8)(word >> 8);
+		}
+		return (UINT8)(word & 0x00FF);
+	}
+
+	if (EEPROM_Storage_IsSpecialByteAddress(addr))
+	{
+		word = FlashReadOneHalfWord(base + ((UINT32)(EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS + EEPROM_STORAGE_LOW_WORDS + EEPROM_Storage_GetSpecialIndex(addr)) << 1));
+		if (addr & 1u)
+		{
+			return (UINT8)(word >> 8);
+		}
+		return (UINT8)(word & 0x00FF);
+	}
+
+	return 0xFF;
+}
+
+static UINT8 EEPROM_Storage_ReadJournalByte(UINT16 addr, UINT8 *value_out)
+{
+	UINT16 offset;
+	UINT16 seq;
+	UINT16 read_addr;
+	UINT16 read_value;
+	UINT16 crc;
+	UINT16 commit;
+	UINT16 entry_addr;
+
+	offset = s_u16EepromJournalNextWord;
+	while (offset > EEPROM_STORAGE_JOURNAL_HEADER_WORDS)
+	{
+		offset = (UINT16)(offset - EEPROM_STORAGE_JOURNAL_ENTRY_WORDS);
+		seq = FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)offset << 1));
+		read_addr = FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)(offset + 1u) << 1));
+		read_value = FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)(offset + 2u) << 1));
+		crc = FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)(offset + 3u) << 1));
+		commit = FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)(offset + 4u) << 1));
+
+		if (seq == 0xFFFFu || commit != EEPROM_STORAGE_ENTRY_COMMIT)
+		{
+			break;
+		}
+
+		if (crc != EEPROM_Storage_CalcJournalCrc(seq, read_addr, read_value))
+		{
+			break;
+		}
+
+		entry_addr = (UINT16)(read_addr & EEPROM_STORAGE_ADDR_MASK);
+		if (read_addr & EEPROM_STORAGE_WRITE_FLAG_BYTE)
+		{
+			if (entry_addr == addr)
+			{
+				*value_out = (UINT8)(read_value & 0x00FF);
+				return 1;
+			}
+		}
+		else if ((UINT16)(entry_addr & (UINT16)~1u) == (UINT16)(addr & (UINT16)~1u))
+		{
+			if (addr & 1u)
+			{
+				*value_out = (UINT8)(read_value >> 8);
+			}
+			else
+			{
+				*value_out = (UINT8)(read_value & 0x00FF);
+			}
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_ReadByteRaw(UINT16 addr)
+{
+	UINT8 value;
+
+	if (EEPROM_Storage_ReadJournalByte(addr, &value))
+	{
+		return value;
+	}
+
+	if (s_u8EepromActiveSnapshotSlot <= 1u)
+	{
+		return EEPROM_Storage_ReadSnapshotByteByBase(EEPROM_Storage_SnapshotBase(s_u8EepromActiveSnapshotSlot), addr);
+	}
+
+	return 0xFF;
+}
+
+static UINT16 EEPROM_Storage_ReadWordRaw(UINT16 addr)
+{
+	UINT8 low;
+	UINT8 high;
+
+	low = EEPROM_Storage_ReadByteRaw(addr);
+	high = EEPROM_Storage_ReadByteRaw((UINT16)(addr + 1u));
+	return (UINT16)(low | ((UINT16)high << 8));
+}
+
+static UINT16 EEPROM_Storage_CalcSnapshotCrc(void)
+{
+	UINT16 crc = 0xFFFF;
+	UINT16 i;
+	UINT16 word;
+
+	for (i = 0; i < EEPROM_STORAGE_LOW_WORDS; ++i)
+	{
+		word = EEPROM_Storage_ReadWordRaw((UINT16)(i << 1));
+		crc = EEPROM_Storage_Crc16Step(crc, word);
+	}
+
+	for (i = 0; i < EEPROM_STORAGE_SPECIAL_WORDS; ++i)
+	{
+		word = EEPROM_Storage_ReadWordRaw((UINT16)(EEPROM_ADDR_SLEEP + (i << 1)));
+		crc = EEPROM_Storage_Crc16Step(crc, word);
+	}
+
+	return crc;
+}
+
+static UINT16 EEPROM_Storage_CalcJournalCrc(UINT16 seq, UINT16 addr, UINT16 value)
+{
+	UINT16 crc = 0xFFFF;
+
+	crc = EEPROM_Storage_Crc16Step(crc, seq);
+	crc = EEPROM_Storage_Crc16Step(crc, addr);
+	crc = EEPROM_Storage_Crc16Step(crc, value);
+	return crc;
+}
+
+static FLASH_Status EEPROM_Storage_ProgramWord(UINT32 addr, UINT16 value)
+{
+	FLASH_Status status;
+
+	status = FLASH_ProgramHalfWord(addr, value);
+	if ((status == FLASH_COMPLETE) && (*(vu16 *)addr != value))
+	{
+		status = FLASH_ERROR_PROGRAM;
+	}
+
+	return status;
+}
+
+static FLASH_Status EEPROM_Storage_ErasePages(UINT32 base_addr, UINT32 page_count)
+{
+	UINT32 page;
+	FLASH_Status status = FLASH_COMPLETE;
+	UINT8 retry;
+
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+	for (page = 0; page < page_count; ++page)
+	{
+		retry = 0;
+		do
+		{
+			status = FLASH_ErasePage(base_addr + (page * FLASH_STORAGE_PAGE_BYTES));
+			++retry;
+		} while (status != FLASH_COMPLETE && retry < 3);
+
+		if (status != FLASH_COMPLETE)
+		{
+			break;
+		}
+	}
+
+	return status;
+}
+
+static UINT8 EEPROM_Storage_LoadSnapshotSlot(UINT8 slot, UINT16 *seq_out)
+{
+	UINT32 base;
+	UINT16 header_magic;
+	UINT16 header_version;
+	UINT16 header_payload_words;
+	UINT16 header_seq;
+	UINT16 header_crc;
+	UINT16 header_commit;
+	UINT16 crc;
+	UINT16 i;
+	UINT16 word;
+
+	base = (0 == slot) ? FLASH_ADDR_STORAGE_SLOT0 : FLASH_ADDR_STORAGE_SLOT1;
+	header_magic = FlashReadOneHalfWord(base);
+	header_version = FlashReadOneHalfWord(base + 2u);
+	header_payload_words = FlashReadOneHalfWord(base + 4u);
+	header_seq = FlashReadOneHalfWord(base + 6u);
+	header_crc = FlashReadOneHalfWord(base + 8u);
+	header_commit = FlashReadOneHalfWord(base + 10u);
+
+	if (header_magic != EEPROM_STORAGE_MAGIC_SNAPSHOT ||
+		header_version != EEPROM_STORAGE_VERSION ||
+		header_payload_words != EEPROM_STORAGE_SNAPSHOT_PAYLOAD_WORDS ||
+		header_commit != EEPROM_STORAGE_SNAPSHOT_COMMIT)
+	{
+		return 0;
+	}
+
+	crc = 0xFFFF;
+	for (i = 0; i < EEPROM_STORAGE_SNAPSHOT_PAYLOAD_WORDS; ++i)
+	{
+		word = FlashReadOneHalfWord(base + ((UINT32)(EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS + i) << 1));
+		crc = EEPROM_Storage_Crc16Step(crc, word);
+	}
+
+	if (crc != header_crc)
+	{
+		return 0;
+	}
+
+	*seq_out = header_seq;
+	return 1;
+}
+
+static UINT8 EEPROM_Storage_LoadLatestSnapshot(UINT16 *seq_out)
+{
+	UINT16 seq0;
+	UINT16 seq1;
+	UINT8 valid0;
+	UINT8 valid1;
+
+	valid0 = EEPROM_Storage_LoadSnapshotSlot(0, &seq0);
+	valid1 = EEPROM_Storage_LoadSnapshotSlot(1, &seq1);
+	if (valid0 && valid1)
+	{
+		if ((UINT16)(seq1 - seq0) < 0x8000u)
+		{
+			*seq_out = seq1;
+			s_u8EepromActiveSnapshotSlot = 1;
+		}
+		else
+		{
+			*seq_out = seq0;
+			s_u8EepromActiveSnapshotSlot = 0;
+		}
+		return 1;
+	}
+
+	if (valid0)
+	{
+		*seq_out = seq0;
+		s_u8EepromActiveSnapshotSlot = 0;
+		return 1;
+	}
+
+	if (valid1)
+	{
+		*seq_out = seq1;
+		s_u8EepromActiveSnapshotSlot = 1;
+		return 1;
+	}
+
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_JournalHeaderValid(UINT16 *base_seq_out)
+{
+	UINT32 base;
+	UINT16 magic;
+	UINT16 version;
+	UINT16 payload_words;
+	UINT16 base_seq;
+	UINT16 crc;
+	UINT16 stored_crc;
+	UINT16 commit;
+
+	base = FLASH_ADDR_STORAGE_JOURNAL;
+	magic = FlashReadOneHalfWord(base);
+	version = FlashReadOneHalfWord(base + 2u);
+	payload_words = FlashReadOneHalfWord(base + 4u);
+	base_seq = FlashReadOneHalfWord(base + 6u);
+	stored_crc = FlashReadOneHalfWord(base + 8u);
+	commit = FlashReadOneHalfWord(base + 14u);
+
+	if (magic != EEPROM_STORAGE_MAGIC_JOURNAL ||
+		version != EEPROM_STORAGE_VERSION ||
+		payload_words != (UINT16)((FLASH_STORAGE_JOURNAL_BYTES / 2u) - EEPROM_STORAGE_JOURNAL_HEADER_WORDS) ||
+		commit != EEPROM_STORAGE_JOURNAL_COMMIT)
+	{
+		return 0;
+	}
+
+	crc = 0xFFFF;
+	crc = EEPROM_Storage_Crc16Step(crc, magic);
+	crc = EEPROM_Storage_Crc16Step(crc, version);
+	crc = EEPROM_Storage_Crc16Step(crc, payload_words);
+	crc = EEPROM_Storage_Crc16Step(crc, base_seq);
+	if (crc != stored_crc)
+	{
+		return 0;
+	}
+
+	*base_seq_out = base_seq;
+	return 1;
+}
+
+static UINT8 EEPROM_Storage_JournalIsEmpty(void)
+{
+	UINT16 i;
+
+	for (i = 0; i < EEPROM_STORAGE_JOURNAL_HEADER_WORDS; ++i)
+	{
+		if (FlashReadOneHalfWord(FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)i << 1)) != 0xFFFFu)
+		{
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+static UINT8 EEPROM_Storage_FormatJournalHeader(UINT16 base_seq)
+{
+	UINT16 header[EEPROM_STORAGE_JOURNAL_HEADER_WORDS];
+	UINT16 crc;
+	FLASH_Status status;
+
+	FLASH_Unlock();
+	header[0] = EEPROM_STORAGE_MAGIC_JOURNAL;
+	header[1] = EEPROM_STORAGE_VERSION;
+	header[2] = (UINT16)((FLASH_STORAGE_JOURNAL_BYTES / 2u) - EEPROM_STORAGE_JOURNAL_HEADER_WORDS);
+	header[3] = base_seq;
+	crc = 0xFFFF;
+	crc = EEPROM_Storage_Crc16Step(crc, header[0]);
+	crc = EEPROM_Storage_Crc16Step(crc, header[1]);
+	crc = EEPROM_Storage_Crc16Step(crc, header[2]);
+	crc = EEPROM_Storage_Crc16Step(crc, header[3]);
+	header[4] = crc;
+	header[5] = 0xFFFF;
+	header[6] = 0xFFFF;
+	header[7] = EEPROM_STORAGE_JOURNAL_COMMIT;
+
+	status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 0u, header[0]);
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 2u, header[1]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 4u, header[2]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 6u, header[3]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 8u, header[4]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(FLASH_ADDR_STORAGE_JOURNAL + 14u, header[7]);
+	}
+
+	FLASH_Lock();
+	if (status != FLASH_COMPLETE)
+	{
+		return 1;
+	}
+
+	s_u16EepromJournalNextWord = EEPROM_STORAGE_JOURNAL_HEADER_WORDS;
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_ReplayJournal(void)
+{
+	UINT32 base;
+	UINT16 offset;
+	UINT16 seq;
+	UINT16 crc;
+	UINT16 commit;
+	UINT16 read_seq;
+	UINT16 read_addr;
+	UINT16 read_value;
+	UINT16 latest_seq;
+
+	base = FLASH_ADDR_STORAGE_JOURNAL;
+	offset = EEPROM_STORAGE_JOURNAL_HEADER_WORDS;
+	latest_seq = s_u16EepromStorageSeq;
+	while ((UINT16)(offset + EEPROM_STORAGE_JOURNAL_ENTRY_WORDS) <= (UINT16)(FLASH_STORAGE_JOURNAL_BYTES / 2u))
+	{
+		read_seq = FlashReadOneHalfWord(base + ((UINT32)offset << 1));
+		read_addr = FlashReadOneHalfWord(base + ((UINT32)(offset + 1u) << 1));
+		read_value = FlashReadOneHalfWord(base + ((UINT32)(offset + 2u) << 1));
+		crc = FlashReadOneHalfWord(base + ((UINT32)(offset + 3u) << 1));
+		commit = FlashReadOneHalfWord(base + ((UINT32)(offset + 4u) << 1));
+
+		if (read_seq == 0xFFFFu || commit != EEPROM_STORAGE_ENTRY_COMMIT)
+		{
+			break;
+		}
+
+		seq = read_seq;
+		if (crc != EEPROM_Storage_CalcJournalCrc(seq, read_addr, read_value))
+		{
+			break;
+		}
+
+		if ((UINT16)(seq - s_u16EepromStorageSeq) < 0x8000u)
+		{
+			latest_seq = seq;
+		}
+
+		offset = (UINT16)(offset + EEPROM_STORAGE_JOURNAL_ENTRY_WORDS);
+	}
+
+	s_u16EepromStorageSeq = latest_seq;
+	s_u16EepromJournalNextWord = offset;
+	return 1;
+}
+
+static UINT8 EEPROM_Storage_WriteSnapshotToSlot(UINT8 slot, UINT16 sequence)
+{
+	UINT32 base;
+	UINT32 page_count;
+	UINT16 crc;
+	UINT16 i;
+	UINT16 word;
+	FLASH_Status status;
+
+	base = (0 == slot) ? FLASH_ADDR_STORAGE_SLOT0 : FLASH_ADDR_STORAGE_SLOT1;
+	page_count = FLASH_STORAGE_SLOT_BYTES / FLASH_STORAGE_PAGE_BYTES;
+	crc = EEPROM_Storage_CalcSnapshotCrc();
+
+	FLASH_Unlock();
+	status = EEPROM_Storage_ErasePages(base, page_count);
+	if (status != FLASH_COMPLETE)
+	{
+		FLASH_Lock();
+		return 1;
+	}
+
+	status = EEPROM_Storage_ProgramWord(base + 0u, EEPROM_STORAGE_MAGIC_SNAPSHOT);
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(base + 2u, EEPROM_STORAGE_VERSION);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(base + 4u, EEPROM_STORAGE_SNAPSHOT_PAYLOAD_WORDS);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(base + 6u, sequence);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(base + 8u, crc);
+	}
+
+	if (status == FLASH_COMPLETE)
+	{
+		for (i = 0; i < EEPROM_STORAGE_LOW_WORDS; ++i)
+		{
+			word = EEPROM_Storage_ReadWordRaw((UINT16)(i << 1));
+			status = EEPROM_Storage_ProgramWord(base + ((UINT32)(EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS + i) << 1), word);
+			if (status != FLASH_COMPLETE)
+			{
+				break;
+			}
+		}
+	}
+
+	if (status == FLASH_COMPLETE)
+	{
+		for (i = 0; i < EEPROM_STORAGE_SPECIAL_WORDS; ++i)
+		{
+			word = EEPROM_Storage_ReadWordRaw((UINT16)(EEPROM_ADDR_SLEEP + (i << 1)));
+			status = EEPROM_Storage_ProgramWord(base + ((UINT32)(EEPROM_STORAGE_SNAPSHOT_HEADER_WORDS + EEPROM_STORAGE_LOW_WORDS + i) << 1), word);
+			if (status != FLASH_COMPLETE)
+			{
+				break;
+			}
+		}
+	}
+
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(base + 10u, EEPROM_STORAGE_SNAPSHOT_COMMIT);
+	}
+
+	FLASH_Lock();
+	return (status == FLASH_COMPLETE) ? 0 : 1;
+}
+
+static UINT8 EEPROM_Storage_CompactJournal(void)
+{
+	UINT8 next_slot;
+	UINT16 new_seq;
+
+	next_slot = (s_u8EepromActiveSnapshotSlot == 0u) ? 1u : 0u;
+	new_seq = (UINT16)(s_u16EepromStorageSeq + 1u);
+	if (EEPROM_Storage_WriteSnapshotToSlot(next_slot, new_seq))
+	{
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 1;
+	}
+
+	s_u16EepromStorageSeq = new_seq;
+	s_u8EepromActiveSnapshotSlot = next_slot;
+
+	FLASH_Unlock();
+	if (EEPROM_Storage_ErasePages(FLASH_ADDR_STORAGE_JOURNAL, FLASH_STORAGE_JOURNAL_BYTES / FLASH_STORAGE_PAGE_BYTES) != FLASH_COMPLETE)
+	{
+		s_u16EepromJournalNextWord = (UINT16)(FLASH_STORAGE_JOURNAL_BYTES / 2u);
+		FLASH_Lock();
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 1;
+	}
+
+	if (EEPROM_Storage_FormatJournalHeader(s_u16EepromStorageSeq))
+	{
+		FLASH_Lock();
+		s_u16EepromJournalNextWord = (UINT16)(FLASH_STORAGE_JOURNAL_BYTES / 2u);
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 1;
+	}
+
+	FLASH_Lock();
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_EnsureReady(void)
+{
+	UINT16 snapshot_seq;
+	UINT16 journal_base_seq;
+
+	if (s_u8EepromStorageReady)
+	{
+		return 0;
+	}
+
+	if (EEPROM_Storage_LoadLatestSnapshot(&snapshot_seq))
+	{
+		s_u16EepromStorageSeq = snapshot_seq;
+	}
+
+	if (EEPROM_Storage_JournalHeaderValid(&journal_base_seq))
+	{
+		if ((UINT16)(journal_base_seq - s_u16EepromStorageSeq) < 0x8000u)
+		{
+			s_u16EepromStorageSeq = journal_base_seq;
+		}
+	}
+
+	EEPROM_Storage_ReplayJournal();
+
+	if (EEPROM_Storage_JournalIsEmpty())
+	{
+		if (EEPROM_Storage_FormatJournalHeader(s_u16EepromStorageSeq))
+		{
+			System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		}
+	}
+
+	s_u8EepromStorageReady = 1;
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_AppendJournal(UINT16 addr, UINT16 value, UINT8 is_byte)
+{
+	UINT16 entry_seq;
+	UINT16 entry_addr;
+	UINT16 entry_crc;
+	UINT32 entry_base;
+	UINT16 entry[EEPROM_STORAGE_JOURNAL_ENTRY_WORDS];
+	FLASH_Status status;
+
+	if (s_u16EepromJournalNextWord + EEPROM_STORAGE_JOURNAL_ENTRY_WORDS > (FLASH_STORAGE_JOURNAL_BYTES / 2u))
+	{
+		if (EEPROM_Storage_CompactJournal())
+		{
+			return 1;
+		}
+	}
+
+	entry_seq = (UINT16)(s_u16EepromStorageSeq + 1u);
+	entry_addr = (UINT16)(addr & EEPROM_STORAGE_ADDR_MASK);
+	if (is_byte)
+	{
+		entry_addr |= EEPROM_STORAGE_WRITE_FLAG_BYTE;
+	}
+	entry_crc = EEPROM_Storage_CalcJournalCrc(entry_seq, entry_addr, value);
+	entry[0] = entry_seq;
+	entry[1] = entry_addr;
+	entry[2] = value;
+	entry[3] = entry_crc;
+	entry[4] = EEPROM_STORAGE_ENTRY_COMMIT;
+	entry_base = FLASH_ADDR_STORAGE_JOURNAL + ((UINT32)s_u16EepromJournalNextWord << 1);
+
+	FLASH_Unlock();
+	status = EEPROM_Storage_ProgramWord(entry_base + 0u, entry[0]);
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(entry_base + 2u, entry[1]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(entry_base + 4u, entry[2]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(entry_base + 6u, entry[3]);
+	}
+	if (status == FLASH_COMPLETE)
+	{
+		status = EEPROM_Storage_ProgramWord(entry_base + 8u, entry[4]);
+	}
+
+	FLASH_Lock();
+	if (status != FLASH_COMPLETE)
+	{
+		return 1;
+	}
+
+	s_u16EepromStorageSeq = entry_seq;
+	s_u16EepromJournalNextWord = (UINT16)(s_u16EepromJournalNextWord + EEPROM_STORAGE_JOURNAL_ENTRY_WORDS);
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_CommitWord(UINT16 addr, UINT16 value)
+{
+	UINT16 old_value;
+
+	old_value = EEPROM_Storage_ReadWordRaw(addr);
+	if (old_value == value)
+	{
+		return 0;
+	}
+
+	if (EEPROM_Storage_AppendJournal(addr, value, 0))
+	{
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 1;
+	}
+
+	return 0;
+}
+
+static UINT8 EEPROM_Storage_CommitByte(UINT16 addr, UINT8 value)
+{
+	UINT8 old_value;
+
+	old_value = EEPROM_Storage_ReadByteRaw(addr);
+	if (old_value == value)
+	{
+		return 0;
+	}
+
+	if (EEPROM_Storage_AppendJournal(addr, value, 1))
+	{
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 1;
+	}
+
+	return 0;
+}
+
 
 void IIC_Start_SEE(void)
 {
-	SDA_OUT_SEE(); // sdaÏßÊä³ö
+	SDA_OUT_SEE(); // sdaçº¿è¾“å‡º
 	IIC_SDA_SEE = 1;
 	IIC_SCL_SEE = 1;
 	__delay_us(DELAY_US_IIC_EEPROM);
 	IIC_SDA_SEE = 0; // START:when CLK is high,DATA change form high to low
 	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 0; // Ç¯×¡I2C×ÜÏß£¬×¼±¸·¢ËÍ»ò½ÓÊÕÊý¾Ý
+	IIC_SCL_SEE = 0; // é’³ä½I2Cæ€»çº¿ï¼Œå‡†å¤‡å‘é€æˆ–æŽ¥æ”¶æ•°æ®
 }
 
-// ²úÉúIICÍ£Ö¹ÐÅºÅ
+// äº§ç”ŸIICåœæ­¢ä¿¡å·
 void IIC_Stop_SEE(void)
 {
-	SDA_OUT_SEE(); // sdaÏßÊä³ö
+	SDA_OUT_SEE(); // sdaçº¿è¾“å‡º
 	IIC_SCL_SEE = 0;
 	IIC_SDA_SEE = 0; // STOP:when CLK is high DATA change form low to high
 	__delay_us(DELAY_US_IIC_EEPROM);
 	IIC_SCL_SEE = 1;
 	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SDA_SEE = 1; // ·¢ËÍI2C×ÜÏß½áÊøÐÅºÅ
+	IIC_SDA_SEE = 1; // å‘é€I2Cæ€»çº¿ç»“æŸä¿¡å·
 	__delay_us(DELAY_US_IIC_EEPROM);
 }
 
-// µÈ´ýÓ¦´ðÐÅºÅµ½À´
-// ·µ»ØÖµ£º1£¬½ÓÊÕÓ¦´ðÊ§°Ü
-//         0£¬½ÓÊÕÓ¦´ð³É¹¦
+// ç­‰å¾…åº”ç­”ä¿¡å·åˆ°æ¥
+// è¿”å›žå€¼ï¼š1ï¼ŒæŽ¥æ”¶åº”ç­”å¤±è´¥
+//         0ï¼ŒæŽ¥æ”¶åº”ç­”æˆåŠŸ
 UINT8 IIC_Wait_Ack_SEE(void)
 {
 	UINT8 ucErrTime = 0;
-	SDA_IN_SEE(); // SDAÉèÖÃÎªÊäÈë
+	SDA_IN_SEE(); // SDAè®¾ç½®ä¸ºè¾“å…¥
 	// IIC_SDA_SEE=1;__delay_us(4);
 	IIC_SCL_SEE = 1;
 	__delay_us(DELAY_US_IIC_EEPROM);
@@ -61,12 +788,12 @@ UINT8 IIC_Wait_Ack_SEE(void)
 			return 1;
 		}
 	}
-	IIC_SCL_SEE = 0; // Ê±ÖÓÊä³ö0
+	IIC_SCL_SEE = 0; // æ—¶é’Ÿè¾“å‡º0
 	__delay_us(DELAY_US_IIC_EEPROM);
 	return 0;
 }
 
-// ²úÉúACKÓ¦´ð
+// äº§ç”ŸACKåº”ç­”
 void IIC_Ack_SEE(void)
 {
 	IIC_SCL_SEE = 0;
@@ -78,7 +805,7 @@ void IIC_Ack_SEE(void)
 	IIC_SCL_SEE = 0;
 }
 
-// ²»²úÉúACKÓ¦´ð
+// ä¸äº§ç”ŸACKåº”ç­”
 void IIC_NAck_SEE(void)
 {
 	IIC_SCL_SEE = 0;
@@ -90,15 +817,15 @@ void IIC_NAck_SEE(void)
 	IIC_SCL_SEE = 0;
 }
 
-// IIC·¢ËÍÒ»¸ö×Ö½Ú
-// ·µ»Ø´Ó»úÓÐÎÞÓ¦´ð
-// 1£¬ÓÐÓ¦´ð
-// 0£¬ÎÞÓ¦´ð
+// IICå‘é€ä¸€ä¸ªå­—èŠ‚
+// è¿”å›žä»Žæœºæœ‰æ— åº”ç­”
+// 1ï¼Œæœ‰åº”ç­”
+// 0ï¼Œæ— åº”ç­”
 void IIC_Send_Byte_SEE(UINT8 txd)
 {
 	UINT8 t;
 	SDA_OUT_SEE();
-	IIC_SCL_SEE = 0; // À­µÍÊ±ÖÓ¿ªÊ¼Êý¾Ý´«Êä
+	IIC_SCL_SEE = 0; // æ‹‰ä½Žæ—¶é’Ÿå¼€å§‹æ•°æ®ä¼ è¾“
 	for (t = 0; t < 8; t++)
 	{
 		// IIC_SDA=(txd&0x80)>>7;
@@ -107,7 +834,7 @@ void IIC_Send_Byte_SEE(UINT8 txd)
 		else
 			IIC_SDA_SEE = 0;
 		txd <<= 1;
-		__delay_us(DELAY_US_IIC_EEPROM); // ¶ÔTEA5767ÕâÈý¸öÑÓÊ±¶¼ÊÇ±ØÐëµÄ
+		__delay_us(DELAY_US_IIC_EEPROM); // å¯¹TEA5767è¿™ä¸‰ä¸ªå»¶æ—¶éƒ½æ˜¯å¿…é¡»çš„
 		IIC_SCL_SEE = 1;
 		__delay_us(DELAY_US_IIC_EEPROM);
 		IIC_SCL_SEE = 0;
@@ -115,11 +842,11 @@ void IIC_Send_Byte_SEE(UINT8 txd)
 	}
 }
 
-// ¶Á1¸ö×Ö½Ú£¬ack=1Ê±£¬·¢ËÍACK£¬ack=0£¬·¢ËÍnACK
+// è¯»1ä¸ªå­—èŠ‚ï¼Œack=1æ—¶ï¼Œå‘é€ACKï¼Œack=0ï¼Œå‘é€nACK
 UINT8 IIC_Read_Byte_SEE(unsigned char ack)
 {
 	unsigned char i, receive = 0;
-	SDA_IN_SEE(); // SDAÉèÖÃÎªÊäÈë
+	SDA_IN_SEE(); // SDAè®¾ç½®ä¸ºè¾“å…¥
 	for (i = 0; i < 8; i++)
 	{
 		IIC_SCL_SEE = 0;
@@ -131,133 +858,50 @@ UINT8 IIC_Read_Byte_SEE(unsigned char ack)
 		__delay_us(DELAY_US_IIC_EEPROM);
 	}
 	if (!ack)
-		IIC_NAck_SEE(); // ·¢ËÍnACK
+		IIC_NAck_SEE(); // å‘é€nACK
 	else
-		IIC_Ack_SEE(); // ·¢ËÍACK
+		IIC_Ack_SEE(); // å‘é€ACK
 	return receive;
 }
 
-// ºóÐøÎ¬»¤ÈËÔ±½ûÖ¹Ê¹ÓÃÕâ¸öº¯Êý
+// åŽç»­ç»´æŠ¤äººå‘˜ç¦æ­¢ä½¿ç”¨è¿™ä¸ªå‡½æ•°
 UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val)
 {
 	Feed_IWatchDog;
-	MCUO_E2PR_WP = 0;
-
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_W); // ·¢ËÍÐ´ÃüÁî
-	if (1 == IIC_Wait_Ack_SEE())
+	EEPROM_Storage_EnsureReady();
+	if (EEPROM_Storage_CommitByte(addr, val))
 	{
 		return 1;
 	}
-
-#ifndef AT24C02
-	IIC_Send_Byte_SEE(addr >> 8); // ·¢ËÍ¸ßµØÖ·
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		return 1;
-	}
-
-#endif
-
-	IIC_Send_Byte_SEE(addr % 256); // ·¢ËÍµÍµØÖ·
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		return 1;
-	}
-	IIC_Send_Byte_SEE(val); // ·¢ËÍ×Ö½Ú
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		return 1;
-	}
-	IIC_Stop_SEE(); // ²úÉúÒ»¸öÍ£Ö¹Ìõ¼þ
-	__delay_ms(5);	// EEPROMÌØÐÔ£¬ÐèÒª5ms±£Ö¤Ð´Íê
-
-	MCUO_E2PR_WP = 1;
 	Feed_IWatchDog;
 	return 0;
 }
 
 UINT8 ReadEEPROM_Byte(UINT16 addr)
 {
-	UINT8 temp = 0;
 	Feed_IWatchDog;
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_W); // ·¢ËÍÐ´ÃüÁî
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM); // ±¾À´´òËãÔÚ×îºóÒ»²ã²Åµ÷ÓÃÕâ¸öº¯Êý£¬Õâ¸ö±à³Ì·ç¸ñ
-		return 0;									 // µ«ÊÇ·µ»ØÖµµÄÎÊÌâ£¬Ö»ÄÜÔÚÕâÀï¼ÓÁË
-	}
-
-#ifndef AT24C02
-	IIC_Send_Byte_SEE(addr >> 8); // ·¢ËÍ¸ßµØÖ·
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-#endif
-
-	IIC_Send_Byte_SEE(addr % 256); // ·¢ËÍµÍµØÖ·
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_R); // ½øÈë½ÓÊÕÄ£Ê½
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-	temp = IIC_Read_Byte_SEE(0);
-	IIC_Stop_SEE(); // ²úÉúÒ»¸öÍ£Ö¹Ìõ¼þ
-
-	Feed_IWatchDog;
-	return temp;
+	EEPROM_Storage_EnsureReady();
+	return EEPROM_Storage_ReadByteRaw(addr);
 }
 
 UINT16 ReadEEPROM_Word_NoZone(UINT16 addr)
 {
-	UINT16 tmp16a;
-	UINT8 tmp8a, tmp8b;
-	tmp8a = ReadEEPROM_Byte(addr);	   // ¶ÁÈ¡µÍÎ»µØÖ·A¶ÔÓ¦µÄÊý¾Ý
-	tmp8b = ReadEEPROM_Byte(addr + 1); // ¶ÁÈ¡¸ßÎ»µØÖ·A+1¶ÔÓ¦µÄÊý¾Ý
-	tmp16a = tmp8b;
-	tmp16a = (tmp16a << 8) | tmp8a; // Êý¾Ý´æ´¢
-
-	return tmp16a;
+	Feed_IWatchDog;
+	EEPROM_Storage_EnsureReady();
+	return EEPROM_Storage_ReadWordRaw(addr);
 }
 
-// Ö÷Òªµ÷Õâ¸ö£¬¼ÓÁË¼¸¾ä»°
+// ä¸»è¦è°ƒè¿™ä¸ªï¼ŒåŠ äº†å‡ å¥è¯
 UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data)
 {
-	UINT8 tmp8a, tmp8b, WriteCounter = 0, result = 0;
-	UINT16 tmp_addr, tmp16;
-	;
-
-	tmp_addr = addr; // ÒÆÖ²ÍüÁËÕâ¾ä»°
-	WriteCounter = 0;
-	do
+	Feed_IWatchDog;
+	EEPROM_Storage_EnsureReady();
+	if (EEPROM_Storage_CommitWord(addr, data))
 	{
-		result += WriteEEPROM_Byte(tmp_addr, data & 0xff);	 // Êý¾ÝµÄµÍ8Î»Ð´ÈëEEPROM
-		result += WriteEEPROM_Byte(tmp_addr + 1, data >> 8); // Êý¾ÝµÄ¸ß8Î»Ð´ÈëEEPROM
-		tmp8a = ReadEEPROM_Byte(tmp_addr);					 // »ñÈ¡¸Õ´æÈëEEPROMµÄµÍ8Î»Êý¾Ý
-		tmp8b = ReadEEPROM_Byte(tmp_addr + 1);				 // »ñÈ¡¸Õ´æÈëEEPROMµÄ¸ß8Î»Êý¾Ý
-		tmp16 = (tmp8b << 8) | tmp8a;						 // ´æ´¢¶Áµ½µÄÊý¾ÝÓÚ±äÁ¿tmp16
-
-		WriteCounter++;
-		if (WriteCounter > 2 || result != 0)
-		{			  /*ÅÐ¶Ïtmp16 != dataµÄ¼ÆÊý*/
-			++result; // ÒªÌø³öÀ´Ö´ÐÐÐ´±£»¤ÖÃÎ»
-			break;
-		}
-	} while (tmp16 != data);
-	return result;
+		return 1;
+	}
+	Feed_IWatchDog;
+	return 0;
 }
 
 
@@ -282,7 +926,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Pos = E2P_ADDR_E2POS_HEAT_COOL;
 
 	for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
-	{ // ±£»¤µã
+	{ // ä¿æŠ¤ç‚¹
 		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i));
 		t_u16TempMax = (*(&PrtE2paras_Max.u16VcellOvp_First + i));
 		t_u16TempMin = (*(&PrtE2paras_Min.u16VcellOvp_First + i));
@@ -293,15 +937,15 @@ void ReadEEPROM_ByteData_StartUp(void)
 		else
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
-			{ // ÕâÑùÆäÊµ²»Ì«ºÃ£¬×îºÃµÄ°ì·¨ÊÇ°ÑReadEEPROM_Word_WithZone()Õâ¸öº¯Êý¸ÄÔìÒÔÏÂ
-				// g_st_SysStatusFlag.bits.b1EepromErr = 1;		//ÖØÐÂ¸ÄÔìÁËÒ»ÏÂÕâ¸öº¯Êý£¬×îºóÊ§°Ü¸æÖÕ£¬²»¸ÄºÃ¹ý¸Ä
-				System_ERROR_UserCallback(ERROR_EEPROM_STORE); // Ö»ÒªÈ·±£Í¨Ñ¶Ã»ÎÊÌâ£¬¾ÍÊÇÕâ¸ö´íÎó¡£
+			{ // è¿™æ ·å…¶å®žä¸å¤ªå¥½ï¼Œæœ€å¥½çš„åŠžæ³•æ˜¯æŠŠReadEEPROM_Word_WithZone()è¿™ä¸ªå‡½æ•°æ”¹é€ ä»¥ä¸‹
+				// g_st_SysStatusFlag.bits.b1EepromErr = 1;		//é‡æ–°æ”¹é€ äº†ä¸€ä¸‹è¿™ä¸ªå‡½æ•°ï¼Œæœ€åŽå¤±è´¥å‘Šç»ˆï¼Œä¸æ”¹å¥½è¿‡æ”¹
+				System_ERROR_UserCallback(ERROR_EEPROM_STORE); // åªè¦ç¡®ä¿é€šè®¯æ²¡é—®é¢˜ï¼Œå°±æ˜¯è¿™ä¸ªé”™è¯¯ã€‚
 			}
 		}
 	}
 
 	for (i = 0; i < E2P_PARA_NUM_CALIB_K; ++i)
-	{ // KÖµ
+	{ // Kå€¼
 		t_u16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_K + (i << 1));
 		g_u16CalibCoefK[i] = t_u16RdTemp;
 		if ((t_u16RdTemp >= SYSKMIN) && (t_u16RdTemp <= SYSKMAX))
@@ -316,7 +960,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 		}
 
 		t_i16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_B + (i << 1));
-		g_i16CalibCoefB[i] = t_i16RdTemp; // BÖµ
+		g_i16CalibCoefB[i] = t_i16RdTemp; // Bå€¼
 		if ((t_i16RdTemp >= SYSBMIN) && (t_i16RdTemp <= SYSBMAX))
 		{
 		}
@@ -370,7 +1014,7 @@ void ReadEEPROM_ByteData_StartUp(void)
 	ReadEEPROM_EventRecord_Parameters();
 }
 
-// SciÃüÁîµÄÊý¾Ý
+// Sciå‘½ä»¤çš„æ•°æ®
 void EEPROM_ResetData_AllToDefault(void)
 {
 	const struct PRT_E2ROM_PARAS PrtE2PARAS_Default = E2P_PROTECT_DEFAULT_PRT;
@@ -412,15 +1056,15 @@ void EEPROM_ResetData_AllToDefault(void)
 	u32E2P_HeatCool_WriteFlag = E2P_PARA_ALL_HEAT_COOL_ELE;
 }
 
-// ÀúÊ·±£»¤¼ÇÂ¼reset
+// åŽ†å²ä¿æŠ¤è®°å½•reset
 void EEPROM_ResetData_OtherToDefault(void)
 {
 	EEPROM_ResetData_EventRecord_ToDefault();
 
-	SystemMonitorResetData_EEPROM(); // ÏµÍ³¹¦ÄÜÑ¡È¡±êÖ¾Î»´æ´¢
+	SystemMonitorResetData_EEPROM(); // ç³»ç»ŸåŠŸèƒ½é€‰å–æ ‡å¿—ä½å­˜å‚¨
 }
 
-// SciÃüÁî±íÖÐ£¬ÒòÎªSTM8µÄÔµ¹Ê£¬¾ö¶¨È«²¿´ÓÍ¨Ñ¶ÖÐÒÆ³öÀ´Ð´
+// Sciå‘½ä»¤è¡¨ä¸­ï¼Œå› ä¸ºSTM8çš„ç¼˜æ•…ï¼Œå†³å®šå…¨éƒ¨ä»Žé€šè®¯ä¸­ç§»å‡ºæ¥å†™
 void WriteEEPROM_ByteData_Circle(void)
 {
 	UINT8 i = 0;
@@ -431,10 +1075,10 @@ void WriteEEPROM_ByteData_Circle(void)
 	// const struct RTC_ELEMENT RTC_Element_Pos = E2P_ADDR_E2POS_RTC;
 
 	if (u8E2P_KB_WriteFlag)
-	{ // ÍêÃÀKBÖµ²Ù×÷£¬¼È¿ÉÈ«²¿Ð´Ò»±é£¬Ò²¿ÉÒÔµ¥¶ÀÐ´ÆäÖÐÒ»¶ÔKBÖµ
+	{ // å®Œç¾ŽKBå€¼æ“ä½œï¼Œæ—¢å¯å…¨éƒ¨å†™ä¸€éï¼Œä¹Ÿå¯ä»¥å•ç‹¬å†™å…¶ä¸­ä¸€å¯¹KBå€¼
 		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (u8E2P_KB_WritePos << 1)), g_u16CalibCoefK[u8E2P_KB_WritePos]);
 		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (u8E2P_KB_WritePos << 1)), g_i16CalibCoefB[u8E2P_KB_WritePos]);
-		++u8E2P_KB_WritePos; // Èç¹ûu8E2P_KB_WriteFlag=0£¬ÔòPos¾ÍËã´íÒ²Ã»ÓÃ£¬±ðµÄµØ·½ÏëÐÞ¸ÄKBÖµµÄ»°£¬ÕâÁ½Õß±ØÐëÍ¬Ê±²Ù×÷¡£
+		++u8E2P_KB_WritePos; // å¦‚æžœu8E2P_KB_WriteFlag=0ï¼Œåˆ™Poså°±ç®—é”™ä¹Ÿæ²¡ç”¨ï¼Œåˆ«çš„åœ°æ–¹æƒ³ä¿®æ”¹KBå€¼çš„è¯ï¼Œè¿™ä¸¤è€…å¿…é¡»åŒæ—¶æ“ä½œã€‚
 		--u8E2P_KB_WriteFlag;
 	}
 	else if (u32E2P_Pro_VolCur_WriteFlag & E2P_PARA_ALL_VOLCUR_PROTECT)
@@ -445,7 +1089,7 @@ void WriteEEPROM_ByteData_Circle(void)
 			{
 				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i),
 										  *(&PRT_E2ROMParas.u16VcellOvp_First + i));
-				u32E2P_Pro_VolCur_WriteFlag -= ((long)1 << i); // °´Î»²Ù×÷£¬ÓÐÒ»¸ö¼õÒ»¸ö¡£
+				u32E2P_Pro_VolCur_WriteFlag -= ((long)1 << i); // æŒ‰ä½æ“ä½œï¼Œæœ‰ä¸€ä¸ªå‡ä¸€ä¸ªã€‚
 				break;
 			}
 			i++;
@@ -517,18 +1161,18 @@ void WriteEEPROM_ByteData_Circle(void)
 	}
 }
 
-// ³õÊ¼»¯IIC
+// åˆå§‹åŒ–IIC
 void InitE2PROM(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	// PB3_I2C_SCL_eeprom£¬PB4_I2C_SDA_eeprom
+	// PB3_I2C_SCL_eepromï¼ŒPB4_I2C_SDA_eeprom
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOB, GPIO_Pin_3 | GPIO_Pin_4); // Êä³ö¸ß
+	GPIO_SetBits(GPIOB, GPIO_Pin_3 | GPIO_Pin_4); // è¾“å‡ºé«˜
 
 	// PA15_E2PR_WP
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
@@ -539,28 +1183,29 @@ void InitE2PROM(void)
 
 	__delay_ms(100);
 
+	EEPROM_Storage_EnsureReady();
 	InitData_E2prom();
 }
 
 void InitData_E2prom(void)
 {
 	if (EEPROM_VALUE_BEGIN_FLAG == ReadEEPROM_Word_NoZone(EEPROM_ADDR_PASS))
-	{ // µÚ¶þ´ÎÉÏµç¾Í»áÖ´ÐÐÕâ¸ö
+	{ // ç¬¬äºŒæ¬¡ä¸Šç”µå°±ä¼šæ‰§è¡Œè¿™ä¸ª
 		ReadEEPROM_ByteData_StartUp();
 	}
 	else
-	{ // µÚÒ»´ÎÉÏµç£¬ÓÃÓÚÁ¿²ú
+	{ // ç¬¬ä¸€æ¬¡ä¸Šç”µï¼Œç”¨äºŽé‡äº§
 		EEPROM_ResetData_AllToDefault();
 		while (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag || u32E2P_Pro_Other_WriteFlag || u8E2P_SocTable_WriteFlag || u8E2P_CopperLoss_WriteFlag || u32E2P_RTC_Element_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
 		{ // 0x2000,0x2100,0x2200,0x2300
 			WriteEEPROM_ByteData_Circle();
 		}
-		EEPROM_ResetData_OtherToDefault(); // °ÑE2P_BEGIN_FLAGÐ´½øÍ·µØÖ·£¬
-										   // Èç¹ûÓÐ±ðµÄÌí¼Ó£¬¿ÉÒÔÍùÕâ¸öº¯ÊýÐ´£¬Ä¿Ç°¼ÓÁË±£»¤¼ÇÂ¼³õÊ¼»¯
+		EEPROM_ResetData_OtherToDefault(); // æŠŠE2P_BEGIN_FLAGå†™è¿›å¤´åœ°å€ï¼Œ
+										   // å¦‚æžœæœ‰åˆ«çš„æ·»åŠ ï¼Œå¯ä»¥å¾€è¿™ä¸ªå‡½æ•°å†™ï¼Œç›®å‰åŠ äº†ä¿æŠ¤è®°å½•åˆå§‹åŒ–
 		WriteProID_Default();
 		
-		WriteEEPROM_Word_NoZone(812, 0xffff); // µÚÒ»´ÎÉÏµç³õÊ¼»¯Íê³É
-		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG); // µÚÒ»´ÎÉÏµç³õÊ¼»¯Íê³É
+		WriteEEPROM_Word_NoZone(812, 0xffff); // ç¬¬ä¸€æ¬¡ä¸Šç”µåˆå§‹åŒ–å®Œæˆ
+		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG); // ç¬¬ä¸€æ¬¡ä¸Šç”µåˆå§‹åŒ–å®Œæˆ
 	}
 }
 
@@ -572,12 +1217,12 @@ void App_E2promDeal(void)
 	}
 
 	if (gu8_Reset_EventRecord)
-	{ // ²¹³äÔÚÕâÀï°É
+	{ // è¡¥å……åœ¨è¿™é‡Œå§
 		WriteEEPROM_ByteData_Circle();
 	}
 }
 
-// ÎÊÌâÕÒ³öÀ´£¬¾ÍÊÇBCÇøÐ´²»½øÈ¥£¬·µ»Ø0xFF
+// é—®é¢˜æ‰¾å‡ºæ¥ï¼Œå°±æ˜¯BCåŒºå†™ä¸è¿›åŽ»ï¼Œè¿”å›ž0xFF
 void EEPROM_test(void)
 {
 #if 0
