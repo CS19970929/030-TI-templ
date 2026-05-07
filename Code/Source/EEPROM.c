@@ -1,273 +1,622 @@
 #include "main.h"
+#include "stm32f0xx_flash.h"
 
-volatile uint32_t sEETimeout = sEE_LONG_TIMEOUT;
+#define EEPROM_FLASH_SLOT_A_ADDR            ((UINT32)0x0800D000)
+#define EEPROM_FLASH_SLOT_B_ADDR            ((UINT32)0x0800D800)
+#define EEPROM_FLASH_SLOT_SIZE              ((UINT32)0x00000800)
+#define EEPROM_FLASH_PAGE_SIZE              ((UINT32)0x00000400)
+#define EEPROM_FLASH_STORAGE_VERSION        ((UINT16)0x0001)
+#define EEPROM_FLASH_MAGIC                  ((UINT32)0x45505231u) /* "EPR1" */
+
+#define EEPROM_STORAGE_RAW_BYTES            ((UINT16)(E2P_ADDR_E2POS_EVENT_POINT + 4U))
+#define EEPROM_STORAGE_COMMIT_DELAY_TICKS   ((UINT8)5)
+#define EEPROM_EVENT_RECORD_LENGTH           ((UINT8)100)
+
+typedef struct
+{
+	UINT32 magic;
+	UINT16 storage_version;
+	UINT16 payload_size;
+	UINT32 sequence;
+	UINT16 crc;
+	UINT16 reserved;
+} EEPROM_FLASH_HEADER;
+
+typedef struct
+{
+	UINT8 raw[EEPROM_STORAGE_RAW_BYTES];
+	UINT16 switch_onoff;
+	UINT16 sys_func_select[2];
+	UINT16 pass_flag;
+	UINT16 sleep_flag;
+	UINT16 flash_update_flag;
+} EEPROM_FLASH_PAYLOAD;
+
+typedef char EEPROM_STORAGE_SIZE_CHECK[
+	((sizeof(EEPROM_FLASH_HEADER) + sizeof(EEPROM_FLASH_PAYLOAD)) <= EEPROM_FLASH_SLOT_SIZE) ? 1 : -1];
+
+static void EEPROM_ResetData_AllToDefault(void);
+static void EEPROM_ResetData_OtherToDefault(void);
+static void ReadEEPROM_ByteData_StartUp(void);
+static void WriteEEPROM_ByteData_Circle(void);
+static UINT8 EEPROM_SaveSnapshotNow(void);
+static UINT8 EEPROM_LoadSnapshotFromFlash(void);
 
 UINT32 u32E2P_Pro_VolCur_WriteFlag = 0;
 UINT32 u32E2P_Pro_Temp_WriteFlag = 0;
 UINT32 u32E2P_Pro_Other_WriteFlag = 0;
-UINT32 u32E2P_RTC_Element_WriteFlag = 0;
 UINT32 u32E2P_OtherElement1_WriteFlag = 0;
 UINT32 u32E2P_HeatCool_WriteFlag = 0;
 
-UINT8 u8E2P_SocTable_WriteFlag = 0;
-UINT8 u8E2P_CopperLoss_WriteFlag = 0;
 UINT8 u8E2P_KB_WriteFlag = 0;
 
 UINT8 u8E2P_KB_WritePos = 0;
 
-void InitData_E2prom(void);
+static EEPROM_FLASH_PAYLOAD s_tStorage;
+static UINT8 s_u8StorageDirty = 0;
+static UINT8 s_u8StorageCommitDelay = 0;
 
-
-void IIC_Start_SEE(void)
+static UINT16 EEPROM_CalcCrc16(const UINT8 *data, UINT16 length)
 {
-	SDA_OUT_SEE(); // sda线输出
-	IIC_SDA_SEE = 1;
-	IIC_SCL_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SDA_SEE = 0; // START:when CLK is high,DATA change form high to low
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 0; // 钳住I2C总线，准备发送或接收数据
-}
+	UINT16 crc;
+	UINT16 i;
 
-// 产生IIC停止信号
-void IIC_Stop_SEE(void)
-{
-	SDA_OUT_SEE(); // sda线输出
-	IIC_SCL_SEE = 0;
-	IIC_SDA_SEE = 0; // STOP:when CLK is high DATA change form low to high
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SDA_SEE = 1; // 发送I2C总线结束信号
-	__delay_us(DELAY_US_IIC_EEPROM);
-}
-
-// 等待应答信号到来
-// 返回值：1，接收应答失败
-//         0，接收应答成功
-UINT8 IIC_Wait_Ack_SEE(void)
-{
-	UINT8 ucErrTime = 0;
-	SDA_IN_SEE(); // SDA设置为输入
-	// IIC_SDA_SEE=1;__delay_us(4);
-	IIC_SCL_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	while (READ_SDA_SEE)
+	if (data == 0 || length == 0)
 	{
-		ucErrTime++;
-		if (ucErrTime > 250)
+		return 0xFFFFU;
+	}
+
+	crc = 0xFFFFU;
+	while (length--)
+	{
+		crc ^= *data++;
+		for (i = 0; i < 8U; ++i)
 		{
-			IIC_Stop_SEE();
-			return 1;
+			if (crc & 0x0001U)
+			{
+				crc = (UINT16)((crc >> 1) ^ 0xA001U);
+			}
+			else
+			{
+				crc >>= 1;
+			}
 		}
 	}
-	IIC_SCL_SEE = 0; // 时钟输出0
-	__delay_us(DELAY_US_IIC_EEPROM);
+
+	return crc;
+}
+
+static void EEPROM_MarkDirty(void)
+{
+	s_u8StorageDirty = 1;
+	s_u8StorageCommitDelay = 0;
+}
+
+static void EEPROM_ResetShadowBlank(void)
+{
+	memset(&s_tStorage, 0xFF, sizeof(s_tStorage));
+	EEPROM_MarkDirty();
+}
+
+static UINT8 EEPROM_IsRawAddr(UINT16 addr)
+{
+	return (UINT8)(addr < EEPROM_STORAGE_RAW_BYTES);
+}
+
+static UINT8 EEPROM_IsSpecialWordAddr(UINT16 addr)
+{
+	return (UINT8)((addr == EEPROM_ADDR_SWITCH_ONOFF) ||
+				   (addr == EEPROM_ADDR_SYS_FUNC_SELECT) ||
+				   (addr == (EEPROM_ADDR_SYS_FUNC_SELECT + 2U)) ||
+				   (addr == EEPROM_ADDR_PASS) ||
+				   (addr == EEPROM_ADDR_SLEEP) ||
+				   (addr == EEPROM_ADDR_FLASHUPDATE));
+}
+
+static UINT16 EEPROM_ReadSpecialWord(UINT16 addr)
+{
+	if (addr == EEPROM_ADDR_SWITCH_ONOFF)
+	{
+		return s_tStorage.switch_onoff;
+	}
+	if (addr == EEPROM_ADDR_SYS_FUNC_SELECT)
+	{
+		return s_tStorage.sys_func_select[0];
+	}
+	if (addr == (EEPROM_ADDR_SYS_FUNC_SELECT + 2U))
+	{
+		return s_tStorage.sys_func_select[1];
+	}
+	if (addr == EEPROM_ADDR_PASS)
+	{
+		return s_tStorage.pass_flag;
+	}
+	if (addr == EEPROM_ADDR_SLEEP)
+	{
+		return s_tStorage.sleep_flag;
+	}
+	if (addr == EEPROM_ADDR_FLASHUPDATE)
+	{
+		return s_tStorage.flash_update_flag;
+	}
+	return 0xFFFFU;
+}
+
+static UINT8 EEPROM_WriteSpecialWord(UINT16 addr, UINT16 data)
+{
+	UINT16 *target;
+
+	target = 0;
+	if (addr == EEPROM_ADDR_SWITCH_ONOFF)
+	{
+		target = &s_tStorage.switch_onoff;
+	}
+	else if (addr == EEPROM_ADDR_SYS_FUNC_SELECT)
+	{
+		target = &s_tStorage.sys_func_select[0];
+	}
+	else if (addr == (EEPROM_ADDR_SYS_FUNC_SELECT + 2U))
+	{
+		target = &s_tStorage.sys_func_select[1];
+	}
+	else if (addr == EEPROM_ADDR_PASS)
+	{
+		target = &s_tStorage.pass_flag;
+	}
+	else if (addr == EEPROM_ADDR_SLEEP)
+	{
+		target = &s_tStorage.sleep_flag;
+	}
+	else if (addr == EEPROM_ADDR_FLASHUPDATE)
+	{
+		target = &s_tStorage.flash_update_flag;
+	}
+
+	if (target == 0)
+	{
+		return 1;
+	}
+
+	if (*target != data)
+	{
+		*target = data;
+		EEPROM_MarkDirty();
+	}
+
 	return 0;
 }
 
-// 产生ACK应答
-void IIC_Ack_SEE(void)
+static UINT8 EEPROM_ReadByteInternal(UINT16 addr, UINT8 *value)
 {
-	IIC_SCL_SEE = 0;
-	SDA_OUT_SEE();
-	IIC_SDA_SEE = 0;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 0;
-}
-
-// 不产生ACK应答
-void IIC_NAck_SEE(void)
-{
-	IIC_SCL_SEE = 0;
-	SDA_OUT_SEE();
-	IIC_SDA_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 1;
-	__delay_us(DELAY_US_IIC_EEPROM);
-	IIC_SCL_SEE = 0;
-}
-
-// IIC发送一个字节
-// 返回从机有无应答
-// 1，有应答
-// 0，无应答
-void IIC_Send_Byte_SEE(UINT8 txd)
-{
-	UINT8 t;
-	SDA_OUT_SEE();
-	IIC_SCL_SEE = 0; // 拉低时钟开始数据传输
-	for (t = 0; t < 8; t++)
+	if (value == 0)
 	{
-		// IIC_SDA=(txd&0x80)>>7;
-		if ((txd & 0x80) >> 7)
-			IIC_SDA_SEE = 1;
-		else
-			IIC_SDA_SEE = 0;
-		txd <<= 1;
-		__delay_us(DELAY_US_IIC_EEPROM); // 对TEA5767这三个延时都是必须的
-		IIC_SCL_SEE = 1;
-		__delay_us(DELAY_US_IIC_EEPROM);
-		IIC_SCL_SEE = 0;
-		__delay_us(DELAY_US_IIC_EEPROM);
+		return 0;
 	}
+
+	if (EEPROM_IsRawAddr(addr))
+	{
+		*value = s_tStorage.raw[addr];
+		return 1;
+	}
+
+	if (EEPROM_IsSpecialWordAddr((UINT16)(addr & 0xFFFEU)))
+	{
+		UINT16 word = EEPROM_ReadSpecialWord((UINT16)(addr & 0xFFFEU));
+		*value = (UINT8)(((addr & 1U) == 0U) ? (word & 0x00FFU) : (word >> 8));
+		return 1;
+	}
+
+	*value = 0xFFU;
+	return 0;
 }
 
-// 读1个字节，ack=1时，发送ACK，ack=0，发送nACK
-UINT8 IIC_Read_Byte_SEE(unsigned char ack)
+static UINT8 EEPROM_WriteByteInternal(UINT16 addr, UINT8 value)
 {
-	unsigned char i, receive = 0;
-	SDA_IN_SEE(); // SDA设置为输入
-	for (i = 0; i < 8; i++)
+	UINT8 old_value;
+	UINT16 word_addr;
+	UINT16 word_value;
+	UINT8 changed;
+
+	word_addr = (UINT16)(addr & 0xFFFEU);
+	changed = 0;
+
+	if (EEPROM_IsRawAddr(addr))
 	{
-		IIC_SCL_SEE = 0;
-		__delay_us(DELAY_US_IIC_EEPROM);
-		IIC_SCL_SEE = 1;
-		receive <<= 1;
-		if (READ_SDA_SEE)
-			receive++;
-		__delay_us(DELAY_US_IIC_EEPROM);
+		old_value = s_tStorage.raw[addr];
+		if (old_value != value)
+		{
+			s_tStorage.raw[addr] = value;
+			EEPROM_MarkDirty();
+		}
+		return 0;
 	}
-	if (!ack)
-		IIC_NAck_SEE(); // 发送nACK
+
+	if (!EEPROM_IsSpecialWordAddr(word_addr))
+	{
+		return 1;
+	}
+
+	word_value = EEPROM_ReadSpecialWord(word_addr);
+	if ((addr & 1U) == 0U)
+	{
+		old_value = (UINT8)(word_value & 0x00FFU);
+		if (old_value != value)
+		{
+			word_value = (UINT16)((word_value & 0xFF00U) | value);
+			changed = 1;
+		}
+	}
 	else
-		IIC_Ack_SEE(); // 发送ACK
-	return receive;
+	{
+		old_value = (UINT8)(word_value >> 8);
+		if (old_value != value)
+		{
+			word_value = (UINT16)((word_value & 0x00FFU) | ((UINT16)value << 8));
+			changed = 1;
+		}
+	}
+
+	if (!changed)
+	{
+		return 0;
+	}
+
+	return EEPROM_WriteSpecialWord(word_addr, word_value);
 }
 
-// 后续维护人员禁止使用这个函数
-UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val)
+static FLASH_Status EEPROM_FlashErasePageVerified(uint32_t page_addr)
 {
-	Feed_IWatchDog;
-	MCUO_E2PR_WP = 0;
+	UINT32 offset;
+	FLASH_Status result;
 
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_W); // 发送写命令
-	if (1 == IIC_Wait_Ack_SEE())
+	result = FLASH_ErasePage(page_addr);
+	if (result != FLASH_COMPLETE)
 	{
+		return result;
+	}
+
+	for (offset = 0; offset < EEPROM_FLASH_PAGE_SIZE; offset += 2U)
+	{
+		if (*((volatile UINT16 *)(page_addr + offset)) != 0xFFFFU)
+		{
+			return FLASH_ERROR_PG;
+		}
+	}
+
+	return FLASH_COMPLETE;
+}
+
+static FLASH_Status EEPROM_FlashProgramHalfWordVerified(uint32_t addr, UINT16 data)
+{
+	FLASH_Status result;
+
+	result = FLASH_ProgramHalfWord(addr, data);
+	if (result != FLASH_COMPLETE)
+	{
+		return result;
+	}
+
+	if (*((volatile UINT16 *)addr) != data)
+	{
+		return FLASH_ERROR_PG;
+	}
+
+	return FLASH_COMPLETE;
+}
+
+static FLASH_Status EEPROM_FlashProgramBytesVerified(uint32_t addr, const UINT8 *data, UINT16 length)
+{
+	UINT16 offset;
+	UINT16 half_word;
+	FLASH_Status result;
+
+	offset = 0;
+	result = FLASH_COMPLETE;
+
+	while (offset < length)
+	{
+		half_word = data[offset];
+		if ((offset + 1U) < length)
+		{
+			half_word |= ((UINT16)data[offset + 1U] << 8);
+		}
+		else
+		{
+			half_word |= 0xFF00U;
+		}
+
+		result = EEPROM_FlashProgramHalfWordVerified(addr + offset, half_word);
+		if (result != FLASH_COMPLETE)
+		{
+			return result;
+		}
+		offset += 2U;
+	}
+
+	return result;
+}
+
+static UINT8 EEPROM_LoadSlot(uint32_t slot_addr,
+							 EEPROM_FLASH_PAYLOAD *payload,
+							 UINT32 *sequence)
+{
+	const EEPROM_FLASH_HEADER *header;
+	const UINT8 *payload_ptr;
+	UINT16 crc;
+
+	header = (const EEPROM_FLASH_HEADER *)slot_addr;
+	if ((header->magic != EEPROM_FLASH_MAGIC) ||
+		(header->storage_version != EEPROM_FLASH_STORAGE_VERSION) ||
+		(header->payload_size != sizeof(EEPROM_FLASH_PAYLOAD)))
+	{
+		return 0;
+	}
+
+	payload_ptr = (const UINT8 *)(slot_addr + sizeof(EEPROM_FLASH_HEADER));
+	crc = EEPROM_CalcCrc16(payload_ptr, header->payload_size);
+	if (crc != header->crc)
+	{
+		return 0;
+	}
+
+	if (payload != 0)
+	{
+		memcpy(payload, payload_ptr, sizeof(EEPROM_FLASH_PAYLOAD));
+	}
+	if (sequence != 0)
+	{
+		*sequence = header->sequence;
+	}
+	return 1;
+}
+
+static FLASH_Status EEPROM_WriteSlot(uint32_t slot_addr,
+									 const EEPROM_FLASH_PAYLOAD *payload,
+									 UINT32 sequence)
+{
+	EEPROM_FLASH_HEADER header;
+	FLASH_Status result;
+
+	header.magic = EEPROM_FLASH_MAGIC;
+	header.storage_version = EEPROM_FLASH_STORAGE_VERSION;
+	header.payload_size = (UINT16)sizeof(EEPROM_FLASH_PAYLOAD);
+	header.sequence = sequence;
+	header.crc = EEPROM_CalcCrc16((const UINT8 *)payload, (UINT16)sizeof(EEPROM_FLASH_PAYLOAD));
+	header.reserved = 0xFFFFU;
+
+	FLASH_Unlock();
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+
+	result = EEPROM_FlashErasePageVerified(slot_addr);
+	if (result == FLASH_COMPLETE)
+	{
+		result = EEPROM_FlashErasePageVerified(slot_addr + EEPROM_FLASH_PAGE_SIZE);
+	}
+	if (result == FLASH_COMPLETE)
+	{
+		result = EEPROM_FlashProgramBytesVerified(slot_addr, (const UINT8 *)&header, (UINT16)sizeof(header));
+	}
+	if (result == FLASH_COMPLETE)
+	{
+		result = EEPROM_FlashProgramBytesVerified(slot_addr + sizeof(header),
+												  (const UINT8 *)payload,
+												  (UINT16)sizeof(EEPROM_FLASH_PAYLOAD));
+	}
+
+	FLASH_Lock();
+	return result;
+}
+
+static UINT8 EEPROM_SaveSnapshotNow(void)
+{
+	EEPROM_FLASH_PAYLOAD current_a;
+	EEPROM_FLASH_PAYLOAD current_b;
+	EEPROM_FLASH_PAYLOAD verify;
+	UINT32 seq_a;
+	UINT32 seq_b;
+	UINT32 next_sequence;
+	UINT32 target_slot;
+	UINT8 valid_a;
+	UINT8 valid_b;
+	const EEPROM_FLASH_PAYLOAD *current;
+
+	valid_a = EEPROM_LoadSlot(EEPROM_FLASH_SLOT_A_ADDR, &current_a, &seq_a);
+	valid_b = EEPROM_LoadSlot(EEPROM_FLASH_SLOT_B_ADDR, &current_b, &seq_b);
+	current = 0;
+	target_slot = EEPROM_FLASH_SLOT_A_ADDR;
+	next_sequence = 1U;
+
+	if (valid_a && valid_b)
+	{
+		if (seq_a >= seq_b)
+		{
+			current = &current_a;
+			target_slot = EEPROM_FLASH_SLOT_B_ADDR;
+			next_sequence = seq_a + 1U;
+		}
+		else
+		{
+			current = &current_b;
+			target_slot = EEPROM_FLASH_SLOT_A_ADDR;
+			next_sequence = seq_b + 1U;
+		}
+	}
+	else if (valid_a)
+	{
+		current = &current_a;
+		target_slot = EEPROM_FLASH_SLOT_B_ADDR;
+		next_sequence = seq_a + 1U;
+	}
+	else if (valid_b)
+	{
+		current = &current_b;
+		target_slot = EEPROM_FLASH_SLOT_A_ADDR;
+		next_sequence = seq_b + 1U;
+	}
+
+	if ((current != 0) && (memcmp(current, &s_tStorage, sizeof(EEPROM_FLASH_PAYLOAD)) == 0))
+	{
+		s_u8StorageDirty = 0;
+		s_u8StorageCommitDelay = 0;
 		return 1;
 	}
 
-#ifndef AT24C02
-	IIC_Send_Byte_SEE(addr >> 8); // 发送高地址
-	if (1 == IIC_Wait_Ack_SEE())
+	if (EEPROM_WriteSlot(target_slot, &s_tStorage, next_sequence) != FLASH_COMPLETE)
 	{
-		return 1;
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 0;
 	}
 
-#endif
-
-	IIC_Send_Byte_SEE(addr % 256); // 发送低地址
-	if (1 == IIC_Wait_Ack_SEE())
+	if (!EEPROM_LoadSlot(target_slot, &verify, 0))
 	{
-		return 1;
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 0;
 	}
-	IIC_Send_Byte_SEE(val); // 发送字节
-	if (1 == IIC_Wait_Ack_SEE())
+	if (memcmp(&verify, &s_tStorage, sizeof(EEPROM_FLASH_PAYLOAD)) != 0)
 	{
-		return 1;
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 0;
 	}
-	IIC_Stop_SEE(); // 产生一个停止条件
-	__delay_ms(5);	// EEPROM特性，需要5ms保证写完
 
-	MCUO_E2PR_WP = 1;
-	Feed_IWatchDog;
-	return 0;
+	s_u8StorageDirty = 0;
+	s_u8StorageCommitDelay = 0;
+	return 1;
+}
+
+static UINT8 EEPROM_LoadSnapshotFromFlash(void)
+{
+	EEPROM_FLASH_PAYLOAD data_a;
+	EEPROM_FLASH_PAYLOAD data_b;
+	UINT32 seq_a;
+	UINT32 seq_b;
+	UINT8 valid_a;
+	UINT8 valid_b;
+
+	valid_a = EEPROM_LoadSlot(EEPROM_FLASH_SLOT_A_ADDR, &data_a, &seq_a);
+	valid_b = EEPROM_LoadSlot(EEPROM_FLASH_SLOT_B_ADDR, &data_b, &seq_b);
+
+	if (!valid_a && !valid_b)
+	{
+		return 0;
+	}
+
+	if (valid_a && valid_b)
+	{
+		if (seq_a >= seq_b)
+		{
+			s_tStorage = data_a;
+		}
+		else
+		{
+			s_tStorage = data_b;
+		}
+	}
+	else if (valid_a)
+	{
+		s_tStorage = data_a;
+	}
+	else
+	{
+		s_tStorage = data_b;
+	}
+
+	s_u8StorageDirty = 0;
+	s_u8StorageCommitDelay = 0;
+	return 1;
+}
+
+static void InitData_E2prom(void)
+{
+	if (!EEPROM_LoadSnapshotFromFlash())
+	{
+		EEPROM_ResetData_AllToDefault();
+		while (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag ||
+			   u32E2P_Pro_Other_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
+		{
+			WriteEEPROM_ByteData_Circle();
+		}
+		EEPROM_ResetData_OtherToDefault();
+		WriteProID_Default();
+		WriteEEPROM_Word_NoZone(812, 0xFFFFU);
+		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG);
+		WriteEEPROM_Word_NoZone(EEPROM_ADDR_SLEEP, EEPROM_VALUE_SLEEP_RESET);
+		WriteEEPROM_Word_NoZone(EEPROM_ADDR_FLASHUPDATE, EEPROM_VALUE_FLASHUPDATE_RESET);
+		(void)EEPROM_SaveSnapshotNow();
+		return;
+	}
+
+	ReadEEPROM_ByteData_StartUp();
+	ReadEEPROM_EventRecord_Parameters();
+	(void)EEPROM_SaveSnapshotNow();
 }
 
 UINT8 ReadEEPROM_Byte(UINT16 addr)
 {
-	UINT8 temp = 0;
-	Feed_IWatchDog;
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_W); // 发送写命令
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM); // 本来打算在最后一层才调用这个函数，这个编程风格
-		return 0;									 // 但是返回值的问题，只能在这里加了
-	}
-
-#ifndef AT24C02
-	IIC_Send_Byte_SEE(addr >> 8); // 发送高地址
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-#endif
-
-	IIC_Send_Byte_SEE(addr % 256); // 发送低地址
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-	IIC_Start_SEE();
-	IIC_Send_Byte_SEE(sEEAddress | I2C_RW_R); // 进入接收模式
-	if (1 == IIC_Wait_Ack_SEE())
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_COM);
-		return 0;
-	}
-
-	temp = IIC_Read_Byte_SEE(0);
-	IIC_Stop_SEE(); // 产生一个停止条件
+	UINT8 value;
 
 	Feed_IWatchDog;
-	return temp;
+	if (!EEPROM_ReadByteInternal(addr, &value))
+	{
+		return 0xFFU;
+	}
+	return value;
+}
+
+UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val)
+{
+	Feed_IWatchDog;
+	if (EEPROM_WriteByteInternal(addr, val) != 0)
+	{
+		return 1;
+	}
+	return 0;
 }
 
 UINT16 ReadEEPROM_Word_NoZone(UINT16 addr)
 {
-	UINT16 tmp16a;
-	UINT8 tmp8a, tmp8b;
-	tmp8a = ReadEEPROM_Byte(addr);	   // 读取低位地址A对应的数据
-	tmp8b = ReadEEPROM_Byte(addr + 1); // 读取高位地址A+1对应的数据
-	tmp16a = tmp8b;
-	tmp16a = (tmp16a << 8) | tmp8a; // 数据存储
+	UINT8 low;
+	UINT8 high;
 
-	return tmp16a;
+	low = ReadEEPROM_Byte(addr);
+	high = ReadEEPROM_Byte((UINT16)(addr + 1U));
+	return (UINT16)((UINT16)high << 8 | low);
 }
 
-// 主要调这个，加了几句话
 UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data)
 {
-	UINT8 tmp8a, tmp8b, WriteCounter = 0, result = 0;
-	UINT16 tmp_addr, tmp16;
-	;
+	UINT8 result;
+	UINT8 low;
+	UINT8 high;
+	UINT16 verify;
+	UINT8 retry;
 
-	tmp_addr = addr; // 移植忘了这句话
-	WriteCounter = 0;
+	result = 0;
+	retry = 0;
 	do
 	{
-		result += WriteEEPROM_Byte(tmp_addr, data & 0xff);	 // 数据的低8位写入EEPROM
-		result += WriteEEPROM_Byte(tmp_addr + 1, data >> 8); // 数据的高8位写入EEPROM
-		tmp8a = ReadEEPROM_Byte(tmp_addr);					 // 获取刚存入EEPROM的低8位数据
-		tmp8b = ReadEEPROM_Byte(tmp_addr + 1);				 // 获取刚存入EEPROM的高8位数据
-		tmp16 = (tmp8b << 8) | tmp8a;						 // 存储读到的数据于变量tmp16
-
-		WriteCounter++;
-		if (WriteCounter > 2 || result != 0)
-		{			  /*判断tmp16 != data的计数*/
-			++result; // 要跳出来执行写保护置位
+		result |= WriteEEPROM_Byte(addr, (UINT8)(data & 0x00FFU));
+		result |= WriteEEPROM_Byte((UINT16)(addr + 1U), (UINT8)(data >> 8));
+		low = ReadEEPROM_Byte(addr);
+		high = ReadEEPROM_Byte((UINT16)(addr + 1U));
+		verify = (UINT16)(((UINT16)high << 8) | low);
+		retry++;
+		if (retry > 2U || result != 0)
+		{
+			result++;
 			break;
 		}
-	} while (tmp16 != data);
+	} while (verify != data);
+
 	return result;
 }
-
 
 void ReadEEPROM_ByteData_StartUp(void)
 {
 	UINT16 i;
-	// UINT16  j;
 	UINT16 t_u16RdTemp;
 	INT16 t_i16RdTemp;
-	UINT16 t_u16TempMax, t_u16TempMin;
+	UINT16 t_u16TempMax;
+	UINT16 t_u16TempMin;
 
 	const struct PRT_E2ROM_PARAS PrtE2paras_Min = E2P_PROTECT_MIN_PRT;
 	const struct PRT_E2ROM_PARAS PrtE2paras_Max = E2P_PROTECT_MAX_PRT;
@@ -282,32 +631,25 @@ void ReadEEPROM_ByteData_StartUp(void)
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Pos = E2P_ADDR_E2POS_HEAT_COOL;
 
 	for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
-	{ // 保护点
+	{
 		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i));
-		t_u16TempMax = (*(&PrtE2paras_Max.u16VcellOvp_First + i));
-		t_u16TempMin = (*(&PrtE2paras_Min.u16VcellOvp_First + i));
+		t_u16TempMax = *(&PrtE2paras_Max.u16VcellOvp_First + i);
+		t_u16TempMin = *(&PrtE2paras_Min.u16VcellOvp_First + i);
 		*(&PRT_E2ROMParas.u16VcellOvp_First + i) = t_u16RdTemp;
-		if ((t_u16RdTemp >= t_u16TempMin) && (t_u16RdTemp <= t_u16TempMax))
-		{
-		}
-		else
+		if ((t_u16RdTemp < t_u16TempMin) || (t_u16RdTemp > t_u16TempMax))
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
-			{ // 这样其实不太好，最好的办法是把ReadEEPROM_Word_WithZone()这个函数改造以下
-				// g_st_SysStatusFlag.bits.b1EepromErr = 1;		//重新改造了一下这个函数，最后失败告终，不改好过改
-				System_ERROR_UserCallback(ERROR_EEPROM_STORE); // 只要确保通讯没问题，就是这个错误。
+			{
+				System_ERROR_UserCallback(ERROR_EEPROM_STORE);
 			}
 		}
 	}
 
 	for (i = 0; i < E2P_PARA_NUM_CALIB_K; ++i)
-	{ // K值
+	{
 		t_u16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_K + (i << 1));
 		g_u16CalibCoefK[i] = t_u16RdTemp;
-		if ((t_u16RdTemp >= SYSKMIN) && (t_u16RdTemp <= SYSKMAX))
-		{
-		}
-		else
+		if ((t_u16RdTemp < SYSKMIN) || (t_u16RdTemp > SYSKMAX))
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
 			{
@@ -315,12 +657,9 @@ void ReadEEPROM_ByteData_StartUp(void)
 			}
 		}
 
-		t_i16RdTemp = ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_B + (i << 1));
-		g_i16CalibCoefB[i] = t_i16RdTemp; // B值
-		if ((t_i16RdTemp >= SYSBMIN) && (t_i16RdTemp <= SYSBMAX))
-		{
-		}
-		else
+		t_i16RdTemp = (INT16)ReadEEPROM_Word_NoZone(E2P_ADDR_START_CALIB_B + (i << 1));
+		g_i16CalibCoefB[i] = t_i16RdTemp;
+		if ((t_i16RdTemp < SYSBMIN) || (t_i16RdTemp > SYSBMAX))
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
 			{
@@ -330,54 +669,44 @@ void ReadEEPROM_ByteData_StartUp(void)
 	}
 
 	for (i = 0; i < E2P_PARA_NUM_OTHER_ELEMENT1; ++i)
-	{ // Other_CanAdd
+	{
 		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&OtherElement_to_Pos.u16Balance_OpenVoltage + i));
-		t_u16TempMax = (*(&OtherElement_to_Max.u16Balance_OpenVoltage + i));
-		t_u16TempMin = (*(&OtherElement_to_Min.u16Balance_OpenVoltage + i));
+		t_u16TempMax = *(&OtherElement_to_Max.u16Balance_OpenVoltage + i);
+		t_u16TempMin = *(&OtherElement_to_Min.u16Balance_OpenVoltage + i);
 		*(&OtherElement.u16Balance_OpenVoltage + i) = t_u16RdTemp;
-		if ((t_u16RdTemp >= t_u16TempMin) && (t_u16RdTemp <= t_u16TempMax))
-		{
-		}
-		else
+		if ((t_u16RdTemp < t_u16TempMin) || (t_u16RdTemp > t_u16TempMax))
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
 			{
-				// g_st_SysStatusFlag.bits.b1EepromErr = 1;
 				System_ERROR_UserCallback(ERROR_EEPROM_STORE);
 			}
 		}
 	}
 
 	for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
-	{ // HeatCool_element
+	{
 		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i));
-		t_u16TempMax = (*(&HeatCoolEle_Max.u16Heat_OpenTemp + i));
-		t_u16TempMin = (*(&HeatCoolEle_Min.u16Heat_OpenTemp + i));
+		t_u16TempMax = *(&HeatCoolEle_Max.u16Heat_OpenTemp + i);
+		t_u16TempMin = *(&HeatCoolEle_Min.u16Heat_OpenTemp + i);
 		*(&Heat_Cool_Element.u16Heat_OpenTemp + i) = t_u16RdTemp;
-		if ((t_u16RdTemp >= t_u16TempMin) && (t_u16RdTemp <= t_u16TempMax))
-		{
-		}
-		else
+		if ((t_u16RdTemp < t_u16TempMin) || (t_u16RdTemp > t_u16TempMax))
 		{
 			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
 			{
-				// g_st_SysStatusFlag.bits.b1EepromErr = 1;
 				System_ERROR_UserCallback(ERROR_EEPROM_STORE);
 			}
 		}
 	}
-
-	ReadEEPROM_EventRecord_Parameters();
 }
 
-// Sci命令的数据
 void EEPROM_ResetData_AllToDefault(void)
 {
 	const struct PRT_E2ROM_PARAS PrtE2PARAS_Default = E2P_PROTECT_DEFAULT_PRT;
 	const struct OTHER_ELEMENT OtherElement_Default = OtherElement_default;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Default = HeatCoolElement_Default;
-
 	UINT8 i;
+
+	EEPROM_ResetShadowBlank();
 
 	for (i = 0; i < KB_NUM; ++i)
 	{
@@ -387,7 +716,6 @@ void EEPROM_ResetData_AllToDefault(void)
 	u8E2P_KB_WriteFlag = KB_NUM;
 	u8E2P_KB_WritePos = 0;
 
-	// Protect
 	for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
 	{
 		*(&PRT_E2ROMParas.u16VcellOvp_First + i) = *(&PrtE2PARAS_Default.u16VcellOvp_First + i);
@@ -396,15 +724,12 @@ void EEPROM_ResetData_AllToDefault(void)
 	u32E2P_Pro_Temp_WriteFlag = E2P_PARA_ALL_TEM_PROTECT;
 	u32E2P_Pro_Other_WriteFlag = E2P_PARA_ALL_OTHER_PROTECT;
 
-	// Other_CanAdd_element
 	for (i = 0; i < E2P_PARA_NUM_OTHER_ELEMENT1; ++i)
 	{
 		*(&OtherElement.u16Balance_OpenVoltage + i) = *(&OtherElement_Default.u16Balance_OpenVoltage + i);
 	}
-	// CBC_Element_Calculate();
 	u32E2P_OtherElement1_WriteFlag = E2P_PARA_ALL_OTHER_ELEMENT1;
 
-	// HeatCool_element
 	for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
 	{
 		*(&Heat_Cool_Element.u16Heat_OpenTemp + i) = *(&HeatCoolEle_Default.u16Heat_OpenTemp + i);
@@ -412,194 +737,178 @@ void EEPROM_ResetData_AllToDefault(void)
 	u32E2P_HeatCool_WriteFlag = E2P_PARA_ALL_HEAT_COOL_ELE;
 }
 
-// 历史保护记录reset
 void EEPROM_ResetData_OtherToDefault(void)
 {
 	EEPROM_ResetData_EventRecord_ToDefault();
-
-	SystemMonitorResetData_EEPROM(); // 系统功能选取标志位存储
+	SystemMonitorResetData_EEPROM();
 }
 
-// Sci命令表中，因为STM8的缘故，决定全部从通讯中移出来写
 void WriteEEPROM_ByteData_Circle(void)
 {
-	UINT8 i = 0;
+	UINT8 i;
 	UINT8 u8temp;
 	const struct PRT_E2ROM_PARAS PrtE2paras_Pos = E2P_ADDR_E2POS_PROTECT;
 	const struct OTHER_ELEMENT OtherCanAdd_Pos = E2P_ADDR_E2POS_OTHER_ELEMENT1;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Pos = E2P_ADDR_E2POS_HEAT_COOL;
-	// const struct RTC_ELEMENT RTC_Element_Pos = E2P_ADDR_E2POS_RTC;
 
+	i = 0;
 	if (u8E2P_KB_WriteFlag)
-	{ // 完美KB值操作，既可全部写一遍，也可以单独写其中一对KB值
-		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_K + (u8E2P_KB_WritePos << 1)), g_u16CalibCoefK[u8E2P_KB_WritePos]);
-		WriteEEPROM_Word_NoZone((E2P_ADDR_START_CALIB_B + (u8E2P_KB_WritePos << 1)), g_i16CalibCoefB[u8E2P_KB_WritePos]);
-		++u8E2P_KB_WritePos; // 如果u8E2P_KB_WriteFlag=0，则Pos就算错也没用，别的地方想修改KB值的话，这两者必须同时操作。
+	{
+		WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_CALIB_K + (u8E2P_KB_WritePos << 1)), g_u16CalibCoefK[u8E2P_KB_WritePos]);
+		WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_CALIB_B + (u8E2P_KB_WritePos << 1)), g_i16CalibCoefB[u8E2P_KB_WritePos]);
+		++u8E2P_KB_WritePos;
 		--u8E2P_KB_WriteFlag;
 	}
 	else if (u32E2P_Pro_VolCur_WriteFlag & E2P_PARA_ALL_VOLCUR_PROTECT)
 	{
 		while (i < E2P_PARA_ALL_VOLCUR_PROTECT)
 		{
-			if ((u32E2P_Pro_VolCur_WriteFlag >> i) & 1)
+			if ((u32E2P_Pro_VolCur_WriteFlag >> i) & 1U)
 			{
-				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i),
-										  *(&PRT_E2ROMParas.u16VcellOvp_First + i));
-				u32E2P_Pro_VolCur_WriteFlag -= ((long)1 << i); // 按位操作，有一个减一个。
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i), *(&PRT_E2ROMParas.u16VcellOvp_First + i));
+				u32E2P_Pro_VolCur_WriteFlag -= ((UINT32)1 << i);
 				break;
 			}
-			i++;
+			++i;
 		}
 	}
 	else if (u32E2P_Pro_Temp_WriteFlag & E2P_PARA_ALL_TEM_PROTECT)
 	{
 		while (i < E2P_PARA_ALL_TEM_PROTECT)
 		{
-			if ((u32E2P_Pro_Temp_WriteFlag >> i) & 1)
+			if ((u32E2P_Pro_Temp_WriteFlag >> i) & 1U)
 			{
-				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16TChgOTp_First + i),
-										  *(&PRT_E2ROMParas.u16TChgOTp_First + i));
-				u32E2P_Pro_Temp_WriteFlag -= ((long)1 << i);
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16TChgOTp_First + i), *(&PRT_E2ROMParas.u16TChgOTp_First + i));
+				u32E2P_Pro_Temp_WriteFlag -= ((UINT32)1 << i);
 				break;
 			}
-			i++;
+			++i;
 		}
 	}
 	else if (u32E2P_Pro_Other_WriteFlag & E2P_PARA_ALL_OTHER_PROTECT)
 	{
 		while (i < E2P_PARA_ALL_OTHER_PROTECT)
 		{
-			if ((u32E2P_Pro_Other_WriteFlag >> i) & 1)
+			if ((u32E2P_Pro_Other_WriteFlag >> i) & 1U)
 			{
-				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VdeltaOvp_First + i),
-										  *(&PRT_E2ROMParas.u16VdeltaOvp_First + i));
-				u32E2P_Pro_Other_WriteFlag -= ((long)1 << i);
+				WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VdeltaOvp_First + i), *(&PRT_E2ROMParas.u16VdeltaOvp_First + i));
+				u32E2P_Pro_Other_WriteFlag -= ((UINT32)1 << i);
 				break;
 			}
-			i++;
+			++i;
 		}
 	}
 	else if (u32E2P_OtherElement1_WriteFlag & E2P_PARA_ALL_OTHER_ELEMENT1)
 	{
 		while (i < E2P_PARA_ALL_OTHER_ELEMENT1)
 		{
-			if ((u32E2P_OtherElement1_WriteFlag >> i) & 1)
+			if ((u32E2P_OtherElement1_WriteFlag >> i) & 1U)
 			{
-				WriteEEPROM_Word_NoZone((UINT16) * (&OtherCanAdd_Pos.u16Balance_OpenVoltage + i),
-										  *(&OtherElement.u16Balance_OpenVoltage + i));
-				u32E2P_OtherElement1_WriteFlag -= ((long)1 << i);
+				WriteEEPROM_Word_NoZone((UINT16) * (&OtherCanAdd_Pos.u16Balance_OpenVoltage + i), *(&OtherElement.u16Balance_OpenVoltage + i));
+				u32E2P_OtherElement1_WriteFlag -= ((UINT32)1 << i);
 				break;
 			}
-			i++;
+			++i;
 		}
 	}
 	else if (u32E2P_HeatCool_WriteFlag)
 	{
 		for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
 		{
-			if ((u32E2P_HeatCool_WriteFlag >> i) & 1)
+			if ((u32E2P_HeatCool_WriteFlag >> i) & 1U)
 			{
 				WriteEEPROM_Word_NoZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i), *(&Heat_Cool_Element.u16Heat_OpenTemp + i));
-				u32E2P_HeatCool_WriteFlag -= ((long)1 << i);
+				u32E2P_HeatCool_WriteFlag -= ((UINT32)1 << i);
 				break;
 			}
 		}
 	}
 	else if (gu8_Reset_EventRecord)
 	{
-		u8temp = 100 - gu8_Reset_EventRecord;
-		WriteEEPROM_Word_NoZone(E2P_ADDR_START_EVENT_RECORD + (u8temp << 1), 0);
-		gu8_Reset_EventRecord--;
-		if (gu8_Reset_EventRecord == 1)
+		u8temp = (UINT8)(100U - gu8_Reset_EventRecord);
+		WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (u8temp << 1)), 0x0000U);
+		--gu8_Reset_EventRecord;
+		if (gu8_Reset_EventRecord == 1U)
 		{
-			WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, 0);
+			WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, 0x0000U);
 		}
 	}
 }
 
-// 初始化IIC
 void InitE2PROM(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	// PB3_I2C_SCL_eeprom，PB4_I2C_SDA_eeprom
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOB, GPIO_Pin_3 | GPIO_Pin_4); // 输出高
-
-	// PA15_E2PR_WP
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	__delay_ms(100);
-
 	InitData_E2prom();
-}
-
-void InitData_E2prom(void)
-{
-	if (EEPROM_VALUE_BEGIN_FLAG == ReadEEPROM_Word_NoZone(EEPROM_ADDR_PASS))
-	{ // 第二次上电就会执行这个
-		ReadEEPROM_ByteData_StartUp();
-	}
-	else
-	{ // 第一次上电，用于量产
-		EEPROM_ResetData_AllToDefault();
-		while (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag || u32E2P_Pro_Other_WriteFlag || u8E2P_SocTable_WriteFlag || u8E2P_CopperLoss_WriteFlag || u32E2P_RTC_Element_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
-		{ // 0x2000,0x2100,0x2200,0x2300
-			WriteEEPROM_ByteData_Circle();
-		}
-		EEPROM_ResetData_OtherToDefault(); // 把E2P_BEGIN_FLAG写进头地址，
-										   // 如果有别的添加，可以往这个函数写，目前加了保护记录初始化
-		WriteProID_Default();
-		
-		WriteEEPROM_Word_NoZone(812, 0xffff); // 第一次上电初始化完成
-		WriteEEPROM_Word_NoZone(EEPROM_ADDR_PASS, EEPROM_VALUE_BEGIN_FLAG); // 第一次上电初始化完成
-	}
 }
 
 void App_E2promDeal(void)
 {
-	if (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag || u32E2P_Pro_Other_WriteFlag || u8E2P_SocTable_WriteFlag || u8E2P_CopperLoss_WriteFlag || u32E2P_RTC_Element_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
-	{ // 0x2000,0x2100,0x2200,0x2300
+	if (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag ||
+		u32E2P_Pro_Other_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
+	{
 		WriteEEPROM_ByteData_Circle();
 	}
 
 	if (gu8_Reset_EventRecord)
-	{ // 补充在这里吧
+	{
 		WriteEEPROM_ByteData_Circle();
+	}
+
+	if (s_u8StorageDirty)
+	{
+		if (++s_u8StorageCommitDelay >= EEPROM_STORAGE_COMMIT_DELAY_TICKS)
+		{
+			(void)EEPROM_SaveSnapshotNow();
+		}
 	}
 }
 
-// 问题找出来，就是BC区写不进去，返回0xFF
-void EEPROM_test(void)
+void EEPROM_ResetData_EventRecord_ToDefault(void)
 {
-#if 0
-	if(0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag2) {
-		return;
+	UINT8 i;
+
+	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
+	{
+		BMS_LOG_RECORD[i][0] = 0;
+		BMS_LOG_RECORD[i][1] = 0;
 	}
-#endif
+	BMS_LOG_POINT = 0;
 
-#if 1
-	WriteEEPROM_Word_NoZone(0x20, EEPROM_VALUE_FLASHUPDATE);
-	g_stCellInfoReport.u16VCell[30] = ReadEEPROM_Word_NoZone(0x20);
+	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
+	{
+		WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)), 0x0000U);
+	}
+	WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
+}
 
-	WriteEEPROM_Word_NoZone(0x22, EEPROM_VALUE_FLASHUPDATE_RESET);
-	g_stCellInfoReport.u16VCell[31] = ReadEEPROM_Word_NoZone(0x22) & 0x000F;
-// g_stCellInfoReport.u16VCell[31] = 111;
-#endif
+void ReadEEPROM_EventRecord_Parameters(void)
+{
+	UINT8 i;
+	UINT16 t_u16RdTemp;
 
-#if 0
-	WriteEEPROM_Byte(0x20, 0x11);
-	g_stCellInfoReport.u16VCell[5] = ReadEEPROM_Byte(0x20);
+	BMS_LOG_POINT = ReadEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT);
+	if (BMS_LOG_POINT >= (EEPROM_EVENT_RECORD_LENGTH + 1U))
+	{
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		EEPROM_ResetData_EventRecord_ToDefault();
+	}
 
-	WriteEEPROM_Byte(0x22, 0x12);
-	g_stCellInfoReport.u16VCell[6] = ReadEEPROM_Byte(0x22);
-#endif
+	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
+	{
+		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)));
+		if (((t_u16RdTemp & 0x00FFU) <= EVENT_NUM) && ((t_u16RdTemp >> 8) <= 171U))
+		{
+			BMS_LOG_RECORD[i][0] = (UINT8)(t_u16RdTemp & 0x00FFU);
+			BMS_LOG_RECORD[i][1] = (UINT8)(t_u16RdTemp >> 8);
+		}
+		else
+		{
+			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
+			{
+				System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+			}
+			BMS_LOG_RECORD[i][0] = 0;
+			BMS_LOG_RECORD[i][1] = 0;
+			WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)), 0x0000U);
+		}
+	}
 }

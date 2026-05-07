@@ -3,15 +3,15 @@
 
 UINT8 SeriesNum = 16;
 
-// ��ͬ����ά���ı���
+// 不同串数维护的表格
 const unsigned char SeriesSelect_AFE1[16][16] = {
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1��
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 2��
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1串
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 2串
 	{0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 3   76920
 	{0, 1, 2, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 4   76920
 	{0, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 5   76920
-	//{0 ,1 ,2 ,3 ,4 ,15,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0, 0},   	//6   76920 + AD	//��6��ӳ�䵽16��������˵�Ĺ�Ȼ����
-	{0, 1, 4, 5, 6, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},	   // 6   76930 		//����˵��û���ˣ���Ϊ930����������
+	//{0 ,1 ,2 ,3 ,4 ,15,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0, 0},   	//6   76920 + AD	//第6串映射到16串，刘总说的果然有用
+	{0, 1, 4, 5, 6, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},	   // 6   76930 		//刘总说的没用了，改为930，外扩怕了
 	{0, 1, 2, 4, 5, 6, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0},	   // 7   76930
 	{0, 1, 2, 4, 5, 6, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0},	   // 8   76930
 	{0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 0, 0, 0, 0, 0, 0},	   // 9   76930
@@ -21,7 +21,7 @@ const unsigned char SeriesSelect_AFE1[16][16] = {
 	{0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 0, 0, 0},  // 13  76940
 	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 0, 0},  // 14  76940
 	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0}, // 15  76940
-	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} // 16  76940 + AD	//����汾������16����
+	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} // 16  76940 + AD	//这个版本不会有16串了
 };
 
 void InitVar(void);
@@ -38,8 +38,8 @@ void lowpower_enter_sleep(void)
 // #define _DEBUG_CODE
 int main(void)
 {
-	InitDevice(); // ��ʼ�����裬������������λ����Ҫ����һ�£����ڻ���ȥ��
-	InitVar();	  // ��ʼ������
+	InitDevice(); // 初始化外设，这两个函数的位置需要斟酌一下，现在换回去先
+	InitVar();	  // 初始化变量
 
 	while (1)
 	{
@@ -59,7 +59,7 @@ int main(void)
 		App_E2promDeal();
 		// App_RTC();
 		App_CellBalance();
-		App_SleepDeal(); // ����App_MOS_Relay_Control()����
+		App_SleepDeal(); // 放在App_MOS_Relay_Control()后面
 #ifdef __FUNC__LED__
 		APP_LedBar();
 #endif
@@ -81,15 +81,15 @@ int main(void)
 
 void InitDevice(void)
 {
-	SystemInit(); // ֱ�ӵ��þͿ����ˡ�
-				  // A����reset�������ã�ʹ��HSI(8MHz)���С�resetĬ����ʹ��HSI���С�
-				  // B������SetSysClock()��Ĭ��ʹ��8MHz�ⲿ����Ȼ������Ƶ�������Ƶ������ܳ���48MHz(��ʹ��12MHz�����Ը�Ϊ4��Ƶ)
-				  // C�������Ƶʧ�ܣ����и�else������Ҹģ����һЩ��־λ����Ŀǰû��
-				  // D�����Ӵ�����ֹͣģʽ���ػ�����ϵͳʱ�ӵ�HSE ������������ʱ����λ��Ӳ����������HSI ������
-				  // E������֮�⣬�������ģʽҪ���ⲿ���񣬻���������HSI���У�Ȼ�����ⲿ����ͱ�Ƶ��
-				  // F������һ���л�ʱ�ӵĺ�����SystemCoreClockUpdate()��ʹ�����������˽⡣
-				  // G���ⲿ�����޸ĵĻ�������ͷ�ļ�HSE_VALUE��ֵ����Ӱ�촮�ڲ����ʡ�
-				  // H�������ʹ��HSE��ֱ�Ӻ����ⲿ�����ɣ�ϵͳ��Ĭ�Ϸ���HSI��SystemCoreClock�Զ���Ϊ8M�������۲촮�ڲ����ʺ�I2CƵ���Ƿ��������
+	SystemInit(); // 直接调用就可以了。
+				  // A，先reset所有配置，使用HSI(8MHz)运行。reset默认是使用HSI运行。
+				  // B，调用SetSysClock()，默认使用8MHz外部晶振，然后六倍频输出，倍频输出不能超过48MHz(我使用12MHz，所以改为4倍频)
+				  // C，如果倍频失败，会有个else语句让我改，输出一些标志位，我目前没改
+				  // D，当从待机和停止模式返回或用作系统时钟的HSE 振荡器发生故障时，该位由硬件置来启动HSI 振荡器。
+				  // E，言下之意，进入待机模式要关外部晶振，回来，先用HSI运行，然后开启外部晶振和倍频。
+				  // F，还有一个切换时钟的函数，SystemCoreClockUpdate()，使用条件后面了解。
+				  // G，外部晶振修改的话，改主头文件HSE_VALUE的值，会影响串口波特率。
+				  // H，如果不使用HSE，直接焊掉外部晶振便可，系统会默认返回HSI，SystemCoreClock自动改为8M，后续观察串口波特率和I2C频率是否符合需求
 	Init_IAPAPP();
 
 #if (defined _DEBUG_CODE)
@@ -105,13 +105,13 @@ void InitDevice(void)
 	//__delay_ms(1000);
 	InitTimer();
 	InitSystemWakeUp();
-	InitE2PROM(); // �ڲ�EEPROM������Ҫ��ʼ��
+	InitE2PROM(); // 内部Flash持久化，不需要外部EEPROM初始化
 	InitSci();
 	InitADC();
 
 	InitData_SOC();
-	Init_RTC(); // �������EEPROM�������ݺ��棡
-				// �������LSE_32KHz�Ŀڣ���ʱ�ȹص�RTC�����������ʹIO������ʧЧ���ɿ�
+	Init_RTC(); // 必须放在EEPROM读完数据后面！
+				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 #ifdef __FUNC__HEAT__
 	InitHeat_Cool();
 #endif // DEBUG
@@ -145,9 +145,9 @@ void InitVar(void)
 		System_OnOFF_Func_StartUpRec.bits.b1OnOFF_MOS_Relay = 0;
 	}
 #endif
-	// ����д�Ͳ��ù�ǰ�浽�׶��������Ǹ�λ��(��EEPROM�ܶ���ط���)
+	// 这样写就不用管前面到底读出来还是复位了(在EEPROM很多个地方算)
 	SeriesNum = OtherElement.u16Sys_SeriesNum;
-	g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100; // ��CS��������
+	g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100; // 算CS检流电阻
 
 	LogRecord_Flag.bits.Log_StartUp = 1;
 	SystemStatus.bits.b1StartUpBMS = 0;
@@ -158,9 +158,9 @@ void App_WakeUpAFE(void)
 	MCUO_WAKEUP_AFE = 0;
 	__delay_ms(1);
 	MCUO_WAKEUP_AFE = 1;
-	__delay_ms(5); // max 2ms��tBOOT_max
+	__delay_ms(5); // max 2ms，tBOOT_max
 	MCUO_WAKEUP_AFE = 0;
-	__delay_ms(10); // �Լ죬10ms��tBOOTREADY
+	__delay_ms(10); // 自检，10ms，tBOOTREADY
 }
 
 void InitSystemWakeUp(void)

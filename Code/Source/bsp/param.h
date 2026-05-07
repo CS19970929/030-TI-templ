@@ -1,12 +1,12 @@
 /*
 *********************************************************************************************************
 *
-*	Ä£¿éÃû³Æ : Ó¦ÓÃ³ÌĞò²ÎÊıÄ£¿é
-*	ÎÄ¼şÃû³Æ : param.h
-*	°æ    ±¾ : V1.0
-*	Ëµ    Ã÷ : Í·ÎÄ¼ş
+*	æ¨¡å—åç§° : åº”ç”¨ç¨‹åºå‚æ•°æ¨¡å—
+*	æ–‡ä»¶åç§° : param.h
+*	ç‰ˆ    æœ¬ : V1.0
+*	è¯´    æ˜ : å¤´æ–‡ä»¶
 *
-*	Copyright (C), 2012-2013, °²¸»À³µç×Ó www.armfly.com
+*	Copyright (C), 2012-2013, å®‰å¯Œè±ç”µå­ www.armfly.com
 *
 *********************************************************************************************************
 */
@@ -14,75 +14,71 @@
 #ifndef __PARAM_H
 #define __PARAM_H
 
-#include "Flash.h"
 #include "main.h"
 
-/* ÏÂÃæ2ĞĞºêÖ»ÄÜÑ¡ÔñÆäÒ» */
-// #define PARAM_SAVE_TO_EEPROM			/* ²ÎÊı´æ´¢µ½Íâ²¿µÄEEPROM (AT24C128) */
-#define PARAM_SAVE_TO_FLASH		/* ²ÎÊı´æ´¢µ½CPUÄÚ²¿Flash */
+/* Store parameters in internal Flash only. */
+#define PARAM_SAVE_TO_FLASH
 
-#ifdef PARAM_SAVE_TO_EEPROM
-	#define PARAM_ADDR		0			/* ²ÎÊıÇøµØÖ· */
-#endif
+/* Dual-slot Flash layout for parameter persistence. */
+#define PARAM_FLASH_SLOT_A_ADDR         ((uint32_t)0x0800E000)
+#define PARAM_FLASH_PAGE_SIZE           ((uint32_t)0x00000800)
+#define PARAM_FLASH_SLOT_B_ADDR         (PARAM_FLASH_SLOT_A_ADDR + PARAM_FLASH_PAGE_SIZE)
+#define PARAM_FLASH_STORAGE_VERSION     ((uint16_t)0x0001)
+#define PARAM_ADDR                      PARAM_FLASH_SLOT_A_ADDR
 
-#ifdef PARAM_SAVE_TO_FLASH
-	#define PARAM_ADDR		FLASH_ADDR_TEST_BMS_PARAM			/* 0x0800C000 ÖĞ¼äµÄ16KBÉÈÇøÓÃÀ´´æ·Å²ÎÊı */
-	//#define PARAM_ADDR	 ADDR_FLASH_SECTOR_11		/* 0x080E0000 Flash×îºó128KÉÈÇøÓÃÀ´´æ·Å²ÎÊı */
-#endif
-
-#define PARAM_VER			0x10000104					/* ²ÎÊı°æ±¾ */
+#define PARAM_VER			0x10000104					/* å‚æ•°ç‰ˆæœ¬ */
 
 #if 0
-/* È«¾Ö²ÎÊı */
+/* å…¨å±€å‚æ•° */
 typedef struct
 {
-	uint32_t ParamVer;			/* ²ÎÊıÇø°æ±¾¿ØÖÆ£¨¿ÉÓÃÓÚ³ÌĞòÉı¼¶Ê±£¬¾ö¶¨ÊÇ·ñ¶Ô²ÎÊıÇø½øĞĞÉı¼¶£© */
+	uint32_t ParamVer;			/* å‚æ•°åŒºç‰ˆæœ¬æ§åˆ¶ï¼ˆå¯ç”¨äºç¨‹åºå‡çº§æ—¶ï¼Œå†³å®šæ˜¯å¦å¯¹å‚æ•°åŒºè¿›è¡Œå‡çº§ï¼‰ */
 
-	/* LCD±³¹âÁÁ¶È */
+	/* LCDèƒŒå…‰äº®åº¦ */
 	uint8_t ucBackLight;
 
-	/* ´¥ÃşÆÁĞ£×¼²ÎÊı */
+	/* è§¦æ‘¸å±æ ¡å‡†å‚æ•° */
 	//{
-		uint8_t TouchDirection;	/* ÆÁÄ»·½Ïò 0-3  0±íÊ¾ºáÆÁ£¬1±íÊ¾ºáÆÁ180¡ã 2±íÊ¾ÊúÆÁ 3±íÊ¾ÊúÆÁ180¡ã */
+		uint8_t TouchDirection;	/* å±å¹•æ–¹å‘ 0-3  0è¡¨ç¤ºæ¨ªå±ï¼Œ1è¡¨ç¤ºæ¨ªå±180Â° 2è¡¨ç¤ºç«–å± 3è¡¨ç¤ºç«–å±180Â° */
 		
-		uint8_t XYChange;		/* X, Y ÊÇ·ñ½»»»£¬ 1±íÊ¾iÇĞ»»£¬0±íÊ¾²»ÇĞ»»  */
+		uint8_t XYChange;		/* X, Y æ˜¯å¦äº¤æ¢ï¼Œ 1è¡¨ç¤ºiåˆ‡æ¢ï¼Œ0è¡¨ç¤ºä¸åˆ‡æ¢  */
 		
-		uint16_t usAdcX1;	/* ×óÉÏ½Ç */
+		uint16_t usAdcX1;	/* å·¦ä¸Šè§’ */
 		uint16_t usAdcY1;
-		uint16_t usAdcX2;	/* ÓÒÏÂ½Ç */
+		uint16_t usAdcX2;	/* å³ä¸‹è§’ */
 		uint16_t usAdcY2;
-		uint16_t usAdcX3;	/* ×óÏÂ½Ç */
+		uint16_t usAdcX3;	/* å·¦ä¸‹è§’ */
 		uint16_t usAdcY3;
-		uint16_t usAdcX4;	/* ÓÒÉÏ½Ç */
+		uint16_t usAdcX4;	/* å³ä¸Šè§’ */
 		uint16_t usAdcY4;
 		
-		uint16_t usLcdX1;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdY1;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdX2;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdY2;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdX3;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdY3;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdX4;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */
-		uint16_t usLcdY4;	/* Ğ£×¼Ê±£¬ÆÁÄ»×ø±ê */	
+		uint16_t usLcdX1;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdY1;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdX2;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdY2;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdX3;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdY3;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdX4;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */
+		uint16_t usLcdY4;	/* æ ¡å‡†æ—¶ï¼Œå±å¹•åæ ‡ */	
 	//}
 	
-	/* uip ip µØÖ·²ÎÊı */
-	uint8_t uip_ip[4];			/* ±¾»úIPµØÖ· */
-	uint8_t uip_net_mask[4];	/* ×ÓÍøÑÚÂë */
-	uint8_t uip_gateway[4];	/* Ä¬ÈÏÍø¹Ø */
+	/* uip ip åœ°å€å‚æ•° */
+	uint8_t uip_ip[4];			/* æœ¬æœºIPåœ°å€ */
+	uint8_t uip_net_mask[4];	/* å­ç½‘æ©ç  */
+	uint8_t uip_gateway[4];	/* é»˜è®¤ç½‘å…³ */
 
-	/* lwip ip µØÖ·²ÎÊı */
-	uint8_t lwip_ip[4];			/* ±¾»úIPµØÖ· */
-	uint8_t lwip_net_mask[4];	/* ×ÓÍøÑÚÂë */
-	uint8_t lwip_gateway[4];	/* Ä¬ÈÏÍø¹Ø */
+	/* lwip ip åœ°å€å‚æ•° */
+	uint8_t lwip_ip[4];			/* æœ¬æœºIPåœ°å€ */
+	uint8_t lwip_net_mask[4];	/* å­ç½‘æ©ç  */
+	uint8_t lwip_gateway[4];	/* é»˜è®¤ç½‘å…³ */
 
-	/* ÊÕÒô»ú²ÎÊı */
-	uint8_t ucRadioMode;		/* AM »ò FM */
-	uint8_t ucRadioListType;		/* µçÌ¨ÁĞ±íÀàĞÍ¡£ÎäººµØÇø»òÈ«¹ú */
-	uint8_t ucIndexFM;			/* µ±Ç°FMµçÌ¨Ë÷Òı */
-	uint8_t ucIndexAM;			/* µ±Ç°µçÌ¨Ë÷Òı */
-	uint8_t ucRadioVolume;		/* ÒôÁ¿ */
-	uint8_t ucSpkOutEn;			/* ÑïÉùÆ÷Êä³öÊ¹ÄÜ */
+	/* æ”¶éŸ³æœºå‚æ•° */
+	uint8_t ucRadioMode;		/* AM æˆ– FM */
+	uint8_t ucRadioListType;		/* ç”µå°åˆ—è¡¨ç±»å‹ã€‚æ­¦æ±‰åœ°åŒºæˆ–å…¨å›½ */
+	uint8_t ucIndexFM;			/* å½“å‰FMç”µå°ç´¢å¼• */
+	uint8_t ucIndexAM;			/* å½“å‰ç”µå°ç´¢å¼• */
+	uint8_t ucRadioVolume;		/* éŸ³é‡ */
+	uint8_t ucSpkOutEn;			/* æ‰¬å£°å™¨è¾“å‡ºä½¿èƒ½ */
 	
 	uint8_t Addr485;
 	uint32_t Baud485;
@@ -92,29 +88,29 @@ PARAM_T;
 
 typedef struct
 {
-	uint32_t ParamVer;			/* ²ÎÊıÇø°æ±¾¿ØÖÆ£¨¿ÉÓÃÓÚ³ÌĞòÉı¼¶Ê±£¬¾ö¶¨ÊÇ·ñ¶Ô²ÎÊıÇø½øĞĞÉı¼¶£© */
+	uint32_t ParamVer;			/* å‚æ•°åŒºç‰ˆæœ¬æ§åˆ¶ï¼ˆå¯ç”¨äºç¨‹åºå‡çº§æ—¶ï¼Œå†³å®šæ˜¯å¦å¯¹å‚æ•°åŒºè¿›è¡Œå‡çº§ï¼‰ */
 
 	struct PRT_E2ROM_PARAS    protect;
 	struct OTHER_ELEMENT 	  other;
 	struct HEAT_COOL_ELEMENT  heat;
 
-	// /* uip ip µØÖ·²ÎÊı */
-	// uint8_t uip_ip[4];			/* ±¾»úIPµØÖ· */
-	// uint8_t uip_net_mask[4];	/* ×ÓÍøÑÚÂë */
-	// uint8_t uip_gateway[4];	/* Ä¬ÈÏÍø¹Ø */
+	// /* uip ip åœ°å€å‚æ•° */
+	// uint8_t uip_ip[4];			/* æœ¬æœºIPåœ°å€ */
+	// uint8_t uip_net_mask[4];	/* å­ç½‘æ©ç  */
+	// uint8_t uip_gateway[4];	/* é»˜è®¤ç½‘å…³ */
 
-	// /* lwip ip µØÖ·²ÎÊı */
-	// uint8_t lwip_ip[4];			/* ±¾»úIPµØÖ· */
-	// uint8_t lwip_net_mask[4];	/* ×ÓÍøÑÚÂë */
-	// uint8_t lwip_gateway[4];	/* Ä¬ÈÏÍø¹Ø */
+	// /* lwip ip åœ°å€å‚æ•° */
+	// uint8_t lwip_ip[4];			/* æœ¬æœºIPåœ°å€ */
+	// uint8_t lwip_net_mask[4];	/* å­ç½‘æ©ç  */
+	// uint8_t lwip_gateway[4];	/* é»˜è®¤ç½‘å…³ */
 
-	// /* ÊÕÒô»ú²ÎÊı */
-	// uint8_t ucRadioMode;		/* AM »ò FM */
-	// uint8_t ucRadioListType;		/* µçÌ¨ÁĞ±íÀàĞÍ¡£ÎäººµØÇø»òÈ«¹ú */
-	// uint8_t ucIndexFM;			/* µ±Ç°FMµçÌ¨Ë÷Òı */
-	// uint8_t ucIndexAM;			/* µ±Ç°µçÌ¨Ë÷Òı */
-	// uint8_t ucRadioVolume;		/* ÒôÁ¿ */
-	// uint8_t ucSpkOutEn;			/* ÑïÉùÆ÷Êä³öÊ¹ÄÜ */
+	// /* æ”¶éŸ³æœºå‚æ•° */
+	// uint8_t ucRadioMode;		/* AM æˆ– FM */
+	// uint8_t ucRadioListType;		/* ç”µå°åˆ—è¡¨ç±»å‹ã€‚æ­¦æ±‰åœ°åŒºæˆ–å…¨å›½ */
+	// uint8_t ucIndexFM;			/* å½“å‰FMç”µå°ç´¢å¼• */
+	// uint8_t ucIndexAM;			/* å½“å‰ç”µå°ç´¢å¼• */
+	// uint8_t ucRadioVolume;		/* éŸ³é‡ */
+	// uint8_t ucSpkOutEn;			/* æ‰¬å£°å™¨è¾“å‡ºä½¿èƒ½ */
 	
 	// uint8_t Addr485;
 	// uint32_t Baud485;

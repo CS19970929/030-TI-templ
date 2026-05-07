@@ -33,9 +33,9 @@ typedef struct _16_Bits_Struct {
 
 
 #define MCUO_DEBUG_LED1 	(PORT_OUT_GPIOB->bit2)		//LED1
-//#define MCUO_DEBUG_LED2 	PDout(3)		//PB3£¬LED2
+//#define MCUO_DEBUG_LED2 	PDout(3)		//PB3ï¼ŒLED2
 
-//µçÔ´Ä£¿é
+//ç”µæºæ¨¡å—
 #define MCUO_PWSV_STB 		(PORT_OUT_GPIOB->bit1)		//
 #define MCUO_PWSV_LDO		(PORT_OUT_GPIOB->bit5)		//
 #define MCUO_PWSV_CTR		(PORT_OUT_GPIOB->bit15)		//
@@ -43,31 +43,30 @@ typedef struct _16_Bits_Struct {
 #define MCUO_PW_RS485_EN	(PORT_OUT_GPIOB->bit7)		//
 
 
-//Çý¶¯Ä£¿é
-#define MCUO_RELAY_PRE		(PORT_OUT_GPIOB->bit13)		//Ô¤·ÅÔ¤³ä¼ÌµçÆ÷£¬·ÀÖ¹´ò¿ªË²¼ä´óµçÁ÷
-#define MCUO_RELAY_MAIN		(PORT_OUT_GPIOB->bit13)		//Ö÷¼ÌµçÆ÷
-#define MCUO_RELAY_CHG 		(PORT_OUT_GPIOB->bit13)		//PB13£¬³äµçRELAY
-#define MCUO_RELAY_DSG 		(PORT_OUT_GPIOB->bit14)		//PB14£¬·ÅµçRELAY
+//é©±åŠ¨æ¨¡å—
+#define MCUO_RELAY_PRE		(PORT_OUT_GPIOB->bit13)		//é¢„æ”¾é¢„å……ç»§ç”µå™¨ï¼Œé˜²æ­¢æ‰“å¼€çž¬é—´å¤§ç”µæµ
+#define MCUO_RELAY_MAIN		(PORT_OUT_GPIOB->bit13)		//ä¸»ç»§ç”µå™¨
+#define MCUO_RELAY_CHG 		(PORT_OUT_GPIOB->bit13)		//PB13ï¼Œå……ç”µRELAY
+#define MCUO_RELAY_DSG 		(PORT_OUT_GPIOB->bit14)		//PB14ï¼Œæ”¾ç”µRELAY
 
-#define MCUO_MOS_PRE 		(PORT_OUT_GPIOA->bit8)		//PB13£¬³äµçMOS
-#define MCUO_MOS_CHG 		(PORT_OUT_GPIOB->bit13)		//PB13£¬³äµçMOS
-#define MCUO_MOS_DSG 		(PORT_OUT_GPIOB->bit14)		//PB14£¬·ÅµçMOS
-#define MCUO_SD_DRV_CHG 	(PORT_OUT_GPIOA->bit11)		//Çý¶¯ÐÅºÅ£¬ÀàËÆÉ¨µØ»ú
+#define MCUO_MOS_PRE 		(PORT_OUT_GPIOA->bit8)		//PB13ï¼Œå……ç”µMOS
+#define MCUO_MOS_CHG 		(PORT_OUT_GPIOB->bit13)		//PB13ï¼Œå……ç”µMOS
+#define MCUO_MOS_DSG 		(PORT_OUT_GPIOB->bit14)		//PB14ï¼Œæ”¾ç”µMOS
+#define MCUO_SD_DRV_CHG 	(PORT_OUT_GPIOA->bit11)		//é©±åŠ¨ä¿¡å·ï¼Œç±»ä¼¼æ‰«åœ°æœº
 
 #define MCUI_ENI_DI1		(PORT_IN_GPIOC->bit13)		//
 
-#define MCUO_RELAY_HEAT 	(PORT_OUT_GPIOA->bit12)		//PA12£¬¼ÓÈÈ¼ÌµçÆ÷
-#define MCUO_RELAY_COOL		(PORT_OUT_GPIOA->bit12)		//PE11£¬ÖÆÀä¼ÌµçÆ÷£¬ÏÈÓÃ·Åµç¼ÌµçÆ÷
+#define MCUO_RELAY_HEAT 	(PORT_OUT_GPIOA->bit12)		//PA12ï¼ŒåŠ çƒ­ç»§ç”µå™¨
+#define MCUO_RELAY_COOL		(PORT_OUT_GPIOA->bit12)		//PE11ï¼Œåˆ¶å†·ç»§ç”µå™¨ï¼Œå…ˆç”¨æ”¾ç”µç»§ç”µå™¨
 
 
-//AFEÄ£¿é
+//AFEæ¨¡å—
 #define MCUO_WAKEUP_AFE 	(PORT_OUT_GPIOF->bit7)		//WAKEUP_AFE
-//#define MCUO_SLEEP_AFE 	PBout(7)		//PB7£¬930,940Ä£ÄâÇ°¶ËÎÞ·¨¹Ø£¬ËùÒÔÖ»ÄÜ¶Ïµç
+//#define MCUO_SLEEP_AFE 	PBout(7)		//PB7ï¼Œ930,940æ¨¡æ‹Ÿå‰ç«¯æ— æ³•å…³ï¼Œæ‰€ä»¥åªèƒ½æ–­ç”µ
 #define MCUO_AFE_ALARM 	    (PORT_OUT_GPIOA->bit1)
 
-//ÆäËüÄ£¿é
-#define MCUO_CB_6_16 		(PORT_OUT_GPIOB->bit7)		//CB6¾ùºâ£¬¸²¸ÇÀàÐÍ
-#define MCUO_E2PR_WP		(PORT_OUT_GPIOA->bit15)		//EEPROMÐ´±£»¤
+//å…¶å®ƒæ¨¡å—
+#define MCUO_CB_6_16 		(PORT_OUT_GPIOB->bit7)		//CB6å‡è¡¡ï¼Œè¦†ç›–ç±»åž‹
 #define MCUI_CBC_DSG 		(PORT_IN_GPIOB->bit12)		//PB12
 
 
@@ -107,10 +106,10 @@ union SYS_TIME {			//TODO
 
 
 struct CBC_ELEMENT {
-	UINT8 u8CBC_CHG_ErrFlag;	//³öÏÖCBC±£»¤±êÖ¾Î»
-	UINT8 u8CBC_CHG_Cnt;		//³öÏÖ³äµçCBCµÄ´ÎÊý
-	UINT8 u8CBC_DSG_ErrFlag;	//³öÏÖCBC±£»¤±êÖ¾Î»
-	UINT8 u8CBC_DSG_Cnt;		//³öÏÖ·ÅµçCBCµÄ´ÎÊý
+	UINT8 u8CBC_CHG_ErrFlag;	//å‡ºçŽ°CBCä¿æŠ¤æ ‡å¿—ä½
+	UINT8 u8CBC_CHG_Cnt;		//å‡ºçŽ°å……ç”µCBCçš„æ¬¡æ•°
+	UINT8 u8CBC_DSG_ErrFlag;	//å‡ºçŽ°CBCä¿æŠ¤æ ‡å¿—ä½
+	UINT8 u8CBC_DSG_Cnt;		//å‡ºçŽ°æ”¾ç”µCBCçš„æ¬¡æ•°
 };
 
 
@@ -133,5 +132,4 @@ void __delay_ms(UINT16 ms);
 void App_SysTime(void);
 
 #endif	/* SYSTEM_H */
-
 

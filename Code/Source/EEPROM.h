@@ -1,38 +1,7 @@
 #ifndef EEPROM_H
 #define EEPROM_H
 
-
-//IO��������
-//�����������Ǹ���X<<1
-#define SDA_IN_SEE()  {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)0<<(4<<1);}		//Ĭ��ֵΪ00���Ȳ�����Ҳ���������롣
-#define SDA_OUT_SEE() {GPIOB->MODER&=0xFFFFFCFF;GPIOB->MODER|=(UINT32)1<<(4<<1);}		//����������ͺ�����ٶȣ���Ĭ��ֵ��Init������ã�����������Ч
-
-//IO��������	 
-#define IIC_SCL_SEE    PORT_OUT_GPIOB->bit3 	//SCL
-#define IIC_SDA_SEE    PORT_OUT_GPIOB->bit4		//SDA
-#define READ_SDA_SEE   (uint16_t)(GPIOB->IDR&GPIO_Pin_4)  //����SDA 
-
-
-#define sEE_OK         			  ((INT8)0)
-#define sEE_FAIL           		  ((INT8)-1) 		//���������𣬿��Եģ�
-#define sEE_I2C        			  I2C2
-#define sEE_I2C_RW_W				0
-#define sEE_I2C_RW_R				1
-#define sEEAddress 				  0xA0		//E2 = E1 = E0 = 0
-#define sEE_FLAG_TIMEOUT         ((uint32_t)0x1000)
-#define sEE_LONG_TIMEOUT         ((uint32_t)(10 * sEE_FLAG_TIMEOUT))
-#define sEE_MAX_TRIALS_NUMBER     300
-
-
-//Mini STM32������ʹ�õ���24c02
-//#define AT24C02
-#define DELAY_US_IIC_EEPROM		2	//4Ϊ100KHz��2Ϊ150KHz
-
-#define sEEAddress   0xA0			//E2 = E1 = E0 = 0
-
-#define AZONE				0x0000              // A��: 0x0000~0x0799		//2Kһ������
-#define BZONE				0x0800				// B��: 0x0800~0x0999
-#define CZONE				0x1000				// C��: 0x1000~0x1800
+/* Legacy EEPROM API, now backed by internal Flash storage. */
 
 
 #define EEPROM_ADDR_PASS           			((UINT16)0x3FFC)
@@ -45,7 +14,7 @@
 #define EEPROM_VALUE_FLASHUPDATE_RESET    	((UINT16)0xFFFF)
 
 
-//#define EEPROM_ADDR_SLEEPMODE     			2036	//ȡ������ΪFLASH
+//#define EEPROM_ADDR_SLEEPMODE     			2036	//取锟斤拷锟斤拷锟斤拷为FLASH
 #define EEPROM_ADDR_SWITCH_ONOFF     		2040
 #define EEPROM_ADDR_SYS_FUNC_SELECT     	2044
 
@@ -54,12 +23,12 @@
 #define E2P_PARA_NUM_TEM_PROTECT 			25
 #define E2P_PARA_NUM_OTHER_PROTECT			10
 
-#define E2P_PARA_ALL_VOLCUR_PROTECT 		0x3FFFFFFF		//30��
-#define E2P_PARA_ALL_TEM_PROTECT 			0x01FFFFFF		//25��
-#define E2P_PARA_ALL_OTHER_PROTECT			0x000003FF		//10��
-#define E2P_PARA_ALL_RTC_ELEMENT 			0x00000FFF		//12��
-#define E2P_PARA_ALL_OTHER_ELEMENT1 		0xFFFFFFFF		//32��
-#define E2P_PARA_ALL_HEAT_COOL_ELE 			0x00FFFFFF		//24������RTCһ������Ҫ���µķֿ�
+#define E2P_PARA_ALL_VOLCUR_PROTECT 		0x3FFFFFFF		//30锟斤拷
+#define E2P_PARA_ALL_TEM_PROTECT 			0x01FFFFFF		//25锟斤拷
+#define E2P_PARA_ALL_OTHER_PROTECT			0x000003FF		//10锟斤拷
+#define E2P_PARA_ALL_RTC_ELEMENT 			0x00000FFF		//12锟斤拷
+#define E2P_PARA_ALL_OTHER_ELEMENT1 		0xFFFFFFFF		//32锟斤拷
+#define E2P_PARA_ALL_HEAT_COOL_ELE 			0x00FFFFFF		//24锟斤拷锟斤拷锟斤拷RTC一锟斤拷锟斤拷锟斤拷要锟斤拷锟铰的分匡拷
 
 //VolCur_Protect_WriteFlag
 #define	EE_FLAG_VCELL_OVP_FIRST				0x00000001
@@ -185,7 +154,7 @@
 #define	EE_FLAG_OTHER1_SYS_PRECHG_TIME		0x80000000
 
 
-#if 0	//������ã���Ϊ��һ����д��
+#if 0	//锟斤拷锟斤拷锟斤拷茫锟斤拷锟轿拷锟揭伙拷锟斤拷锟叫达拷锟
 //HeatCool_WriteFlag
 #define	EE_FLAG_HEAT_DSG_HIGH				0x00000001
 #define	EE_FLAG_HEAT_DSG_LOW				0x00000002
@@ -219,20 +188,20 @@
 #endif
 
 
-//����ΪEEPROM�������ݵ�˳��͸���һ����
-#define E2P_PARA_NUM_PROTECT 		 		65				//Ϊ����������ӣ�Ϊ��Ҫ�ֿ�����Ϊ���32λ�����⣬��������ôʵ��
+//锟斤拷锟斤拷为EEPROM锟斤拷锟斤拷锟斤拷锟捷碉拷顺锟斤拷透锟斤拷锟揭伙拷锟斤拷锟
+#define E2P_PARA_NUM_PROTECT 		 		65				//为锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷樱锟轿拷锟揭拷挚锟斤拷锟斤拷锟轿拷锟斤拷32位锟斤拷锟斤拷锟解，锟斤拷锟斤拷锟斤拷锟斤拷么实锟斤拷
 #define E2P_PARA_NUM_RTC		 			12
 #define E2P_PARA_NUM_CALIB_K 		 		KB_NUM			//47
 #define E2P_PARA_NUM_CALIB_B 		 		KB_NUM
-#define E2P_PARA_NUM_SOC_TABLE 		 		SOC_TABLE_SIZE	//42����GetEndValue��Ե��ֻ�ܺ���һ��
+#define E2P_PARA_NUM_SOC_TABLE 		 		SOC_TABLE_SIZE	//42锟斤拷锟斤拷GetEndValue锟斤拷缘锟斤拷只锟杰猴拷锟斤拷一锟斤拷
 #define E2P_PARA_NUM_COPPERLOSS 		 	CompensateNUM	//16
 #define E2P_PARA_NUM_COPPERLOSS_NUM 		CompensateNUM
-#define E2P_PARA_NUM_FAULT_RECORD 		 	(3*Record_len+ 3 +Record_len*6)//Ϊʲôdefine�����������ʱҪ�������أ���Ϊ����������������define�����ȼ��߾ͻ����
-#define E2P_PARA_NUM_OTHER_ELEMENT1 		32				//�����ӣ��ٴ����ӱ�ע������������
+#define E2P_PARA_NUM_FAULT_RECORD 		 	(3*Record_len+ 3 +Record_len*6)//为什么define锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟绞币拷锟斤拷锟斤拷锟斤拷兀锟斤拷锟轿拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟絛efine锟斤拷锟斤拷锟饺硷拷锟竭就伙拷锟斤拷锟
+#define E2P_PARA_NUM_OTHER_ELEMENT1 		32				//锟斤拷锟斤拷锟接ｏ拷锟劫达拷锟斤拷锟接憋拷注锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
 #define E2P_PARA_NUM_HEAT_COOL				24
 
 
-//�ṹ�����ͱ��������
+//锟结构锟斤拷锟斤拷锟酵憋拷锟斤拷锟斤拷锟斤拷锟
 #define E2P_ADDR_E2POS_PROTECT 			{0,  2,  4,  6,  8,  10, 12, 14, 16, 18,\
 						 				 20, 22, 24, 26, 28, 30, 32, 34, 36, 38,\
 						 				 40, 42, 44, 46, 48, 50, 52, 54, 56, 58,\
@@ -247,21 +216,21 @@
 						   				 142,144,146,148,150,152}
 
 
-#define	E2P_ADDR_START_CALIB_K		    154    	//47����
-#define	E2P_ADDR_START_CALIB_B		    248		//47����
-#define	E2P_ADDR_START_SOC_TABLE		342    	//42����
-#define	E2P_ADDR_START_COPPERLOSS		426    	//16����
-#define	E2P_ADDR_START_COPPERLOSS_NUM	458    	//16����
+#define	E2P_ADDR_START_CALIB_K		    154    	//47锟斤拷锟斤拷
+#define	E2P_ADDR_START_CALIB_B		    248		//47锟斤拷锟斤拷
+#define	E2P_ADDR_START_SOC_TABLE		342    	//42锟斤拷锟斤拷
+#define	E2P_ADDR_START_COPPERLOSS		426    	//16锟斤拷锟斤拷
+#define	E2P_ADDR_START_COPPERLOSS_NUM	458    	//16锟斤拷锟斤拷
 
 #define E2P_ADDR_START_FAULT_RECORD 	490
-#define	E2P_ADDR_START_FR_FIRST 		E2P_ADDR_START_FAULT_RECORD				//10����
-#define	E2P_ADDR_START_FR_SECOND  		(E2P_ADDR_START_FAULT_RECORD+20)		//10����
-#define	E2P_ADDR_START_FR_THIRD  		(E2P_ADDR_START_FAULT_RECORD+40)		//10����
-//����2���ֽڵ�ָ�뱣��
-#define E2P_ADDR_E2POS_FR_TEMP_FIRST	(E2P_ADDR_START_FAULT_RECORD+60)		//2����
-#define E2P_ADDR_E2POS_FR_TEMP_SECOND  	(E2P_ADDR_START_FAULT_RECORD+62)		//2����
-#define E2P_ADDR_E2POS_FR_TEMP_THIRD	(E2P_ADDR_START_FAULT_RECORD+64)		//2����
-#define E2P_ADDR_START_FR_THIRD_RTC 	(E2P_ADDR_START_FAULT_RECORD+66)		//�ںм�¼��60����
+#define	E2P_ADDR_START_FR_FIRST 		E2P_ADDR_START_FAULT_RECORD				//10锟斤拷锟斤拷
+#define	E2P_ADDR_START_FR_SECOND  		(E2P_ADDR_START_FAULT_RECORD+20)		//10锟斤拷锟斤拷
+#define	E2P_ADDR_START_FR_THIRD  		(E2P_ADDR_START_FAULT_RECORD+40)		//10锟斤拷锟斤拷
+//锟斤拷锟斤拷2锟斤拷锟街节碉拷指锟诫保锟斤拷
+#define E2P_ADDR_E2POS_FR_TEMP_FIRST	(E2P_ADDR_START_FAULT_RECORD+60)		//2锟斤拷锟斤拷
+#define E2P_ADDR_E2POS_FR_TEMP_SECOND  	(E2P_ADDR_START_FAULT_RECORD+62)		//2锟斤拷锟斤拷
+#define E2P_ADDR_E2POS_FR_TEMP_THIRD	(E2P_ADDR_START_FAULT_RECORD+64)		//2锟斤拷锟斤拷
+#define E2P_ADDR_START_FR_THIRD_RTC 	(E2P_ADDR_START_FAULT_RECORD+66)		//锟节盒硷拷录锟斤拷60锟斤拷锟斤拷
 
 #define E2P_ADDR_START_OTHER_ELEMENT1	676		//E2P_ADDR_START_FR_THIRD_RTC + 120 = E2P_ADDR_START_FAULT_RECORD+66+120
 
@@ -275,20 +244,17 @@
 										 766,768,770,772,774,776,778,780,782,784,788}
 #if 0
 #define E2P_ADDR_E2POS_ENHANCE_SOC 		{790,792,794,796,798,800,802,804,\
-										 806,808,810,812,814,816,818,820} 		//����ǲ�������λ���ĵ�
+										 806,808,810,812,814,816,818,820} 		//锟斤拷锟斤拷遣锟斤拷锟斤拷锟斤拷锟轿伙拷锟斤拷牡锟
 #endif
 
-#define E2P_ADDR_E2POS_ENHANCE_SOC		790		//��820
+#define E2P_ADDR_E2POS_ENHANCE_SOC		790		//锟斤拷820
 
-#define E2P_ADDR_E2POS_SERIAL_NUM		830		//��868
-#define E2P_ADDR_E2POS_HAEDWARE_VER		870		//��908
-#define E2P_ADDR_E2POS_SOFTWARE_VER		910		//��948
+#define E2P_ADDR_E2POS_SERIAL_NUM		830		//锟斤拷868
+#define E2P_ADDR_E2POS_HAEDWARE_VER		870		//锟斤拷908
+#define E2P_ADDR_E2POS_SOFTWARE_VER		910		//锟斤拷948
 
-#define E2P_ADDR_START_EVENT_RECORD 	1000	//��1198		//100����
-#define E2P_ADDR_E2POS_EVENT_POINT		1200	//��һ��1202
-
-#define E2P_ADDR_SOC_RTC_CNT          	1202		//RTC����ͳ�ƣ������Ƿ����SOC
-
+#define E2P_ADDR_START_EVENT_RECORD 	1000	//锟斤拷1198		//100锟斤拷锟斤拷
+#define E2P_ADDR_E2POS_EVENT_POINT		1200	//锟斤拷一锟斤拷1202
 
 extern UINT32 u32E2P_Pro_VolCur_WriteFlag;
 extern UINT32 u32E2P_Pro_Temp_WriteFlag;
@@ -296,9 +262,6 @@ extern UINT32 u32E2P_Pro_Other_WriteFlag;
 extern UINT32 u32E2P_OtherElement1_WriteFlag;
 extern UINT32 u32E2P_HeatCool_WriteFlag;
 
-extern UINT32 u32E2P_RTC_Element_WriteFlag;
-extern UINT8 u8E2P_SocTable_WriteFlag;
-extern UINT8 u8E2P_CopperLoss_WriteFlag;
 extern UINT8 u8E2P_KB_WriteFlag;
 extern UINT8 u8E2P_KB_WritePos;
 
@@ -310,7 +273,4 @@ UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data);
 void InitE2PROM(void);
 void App_E2promDeal(void);
 
-void EEPROM_test(void);
-
 #endif	/* EEPROM_H */
-
