@@ -12,6 +12,10 @@
 
 extern UINT16 SOC_Table_Set[SOC_TABLE_SIZE];
 extern const UINT16 SOC_Table_Default[SOC_TABLE_SIZE];
+
+void SOC_Manager_Init(void);
+void SOC_Manager_Update(void);
+
 void InitData_SOC(void);
 void App_SOC(void);
 

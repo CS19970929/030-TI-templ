@@ -543,7 +543,7 @@ void App_AFEGet(void)
 	DataLoad_TemperatureMaxMinFind();
 	DataLoad_Current();
 	// test_Autocurrent_cycle();
-	App_SOC();
+	SOC_Manager_Update();
 	App_BQ769X0_Monitor();
 
 	gu8_200msAccClock_Flag = 0;

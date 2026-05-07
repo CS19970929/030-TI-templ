@@ -1948,7 +1948,7 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 		else
 		{
 			u32E2P_Pro_VolCur_WriteFlag = (EE_FLAG_VCELL_OVP_FIRST | EE_FLAG_VCELL_OVP_SECOND | EE_FLAG_VCELL_OVP_THIRD | EE_FLAG_VCELL_OVP_RCV | EE_FLAG_VCELL_OVP_FILTER) << (t_u16Temp);
-			// InitData_SOC();
+			// SOC_Manager_Init();
 		}
 	}
 	else
@@ -2073,7 +2073,7 @@ void Sci_WrRegs_0x10_SocElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SOC_RES1;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SOC_RES2;
 
-		InitData_SOC();
+		SOC_Manager_Init();
 		SOC_Enhance_Element.u16_RefreshData_Flag = 2;
 	}
 	else
@@ -2326,7 +2326,7 @@ void Sci_WrReg_0x06_Reset_ProtectElement(struct RS485MSG *s)
 		u32E2P_Pro_VolCur_WriteFlag = E2P_PARA_ALL_VOLCUR_PROTECT;
 		u32E2P_Pro_Temp_WriteFlag = E2P_PARA_ALL_TEM_PROTECT;
 		u32E2P_Pro_Other_WriteFlag = E2P_PARA_ALL_OTHER_PROTECT;
-		// InitData_SOC();
+		// SOC_Manager_Init();
 	}
 	else
 	{
@@ -2351,7 +2351,7 @@ void Sci_WrReg_0x06_Reset_OtherCanAdd(struct RS485MSG *s)
 		SeriesNum = OtherElement.u16Sys_SeriesNum;
 		g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100;
 
-		InitData_SOC();
+		SOC_Manager_Init();
 		// 同步更新安时数，循环次数等
 		SOC_Enhance_Element.u16_RefreshData_Flag = 2;
 		InitData_Drivers();

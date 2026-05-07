@@ -109,7 +109,7 @@ void InitDevice(void)
 	InitSci();
 	InitADC();
 
-	InitData_SOC();
+	SOC_Manager_Init();
 	Init_RTC(); // 必须放在EEPROM读完数据后面！
 				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 #ifdef __FUNC__HEAT__

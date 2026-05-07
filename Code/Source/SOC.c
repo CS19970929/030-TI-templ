@@ -80,8 +80,8 @@ static UINT16 SOC_GetReportedSoc(void)
 	return soc;
 }
 
-// ³¤ÆÚ¸üÐÂÊý¾Ý
-void RefreshData_SOC(void)
+// 采集当前周期输入
+static void SOC_Manager_RefreshInputs(void)
 {
 	SOC_Enhance_Element.u16_VCellMax = g_stCellInfoReport.u16VCellMax;
 	// SOC_Enhance_Element.u16_VCellMin = g_stCellInfoReport.u16VCellMin;	//À©É¢³öÈ¥£¬²»ÓÃÕâ¸öÖµ£¬È¥µô6ºÍ16´®
@@ -102,8 +102,8 @@ static void SOC_CopyTableToEnhance(void)
 	}
 }
 
-// »ñÈ¡Êý¾Ý
-void GetData_SOC(void)
+// 回填结果到上层数据结构
+static void SOC_Manager_PublishOutputs(void)
 {
 	System_ErrFlag.u8ErrFlag_SOC_Cail = SOC_Enhance_Element.u16_SOC_CailFaultCnt;
 
@@ -117,8 +117,7 @@ void GetData_SOC(void)
 	// g_stCellInfoReport.u16VCell[30] = SOC_Enhance_Element.u8_SOC_OCV_Cali;
 }
 
-// Ò»´ÎÐÔ¸³Öµ
-void InitData_SOC(void)
+void SOC_Manager_Init(void)
 {
 	UINT16 i;
 
@@ -144,17 +143,27 @@ void InitData_SOC(void)
 	// SOC_Enhance_Element.SOC_E2P_Adress = E2P_ADDR_E2POS_ENHANCE_SOC;
 }
 
-void App_SOC(void)
+void SOC_Manager_Update(void)
 {
 	toggleLed();
 	
-	RefreshData_SOC();
+	SOC_Manager_RefreshInputs();
 	SOC_IntEnhance_Ctrl(gu8_200msAccClock_Flag);
-	GetData_SOC();
+	SOC_Manager_PublishOutputs();
 
 
 	if (SOC_Enhance_Element.u16_SOC_InitOver)
 	{
 		System_Func_StartUp.bits.b1StartUpFlag_SOC = 0; // ³õÊ¼»¯Íê±Ï
 	}
+}
+
+void InitData_SOC(void)
+{
+	SOC_Manager_Init();
+}
+
+void App_SOC(void)
+{
+	SOC_Manager_Update();
 }
