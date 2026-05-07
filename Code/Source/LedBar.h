@@ -17,11 +17,17 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
 
-#define MCUO_SOC_20 		(PORT_OUT_GPIOB->bit5)
-#define MCUO_SOC_40 		(PORT_OUT_GPIOB->bit12)
+#define MCUO_SOC_20 		(PORT_OUT_GPIOB->bit8)
+#define MCUO_SOC_40 		(PORT_OUT_GPIOB->bit7)
 #define MCUO_SOC_60 		(PORT_OUT_GPIOB->bit13)
-#define MCUO_SOC_80 		(PORT_OUT_GPIOB->bit7)
-#define MCUO_SOC_100 		(PORT_OUT_GPIOB->bit8)
+#define MCUO_SOC_80 		(PORT_OUT_GPIOB->bit12)
+#define MCUO_SOC_100 		(PORT_OUT_GPIOB->bit5)
+
+// #define MCUO_SOC_20 		(PORT_OUT_GPIOB->bit5)
+// #define MCUO_SOC_40 		(PORT_OUT_GPIOB->bit12)
+// #define MCUO_SOC_60 		(PORT_OUT_GPIOB->bit13)
+// #define MCUO_SOC_80 		(PORT_OUT_GPIOB->bit7)
+// #define MCUO_SOC_100 		(PORT_OUT_GPIOB->bit8)
 
 #define MCUO_SOC_RUN 		(PORT_OUT_GPIOA->bit5)
 #define MCUO_SOC_ALARM 		(MCUO_SOC_20)

@@ -31,12 +31,12 @@ static UINT8 IsSleepWakeupValid(void)
 	// 	WakeDisplayState_Clear();
 	// 	return 1;
 	// }
-
 	if (!IsDI1Pressed())
 	{
 		return 0;
 	}
 
+	// while (IsDI1Pressed() && is_open_gan1())
 	while (IsDI1Pressed())
 	{
 		// if (IsPA0WakeupActive())
@@ -157,6 +157,25 @@ void InitWakeUp_Base(void)
 	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
 	NVIC_Init(&NVIC_InitStructure);
+
+	{
+		GPIO_InitStructure.GPIO_Pin = PIN_GAN1; // 选择要用的GPIO引脚
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
+		GPIO_Init(GPIO_GAN1, &GPIO_InitStructure);
+
+		SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource4);
+		EXTI_InitStruct.EXTI_Line = EXTI_Line4;
+		EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+		EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
+		EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+		EXTI_Init(&EXTI_InitStruct);
+		// �?�?嵌�?��?��??
+		NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
+		NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
+		NVIC_Init(&NVIC_InitStructure);
+	}
 }
 
 void InitWakeUp_NormalMode(void)
@@ -406,10 +425,10 @@ void SleepDeal_Continue(void)
 
 	if (u8FlashWriteOK_flag)
 	{
-		// todo ????
 		App_AFEshutdown();
-		// lk8625_SendAT("AT+DISCON");
-		// lk8625_SendAT("AT+DSLEEP");
+
+		extern void LedBar_RunShutdownAnim_test(void);
+		LedBar_RunShutdownAnim_test();
 		MCU_RESET();
 	}
 }
@@ -1039,6 +1058,8 @@ void IsSleepStartUp(void)
 #endif
 			break;
 		}
+		extern void LedBar_RunBootAnimOn_test(void);
+		LedBar_RunBootAnimOn_test();
 		IORecover_DeepMode();
 		break;
 	case FLASH_SLEEP_RESET_VALUE:
@@ -1050,52 +1071,7 @@ void IsSleepStartUp(void)
 	}
 }
 
-#if 0
-void IsSleepStartUp(void)
-{
-	switch (FlashReadOneHalfWord(FLASH_ADDR_SLEEP_FLAG))
-	{
-	case FLASH_HICCUP_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			Init_RTC();
-
-			IOstatus_RTCMode();
-			InitWakeUp_RTCMode();
-
-			Sys_StopMode();
-			// Sys_StandbyMode();
-			IORecover_RTCMode();
-		}
-		break;
-	case FLASH_NORMAL_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			IOstatus_NormalMode();
-			InitWakeUp_NormalMode();
-			Sys_StopMode();
-			IORecover_NormalMode();
-		}
-		break;
-	case FLASH_DEEP_SLEEP_VALUE:
-		if (FLASH_COMPLETE == FlashWriteOneHalfWord(FLASH_ADDR_SLEEP_FLAG, FLASH_SLEEP_RESET_VALUE))
-		{
-			IOstatus_DeepMode();
-			InitWakeUp_DeepMode();
-			// Sys_StandbyMode();		//不能掌控外部IO，弃�?
-			Sys_StopMode();
-			IORecover_DeepMode();
-		}
-		break;
-	case FLASH_SLEEP_RESET_VALUE:
-		break;
-	default:
-		break;
-	}
-}
-#endif
-
-extern UINT8 gu8_1000msAccClock_Flag ;
+extern UINT8 gu8_1000msAccClock_Flag;
 void App_SleepDeal(void)
 {
 	static uint8_t force_sleep_delay = 0;

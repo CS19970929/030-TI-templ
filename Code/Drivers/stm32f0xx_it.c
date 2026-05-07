@@ -150,21 +150,14 @@ void EXTI2_3_IRQHandler(void)
 
 void EXTI4_15_IRQHandler(void)
 {
+  if (EXTI_GetITStatus(EXTI_Line4) != RESET)
+  {
+    EXTI_ClearITPendingBit(EXTI_Line4);
+  }
   if (EXTI_GetITStatus(EXTI_Line12) != RESET)
   {
-    // Delay_Base10us(OtherElement.u16CBC_DelayT/100);
-    // if(MCUI_CBC_DSG == 0) {
-    // 	MCUO_MOS_DSG = CLOSE;
-    // 	MCUO_RELAY_DSG = CLOSE;
-    // 	MCUO_RELAY_PRE = CLOSE;
-    // 	MCUO_RELAY_MAIN = CLOSE;
-    // 	CBC_Element.u8CBC_DSG_ErrFlag = 1;
-    // 	//App_MOS_Relay_Ctrl();
-    // 	System_ERROR_UserCallback(ERROR_CBC_DSG);
-    // }
     EXTI_ClearITPendingBit(EXTI_Line12);
   }
-
 
   if (EXTI_GetITStatus(EXTI_Line10) != RESET)
   {
