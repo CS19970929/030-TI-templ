@@ -2,7 +2,7 @@
 
 UINT16 SOC_Table_Set[SOC_TABLE_SIZE];
 
-const UINT16 SOC_Table_Default[42] = {
+const UINT16 SOC_Table_Default[SOC_TABLE_SIZE] = {
 	3336,
 	100,
 	3332,
@@ -47,56 +47,92 @@ const UINT16 SOC_Table_Default[42] = {
 	0,
 };
 
-// ���ڸ�������
+static void SOC_LoadDefaultTableIfNeeded(void)
+{
+	UINT16 i;
+
+	// 当前工程没有稳定的 SOC 表写入路径，开机时先把空白表填成默认表。
+	// 如果后续真的写入了自定义表，这里不会覆盖已有有效数据。
+	if (SOC_Table_Set[0] != 0 && SOC_Table_Set[1] != 0)
+	{
+		return;
+	}
+
+	for (i = 0; i < SOC_TABLE_SIZE; ++i)
+	{
+		SOC_Table_Set[i] = SOC_Table_Default[i];
+	}
+}
+
+static UINT16 SOC_GetReportedSoc(void)
+{
+	UINT16 soc;
+
+	soc = SOC_GetDisplaySoc();
+	if (System_OnOFF_Func.bits.b1OnOFF_SOC_Fixed)
+	{
+		return 60;
+	}
+	if (System_OnOFF_Func.bits.b1OnOFF_SOC_Zero)
+	{
+		return 0;
+	}
+	return soc;
+}
+
+// ³¤ÆÚ¸üÐÂÊý¾Ý
 void RefreshData_SOC(void)
 {
 	SOC_Enhance_Element.u16_VCellMax = g_stCellInfoReport.u16VCellMax;
-	// SOC_Enhance_Element.u16_VCellMin = g_stCellInfoReport.u16VCellMin;	//��ɢ��ȥ���������ֵ��ȥ��6��16��
-	SOC_Enhance_Element.u16_VCellMin = g_stCellInfoReport.u16VCellMin; // �����������ɢ��ȥ������6��16�����ͻ�ʹ���������⣬��ѹ����SOCһ��Ҫ������
+	// SOC_Enhance_Element.u16_VCellMin = g_stCellInfoReport.u16VCellMin;	//À©É¢³öÈ¥£¬²»ÓÃÕâ¸öÖµ£¬È¥µô6ºÍ16´®
+	SOC_Enhance_Element.u16_VCellMin = g_stCellInfoReport.u16VCellMin; // ¹«°æ¾ö¶¨²»À©É¢³öÈ¥£¬°üº¬6ºÍ16´®£¬¿Í»§Ê¹ÓÃÌåÑéÎÊÌâ£¬µÍÑ¹±£»¤SOCÒ»¶¨Òª½µÏÂÀ´
 	SOC_Enhance_Element.u16_Ichg = g_stCellInfoReport.u16Ichg;
 	SOC_Enhance_Element.u16_Idsg = g_stCellInfoReport.u16IDischg;
+	SOC_Enhance_Element.u16_TempMax = g_stCellInfoReport.u16TempMax;
+	SOC_Enhance_Element.u16_TempMin = g_stCellInfoReport.u16TempMin;
 }
 
-// ��ȡ����
+static void SOC_CopyTableToEnhance(void)
+{
+	UINT16 i;
+
+	for (i = 0; i < SOC_Size_TableCanSet; ++i)
+	{
+		SOC_Enhance_Element.SOC_Table_CanSet[i] = SOC_Table_Set[i];
+	}
+}
+
+// »ñÈ¡Êý¾Ý
 void GetData_SOC(void)
 {
 	System_ErrFlag.u8ErrFlag_SOC_Cail = SOC_Enhance_Element.u16_SOC_CailFaultCnt;
 
-	g_stCellInfoReport.SocElement.u16Soc = SOC_Enhance_Element.u8_SOC;
+	g_stCellInfoReport.SocElement.u16Soc = SOC_GetReportedSoc();
 	g_stCellInfoReport.SocElement.u16Soh = SOC_Enhance_Element.u8_SOH;
 	g_stCellInfoReport.SocElement.u16CapacityNow = SOC_Enhance_Element.u16_CapacityNow;
 	g_stCellInfoReport.SocElement.u16CapacityFull = SOC_Enhance_Element.u16_CapacityFull;
 	g_stCellInfoReport.SocElement.u16CapacityFactory = SOC_Enhance_Element.u16_CapacityFactory;
 	g_stCellInfoReport.SocElement.u16Cycle_times = SOC_Enhance_Element.u16_Cycle_times;
 
-	if (System_OnOFF_Func.bits.b1OnOFF_SOC_Fixed)
-	{
-		g_stCellInfoReport.SocElement.u16Soc = 60;
-	}
-	if (System_OnOFF_Func.bits.b1OnOFF_SOC_Zero)
-	{
-		g_stCellInfoReport.SocElement.u16Soc = 0;
-	}
-
 	// g_stCellInfoReport.u16VCell[30] = SOC_Enhance_Element.u8_SOC_OCV_Cali;
 }
 
-// һ���Ը�ֵ
+// Ò»´ÎÐÔ¸³Öµ
 void InitData_SOC(void)
 {
 	UINT16 i;
 
+	SOC_LoadDefaultTableIfNeeded();
+
 	SOC_Enhance_Element.u16_SOC_Ah = OtherElement.u16Soc_Ah;
-	;
 	SOC_Enhance_Element.u16_SOC_CycleT_Ever = OtherElement.u16Soc_Cycle_times;
-	;
 	SOC_Enhance_Element.u16_SOC_CycleT_Limit = 5000;
 	SOC_Enhance_Element.u16_SOC_TableSelect = OtherElement.u16Soc_TableSelect;
 	// SOC_Enhance_Element.u16_SOC_DsgVcell_Limit = OtherElement.u16Soc_V_0;
 	SOC_Enhance_Element.u16_SOC_100_Vol = OtherElement.u16Soc_V_100;
 	SOC_Enhance_Element.u16_SOC_0_Vol = OtherElement.u16Soc_V_0;
 
-	SOC_Enhance_Element.u8_LargeCurFlag_Chg = 0; // Ĭ����0������ĩ�˴����CC��ŵ絼��û���ڶ˵�ﵽ100%��0%��1
+	SOC_Enhance_Element.u8_LargeCurFlag_Chg = 0; // Ä¬ÈÏÊÇ0£¬³ý·ÇÄ©¶Ë´óµçÁ÷CC³ä·Åµçµ¼ÖÂÃ»·¨ÔÚ¶Ëµã´ïµ½100%ºÍ0%ÖÃ1
 	SOC_Enhance_Element.u8_LargeCurFlag_Dsg = 0;
 
 	for (i = 0; i < E2P_AdressNum; ++i)
@@ -104,10 +140,7 @@ void InitData_SOC(void)
 		SOC_Enhance_Element.SOC_E2P_Adress[i] = E2P_ADDR_E2POS_ENHANCE_SOC + 2 * i;
 	}
 
-	for (i = 0; i < SOC_Size_TableCanSet; ++i)
-	{
-		SOC_Enhance_Element.SOC_Table_CanSet[i] = SOC_Table_Set[i];
-	}
+	SOC_CopyTableToEnhance();
 	// SOC_Enhance_Element.SOC_E2P_Adress = E2P_ADDR_E2POS_ENHANCE_SOC;
 }
 
@@ -122,6 +155,6 @@ void App_SOC(void)
 
 	if (SOC_Enhance_Element.u16_SOC_InitOver)
 	{
-		System_Func_StartUp.bits.b1StartUpFlag_SOC = 0; // ��ʼ�����
+		System_Func_StartUp.bits.b1StartUpFlag_SOC = 0; // ³õÊ¼»¯Íê±Ï
 	}
 }
