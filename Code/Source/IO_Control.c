@@ -209,16 +209,16 @@ void App_DI1_Switch(void)
 	}
 #endif
 
-#if defined(_DI_SWITCH_longKEY_ONOFF) && !defined(__FUNC__LED__)
+#if defined(_DI_SWITCH_longKEY_ONOFF) 
 	static UINT16 su16_AntiShake_Cnt2 = 0;
 
 	if (0 == MCUI_ENI_DI1)
 	{
-		//++su16_AntiShake_Cnt2;
-		if (++su16_AntiShake_Cnt2 >= 300)
+		if (++su16_AntiShake_Cnt2 >= 200)
 		{
 			su16_AntiShake_Cnt2 = 0;
-			Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+			entersleep(DEEP_MODE);
+			sleep_reason = 1;
 		}
 	}
 	else
@@ -251,26 +251,12 @@ void InitMosRelay_DOx(void)
 
 void App_MOS_Relay_Ctrl(void)
 {
-// #if defined(_MOS)
-// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_MOS))
-// 	{
-// 		return;
-// 	}
-// #elif defined(_RELAY) // 同口分口问题，TODO
-// 	if (STARTUP_CONT == System_FUNC_StartUp(SYSTEM_FUNC_STARTUP_RELAY))
-// 	{
-// 		return;
-// 	}
-// #endif
-
 	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
 	{
 		return;
 	}
 
 	sys_time.cnt_10ms_test_iocontrol++;
-
-	// MCUO_DEBUG_LED1 = !MCUO_DEBUG_LED1;
 
 	App_DI1_Switch();
 	RefreshData_Drivers();

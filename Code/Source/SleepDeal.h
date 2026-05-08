@@ -5,8 +5,15 @@ typedef enum _SLEEP_CNT {
 FIRST = 0, HICCUP
 }SLEEP_CNT;
 
+// typedef enum _SLEEP_MODE {
+// NORMAL_MODE = 0, HICCUP_MODE, DEEP_MODE
+// }SLEEP_MODE;
+
 typedef enum _SLEEP_MODE {
-NORMAL_MODE = 0, HICCUP_MODE, DEEP_MODE
+NORMAL_MODE = 0, 
+HICCUP_MODE,
+DEEP_MODE,
+NO_SLEEP
 }SLEEP_MODE;
 
 #define RTC_WT_Protect 		5         	//���ֱ����������ߴ���ʱ��
@@ -78,6 +85,7 @@ void App_NormalSleepTest(void);
 void App_SleepDeal(void);
 void App_SleepTest(void);
 void IsSleepStartUp(void);
+void entersleep(enum _SLEEP_MODE mode);
 
 #endif	/* SLEEPDEAL_H */
 

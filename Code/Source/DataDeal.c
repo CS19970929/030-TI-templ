@@ -426,7 +426,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 		if (++su16_Sleep_DelayT1 >= 20 * 60 * 5)
 		{ // 等待5min后进入休眠
 			su16_Sleep_DelayT1 = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+			entersleep(DEEP_MODE);
 		}
 	}
 	else
@@ -439,7 +439,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 		if (++su16_Sleep_DelayT2 >= 20 * 60 * 5)
 		{ // 等待5min后进入休眠
 			su16_Sleep_DelayT2 = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+			entersleep(DEEP_MODE);
 		}
 	}
 	else
@@ -453,7 +453,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 		if (++su16_Sleep_DelayT3 >= 20 * 60 * 5)
 		{ // 等待5min后进入休眠
 			su16_Sleep_DelayT3 = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+			entersleep(DEEP_MODE);
 		}
 	}
 	else

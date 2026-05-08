@@ -32,4 +32,6 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void);
 #define MCUO_SOC_RUN 		(PORT_OUT_GPIOA->bit5)
 #define MCUO_SOC_ALARM 		(MCUO_SOC_20)
 
+extern uint8_t sleep_reason;
+
 #endif	/* LEDBAR_H */

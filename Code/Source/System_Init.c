@@ -185,7 +185,7 @@ void Init_IWDG(void)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 使能PWR外设时钟，待机模式，RTC，看门狗
 	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);		// 打开独立看门狗寄存器操作权限
 	IWDG_SetPrescaler(IWDG_Prescaler_64);				// 预分频系数
-	IWDG_SetReload(160);								// 设置重载计数值，k = Xms / (1 / (40KHz/64)) = X/64*40; 4096最高
+	IWDG_SetReload(800);								// 设置重载计数值，k = Xms / (1 / (40KHz/64)) = X/64*40; 4096最高
 														// 800——1.28s，80——128ms
 	IWDG_ReloadCounter();								// 喂狗
 	IWDG_Enable();										// 使能IWDG

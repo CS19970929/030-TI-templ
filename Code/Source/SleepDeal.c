@@ -180,50 +180,7 @@ void InitWakeUp_Base(void)
 
 void InitWakeUp_NormalMode(void)
 {
-	EXTI_InitTypeDef EXTI_InitStruct;
-	NVIC_InitTypeDef NVIC_InitStructure;
-	GPIO_InitTypeDef GPIO_InitStructure;
-
 	InitWakeUp_Base();
-	// 串口1的RX唤醒
-	GPIO_InitStructure.GPIO_Pin = PIN_INT_WK_CMNT; // 选择要用的GPIO引脚
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
-	GPIO_Init(GPIO_INT_WK_CMNT, &GPIO_InitStructure);
-
-	// 设置�?�?�?1，EXTI1和PA1挂钩
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource14);
-	// 配置PA1_WKUP外部上升沿中�?
-	EXTI_InitStruct.EXTI_Line = EXTI_Line14;
-	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising; // 上升沿中�?
-	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStruct);
-	// �?�?嵌�?��?��??
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
-	NVIC_Init(&NVIC_InitStructure);
-
-	//	//串口1的RX唤醒
-	//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;		//选择要用的GPIO引脚
-	//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; 	//设置引脚模式为上拉输入模�?
-	//	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	//	//设置�?�?�?1，EXTI1和PA1挂钩
-	//	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource3);
-	//	//配置PA1_WKUP外部上升沿中�?
-	//	EXTI_InitStruct.EXTI_Line = EXTI_Line3;
-	//	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-	//	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //上升沿中�?
-	//	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
-	//	EXTI_Init(&EXTI_InitStruct);
-	//	//�?�?嵌�?��?��??
-	//  	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_3_IRQn;	//使能按键WK_UP所在的外部�?�?通道
-	//  	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	//抢占优先�?0
-	//  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		//使能外部�?�?通道
-	//  	NVIC_Init(&NVIC_InitStructure);
 }
 
 void InitWakeUp_RTCMode(void)
@@ -428,7 +385,8 @@ void SleepDeal_Continue(void)
 		App_AFEshutdown();
 
 		extern void LedBar_RunShutdownAnim_test(void);
-		LedBar_RunShutdownAnim_test();
+		if (sleep_reason == 1)
+			LedBar_RunShutdownAnim_test();
 		MCU_RESET();
 	}
 }
@@ -523,7 +481,6 @@ void SleepDeal_VcellUVP(void)
 
 	if (0)
 	{ // 如果检测到没问题，则退出休�?
-		// Sleep_Mode.bits.b1ForceToSleep_L2 = 0;
 		// Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST; // 直接回到�?一次，force�?有一次，不是打嗝休眠模式
 		if (s_u32SleepFirstCnt)
@@ -585,7 +542,6 @@ void SleepDeal_Forced(void)
 
 	if (0)
 	{ // 如果检测到没问题，则退出休�?
-		// Sleep_Mode.bits.b1ForceToSleep_L2 = 0;
 		// Sleep_Status = SLEEP_HICCUP_SHIFT;
 		s_u8SleepStatus = FIRST; // 直接回到�?一次，force�?有一次，不是打嗝休眠模式
 		if (s_u32SleepFirstCnt)
@@ -1058,8 +1014,13 @@ void IsSleepStartUp(void)
 #endif
 			break;
 		}
-		extern void LedBar_RunBootAnimOn_test(void);
-		LedBar_RunBootAnimOn_test();
+		// InitIO();
+		// InitSystemWakeUp();
+		// InitAFE1();
+		// BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
+		// BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
+		// extern void LedBar_RunBootAnimOn_test(void);
+		// LedBar_RunBootAnimOn_test();
 		IORecover_DeepMode();
 		break;
 	case FLASH_SLEEP_RESET_VALUE:
@@ -1099,7 +1060,6 @@ void App_SleepDeal(void)
 		return;
 	}
 
-	// if (0 == g_st_SysTimeFlag.bits.b1Sys1000msFlag1 && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
 	if (0 == gu8_1000msAccClock_Flag && !Sleep_Mode.bits.b1ForceToSleep_L1 && !Sleep_Mode.bits.b1ForceToSleep_L2 && !Sleep_Mode.bits.b1ForceToSleep_L3)
 	{
 		return; // 如果�?强制进入休眠的则必须�?点进入休眠，不能�?
@@ -1197,4 +1157,29 @@ void Sys_SleepOnExitMode(void)
 	NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, ENABLE); // 库函数版�?，�?�置SLEEP ON EXIT位为1
 	// SCB->SCR|=1<<1;//寄存器版�?，�?�置SLEEP ON EXIT位为1
 	__ASM volatile("wfi");
+}
+
+void entersleep(enum _SLEEP_MODE mode)
+{
+	switch (mode)
+	{
+	case HICCUP_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L1 = 1;
+		// g_sleepModeSelect = HICCUP_MODE;
+		break;
+	case NORMAL_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+		break;
+	case DEEP_MODE:
+		Sleep_Mode.bits.b1ForceToSleep_L3 = 1;
+		// g_sleepModeSeect = DEEP_MODE;
+		break;
+	case NO_SLEEP:
+		// g_sleepModeSelect = NO_SLEEP;
+		Sleep_Status = SLEEP_HICCUP_NORMAL_SELECT;
+		Sleep_Mode.all = 0;
+		break;
+	default:
+		break;
+	}
 }

@@ -31,8 +31,8 @@ void App_Sci(void);
 
 void lowpower_enter_sleep(void)
 {
-    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-    __WFI();
+	SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+	__WFI();
 }
 
 // #define _DEBUG_CODE
@@ -45,7 +45,7 @@ int main(void)
 	{
 #if (defined _DEBUG_CODE)
 		App_SysTime();
-        lowpower_enter_sleep();
+		lowpower_enter_sleep();
 		// App_NormalSleepTest();
 		Feed_IWatchDog;
 #else
@@ -110,7 +110,7 @@ void InitDevice(void)
 	InitADC();
 
 	InitData_SOC();
-	Init_RTC(); // 必须放在EEPROM读完数据后面！
+	// Init_RTC(); // 必须放在EEPROM读完数据后面！
 				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 #ifdef __FUNC__HEAT__
 	InitHeat_Cool();
@@ -121,10 +121,15 @@ void InitDevice(void)
 	MCU_GetResetType();
 	LoadParam();
 
-	InitAFE1();
 #ifdef __FUNC__LED__
 	LedBar_StartUp();
 #endif
+	InitAFE1();
+	BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
+	BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
+	extern void LedBar_RunBootAnimOn_test(void);
+	LedBar_RunBootAnimOn_test();
+
 #ifdef wdog_enable
 	Init_IWDG();
 #endif // !1

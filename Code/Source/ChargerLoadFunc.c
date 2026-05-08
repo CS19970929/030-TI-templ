@@ -98,8 +98,6 @@ void AllSeriesDeal_Sleep_Or_None(void)
 
 	if (ChargerLoad_Func.bits.b1OFFDriver_AFE_ERR || ChargerLoad_Func.bits.b1OFFDriver_EEPROM_ERR)
 	{
-		// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
-		// 直接进入休眠，这里不作处理，万一起来了就好了呢
 	}
 
 	if (ChargerLoad_Func.bits.b1OFFDriver_Vdelta)
@@ -107,7 +105,6 @@ void AllSeriesDeal_Sleep_Or_None(void)
 		if (++su16_Sleep_Tcnt >= 300)
 		{
 			su16_Sleep_Tcnt = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
 		}
 	}
 
@@ -119,7 +116,6 @@ void AllSeriesDeal_Sleep_Or_None(void)
 		if (++su16_Sleep_Tcnt >= 300)
 		{
 			su16_Sleep_Tcnt = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
 		}
 	}
 }

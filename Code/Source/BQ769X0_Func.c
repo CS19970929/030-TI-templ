@@ -315,7 +315,7 @@ void App_BQ769X0_Monitor(void)
 		if (++su8_AlarmFault_Tcnt >= 4 * 60)
 		{
 			su8_AlarmFault_Tcnt = 0;
-			// Sleep_Mode.bits.b1ForceToSleep_L2 = 1;
+			entersleep(DEEP_MODE);
 		}
 	}
 	// AFE内部错误处理

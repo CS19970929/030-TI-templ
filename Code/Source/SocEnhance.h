@@ -72,18 +72,13 @@ struct SOC_ENHANCE_ELEMENT {
 
 extern struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;
 
-extern UINT16 ChgValue;
-extern UINT16 DsgValue;
-
-UINT16 InverterChgCurve(void);
-UINT16 InverterDsgCurve(void);
-
-void SOC_OCV_Ctrl(UINT8 TimeBase_200ms);
-void SOC_IntEnhance_Ctrl(UINT8 TimeBase_200ms);
+void SOC_IntEnhance_Ctrl(void);
 
 
 extern UINT16 ReadEEPROM_Word_NoZone(UINT16 addr);
 extern UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data);
 
+void soc_factory_param_init_first(void);
+void soc_param_lib_init(void);
 #endif	/* SOCENHANCE_H */
 
