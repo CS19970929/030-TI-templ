@@ -1,4 +1,5 @@
 #include "main.h"
+#include "param.h"
 #include "stm32f0xx_flash.h"
 
 #define EEPROM_FLASH_SLOT_A_ADDR            ((UINT32)0x0800D000)
@@ -610,6 +611,51 @@ UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data)
 	return result;
 }
 
+UINT8 EEPROM_SaveRWParametersToFlash(void)
+{
+	UINT16 i;
+	UINT8 result;
+	const struct PRT_E2ROM_PARAS PrtE2paras_Pos = E2P_ADDR_E2POS_PROTECT;
+	const struct OTHER_ELEMENT OtherCanAdd_Pos = E2P_ADDR_E2POS_OTHER_ELEMENT1;
+	const struct HEAT_COOL_ELEMENT HeatCoolEle_Pos = E2P_ADDR_E2POS_HEAT_COOL;
+
+	result = 0;
+	for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
+	{
+		result |= WriteEEPROM_Word_NoZone((UINT16) * (&PrtE2paras_Pos.u16VcellOvp_First + i),
+										  *(&PRT_E2ROMParas.u16VcellOvp_First + i));
+	}
+	for (i = 0; i < E2P_PARA_NUM_OTHER_ELEMENT1; ++i)
+	{
+		result |= WriteEEPROM_Word_NoZone((UINT16) * (&OtherCanAdd_Pos.u16Balance_OpenVoltage + i),
+										  *(&OtherElement.u16Balance_OpenVoltage + i));
+	}
+	for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
+	{
+		result |= WriteEEPROM_Word_NoZone((UINT16) * (&HeatCoolEle_Pos.u16Heat_OpenTemp + i),
+										  *(&Heat_Cool_Element.u16Heat_OpenTemp + i));
+	}
+
+	Param_SyncFromRuntime();
+
+	if (result != 0)
+	{
+		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
+		return 0;
+	}
+	if (!EEPROM_SaveSnapshotNow())
+	{
+		return 0;
+	}
+
+	u32E2P_Pro_VolCur_WriteFlag = 0;
+	u32E2P_Pro_Temp_WriteFlag = 0;
+	u32E2P_Pro_Other_WriteFlag = 0;
+	u32E2P_OtherElement1_WriteFlag = 0;
+	u32E2P_HeatCool_WriteFlag = 0;
+	return 1;
+}
+
 void ReadEEPROM_ByteData_StartUp(void)
 {
 	UINT16 i;
@@ -842,6 +888,16 @@ void InitE2PROM(void)
 
 void App_E2promDeal(void)
 {
+	UINT8 sync_param;
+
+	sync_param = (UINT8)(u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag ||
+						 u32E2P_Pro_Other_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag);
+
+	if (sync_param)
+	{
+		Param_SyncFromRuntime();
+	}
+
 	if (u8E2P_KB_WriteFlag || u32E2P_Pro_VolCur_WriteFlag || u32E2P_Pro_Temp_WriteFlag ||
 		u32E2P_Pro_Other_WriteFlag || u32E2P_OtherElement1_WriteFlag || u32E2P_HeatCool_WriteFlag)
 	{
@@ -858,57 +914,6 @@ void App_E2promDeal(void)
 		if (++s_u8StorageCommitDelay >= EEPROM_STORAGE_COMMIT_DELAY_TICKS)
 		{
 			(void)EEPROM_SaveSnapshotNow();
-		}
-	}
-}
-
-void EEPROM_ResetData_EventRecord_ToDefault(void)
-{
-	UINT8 i;
-
-	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
-	{
-		BMS_LOG_RECORD[i][0] = 0;
-		BMS_LOG_RECORD[i][1] = 0;
-	}
-	BMS_LOG_POINT = 0;
-
-	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
-	{
-		WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)), 0x0000U);
-	}
-	WriteEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT, BMS_LOG_POINT);
-}
-
-void ReadEEPROM_EventRecord_Parameters(void)
-{
-	UINT8 i;
-	UINT16 t_u16RdTemp;
-
-	BMS_LOG_POINT = ReadEEPROM_Word_NoZone(E2P_ADDR_E2POS_EVENT_POINT);
-	if (BMS_LOG_POINT >= (EEPROM_EVENT_RECORD_LENGTH + 1U))
-	{
-		System_ERROR_UserCallback(ERROR_EEPROM_STORE);
-		EEPROM_ResetData_EventRecord_ToDefault();
-	}
-
-	for (i = 0; i < EEPROM_EVENT_RECORD_LENGTH; ++i)
-	{
-		t_u16RdTemp = ReadEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)));
-		if (((t_u16RdTemp & 0x00FFU) <= EVENT_NUM) && ((t_u16RdTemp >> 8) <= 171U))
-		{
-			BMS_LOG_RECORD[i][0] = (UINT8)(t_u16RdTemp & 0x00FFU);
-			BMS_LOG_RECORD[i][1] = (UINT8)(t_u16RdTemp >> 8);
-		}
-		else
-		{
-			if (0 == System_ErrFlag.u8ErrFlag_Com_EEPROM)
-			{
-				System_ERROR_UserCallback(ERROR_EEPROM_STORE);
-			}
-			BMS_LOG_RECORD[i][0] = 0;
-			BMS_LOG_RECORD[i][1] = 0;
-			WriteEEPROM_Word_NoZone((UINT16)(E2P_ADDR_START_EVENT_RECORD + (i << 1)), 0x0000U);
 		}
 	}
 }

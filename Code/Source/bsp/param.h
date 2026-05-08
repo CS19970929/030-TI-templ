@@ -16,16 +16,6 @@
 
 #include "main.h"
 
-/* Store parameters in internal Flash only. */
-#define PARAM_SAVE_TO_FLASH
-
-/* Dual-slot Flash layout for parameter persistence. */
-#define PARAM_FLASH_SLOT_A_ADDR         ((uint32_t)0x0800E000)
-#define PARAM_FLASH_PAGE_SIZE           ((uint32_t)0x00000800)
-#define PARAM_FLASH_SLOT_B_ADDR         (PARAM_FLASH_SLOT_A_ADDR + PARAM_FLASH_PAGE_SIZE)
-#define PARAM_FLASH_STORAGE_VERSION     ((uint16_t)0x0001)
-#define PARAM_ADDR                      PARAM_FLASH_SLOT_A_ADDR
-
 #define PARAM_VER			0x10000104					/* 参数版本 */
 
 #if 0
@@ -121,5 +111,6 @@ extern PARAM_T g_tParam;
 
 void LoadParam(void);
 void SaveParam(void);
+void Param_SyncFromRuntime(void);
 
 #endif

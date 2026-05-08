@@ -110,7 +110,6 @@ static void LedBar_SetByMask(UINT8 mask)
     MCUO_SOC_60 = (mask & 0x04) ? 1 : 0;
     MCUO_SOC_80 = (mask & 0x08) ? 1 : 0;
     MCUO_SOC_100 = (mask & 0x10) ? 1 : 0;
-    MCUO_SOC_RUN = (mask != 0) ? 1 : 0;
 }
 
 static void LedBar_SetAllOff(void)
@@ -674,7 +673,6 @@ void LedBar_Show_CHG(void)
         su16_ShowDelay = 0;
     }
 
-    MCUO_SOC_RUN = 1;
     MCUO_SOC_20 = (su8_temp & 0x01) ? 1 : 0;
     MCUO_SOC_40 = (g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0) && (su8_temp & 0x02);
     MCUO_SOC_60 = (g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0) && (su8_temp & 0x04);
@@ -689,7 +687,6 @@ void LedBar_Show_CHG(void)
 
 void LedBar_Show_DSG(void)
 {
-    MCUO_SOC_RUN = 1;
     MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc > 0 ? 1 : 0;
     MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0;
     MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0;
@@ -698,7 +695,6 @@ void LedBar_Show_DSG(void)
 
     if (g_stCellInfoReport.u16IDischg == 0)
     {
-        MCUO_SOC_RUN = 0;
         MCUO_SOC_20 = 0;
         MCUO_SOC_40 = 0;
         MCUO_SOC_60 = 0;
@@ -713,7 +709,6 @@ void LedBar_Show_Fault(void)
 {
     if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
     {
-        MCUO_SOC_ALARM = !MCUO_SOC_ALARM;
         MCUO_SOC_40 = 0;
         MCUO_SOC_60 = 0;
         MCUO_SOC_80 = 0;

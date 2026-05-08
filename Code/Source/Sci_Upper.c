@@ -52,6 +52,55 @@ static void P12_CopyAsciiField(UINT8 *dst, UINT8 dstLen, const UINT8 *src, UINT1
 static UINT8 P12_VerifyFrame(struct RS485MSG *s);
 static UINT8 P12_BuildResponse(struct RS485MSG *s);
 static void Sci_ResetFrameState(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEnablePtr, UINT8 *timeoutTickPtr);
+static void Sci_SetStorageError(struct RS485MSG *s);
+static UINT8 Sci_SaveProtectOrRollback(const struct PRT_E2ROM_PARAS *backup, struct RS485MSG *s);
+static UINT8 Sci_SaveOtherOrRollback(const struct OTHER_ELEMENT *backup, struct RS485MSG *s);
+static UINT8 Sci_SaveHeatCoolOrRollback(const struct HEAT_COOL_ELEMENT *backup, struct RS485MSG *s);
+
+static void Sci_SetStorageError(struct RS485MSG *s)
+{
+	s->AckType = RS485_ACK_NEG;
+	s->ErrorType = RS485_ERROR_CMD_INVALID;
+}
+
+static UINT8 Sci_SaveProtectOrRollback(const struct PRT_E2ROM_PARAS *backup, struct RS485MSG *s)
+{
+	if (EEPROM_SaveRWParametersToFlash())
+	{
+		return 1;
+	}
+
+	PRT_E2ROMParas = *backup;
+	(void)EEPROM_SaveRWParametersToFlash();
+	Sci_SetStorageError(s);
+	return 0;
+}
+
+static UINT8 Sci_SaveOtherOrRollback(const struct OTHER_ELEMENT *backup, struct RS485MSG *s)
+{
+	if (EEPROM_SaveRWParametersToFlash())
+	{
+		return 1;
+	}
+
+	OtherElement = *backup;
+	(void)EEPROM_SaveRWParametersToFlash();
+	Sci_SetStorageError(s);
+	return 0;
+}
+
+static UINT8 Sci_SaveHeatCoolOrRollback(const struct HEAT_COOL_ELEMENT *backup, struct RS485MSG *s)
+{
+	if (EEPROM_SaveRWParametersToFlash())
+	{
+		return 1;
+	}
+
+	Heat_Cool_Element = *backup;
+	(void)EEPROM_SaveRWParametersToFlash();
+	Sci_SetStorageError(s);
+	return 0;
+}
 
 void Sci_DataInit(struct RS485MSG *s)
 {
@@ -1926,9 +1975,11 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 {
 	UINT16 t_u16Temp, i;
 	UINT16 u16WrRegNum;
+	struct PRT_E2ROM_PARAS backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 5)
 	{
+		backup = PRT_E2ROMParas;
 		t_u16Temp = u16Channel - RS485_CMD_ADDR_VCELL_OVP_FIRST;
 		for (i = 0; i < 5; ++i)
 		{
@@ -1938,17 +1989,21 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 		if (u16Channel >= RS485_CMD_ADDR_VDELTA_OP_FIRST)
 		{
 			u32E2P_Pro_Other_WriteFlag = (EE_FLAG_VCELL_OVP_FIRST | EE_FLAG_VCELL_OVP_SECOND | EE_FLAG_VCELL_OVP_THIRD | EE_FLAG_VCELL_OVP_RCV | EE_FLAG_VCELL_OVP_FILTER)
-										 << (t_u16Temp - E2P_PARA_NUM_VOLCUR_PROTECT - E2P_PARA_NUM_TEM_PROTECT);
+									 << (t_u16Temp - E2P_PARA_NUM_VOLCUR_PROTECT - E2P_PARA_NUM_TEM_PROTECT);
 		}
 		else if (u16Channel >= RS485_CMD_ADDR_TCHG_OTP_FIRST)
 		{
 			u32E2P_Pro_Temp_WriteFlag = (EE_FLAG_VCELL_OVP_FIRST | EE_FLAG_VCELL_OVP_SECOND | EE_FLAG_VCELL_OVP_THIRD | EE_FLAG_VCELL_OVP_RCV | EE_FLAG_VCELL_OVP_FILTER)
-										<< (t_u16Temp - E2P_PARA_NUM_VOLCUR_PROTECT);
+									<< (t_u16Temp - E2P_PARA_NUM_VOLCUR_PROTECT);
 		}
 		else
 		{
 			u32E2P_Pro_VolCur_WriteFlag = (EE_FLAG_VCELL_OVP_FIRST | EE_FLAG_VCELL_OVP_SECOND | EE_FLAG_VCELL_OVP_THIRD | EE_FLAG_VCELL_OVP_RCV | EE_FLAG_VCELL_OVP_FILTER) << (t_u16Temp);
-			// SOC_Manager_Init();
+		}
+
+		if (!Sci_SaveProtectOrRollback(&backup, s))
+		{
+			return;
 		}
 	}
 	else
@@ -1958,8 +2013,6 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 	}
 }
 
-// 这种写法其实也有问题，主要是，倘若写失败，但是上传上位机是修改成功，就尴尬
-// 但是上位机会有EEPROM写失败标志位弥补
 void Sci_WrRegs_0x10_SocTable(struct RS485MSG *s)
 {
 }
@@ -1976,9 +2029,11 @@ void Sci_WrRegs_0x10_Balance(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct OTHER_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 8)
 	{
+		backup = OtherElement;
 		for (i = 0; i < 8; ++i)
 		{
 			*(&OtherElement.u16Balance_OpenVoltage + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -1991,6 +2046,11 @@ void Sci_WrRegs_0x10_Balance(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_OPENTIME_EVEN;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_OPENTIME_MOS;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_RES;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
 	}
 	else
 	{
@@ -2003,9 +2063,11 @@ void Sci_WrRegs_0x10_SysOther(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct OTHER_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 8)
 	{
+		backup = OtherElement;
 		for (i = 0; i < 8; ++i)
 		{
 			*(&OtherElement.u16CS_Cur_CHGmax + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -2014,10 +2076,11 @@ void Sci_WrRegs_0x10_SysOther(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_CS_CUR_DSGMAX;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_CBC_CUR_CHG;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_CBC_CUR_DSG;
-		// u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_COOL_DSG_H;		//不保存
-		// u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_COOL_DSG_L;
-		// u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_COOL_CHG_H;
-		// u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_COOL_CHG_L;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
 
 		InitShortCur();
 	}
@@ -2032,9 +2095,11 @@ void Sci_WrRegs_0x10_SleepElement(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct OTHER_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 8)
 	{
+		backup = OtherElement;
 		for (i = 0; i < 8; ++i)
 		{
 			*(&OtherElement.u16Sleep_VNormal + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -2047,6 +2112,11 @@ void Sci_WrRegs_0x10_SleepElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_I_DSG;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_RES1;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SLEEP_RES2;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
 
 		reset_sleep_state = 1;
 	}
@@ -2061,9 +2131,11 @@ void Sci_WrRegs_0x10_SocElement(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct OTHER_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 4)
 	{
+		backup = OtherElement;
 		for (i = 0; i < 4; ++i)
 		{
 			*(&OtherElement.u16Soc_Ah + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -2072,6 +2144,11 @@ void Sci_WrRegs_0x10_SocElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SOC_CYCLE_TIME;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SOC_RES1;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SOC_RES2;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
 
 		SOC_Manager_Init();
 		SOC_Enhance_Element.u16_RefreshData_Flag = 2;
@@ -2087,9 +2164,11 @@ void Sci_WrRegs_0x10_SystemElement(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct OTHER_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 4)
 	{
+		backup = OtherElement;
 		for (i = 0; i < 4; ++i)
 		{
 			*(&OtherElement.u16Sys_SeriesNum + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -2098,9 +2177,13 @@ void Sci_WrRegs_0x10_SystemElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_CS_RESIS;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_CS_NUM;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_PRECHG_TIME;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
+
 		SeriesNum = OtherElement.u16Sys_SeriesNum;
-		// CS，直接使用不需要再赋值，TODO
-		// 还是赋值吧，提高效率
 		g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100;
 		InitData_Drivers();
 	}
@@ -2115,14 +2198,21 @@ void Sci_WrRegs_0x10_HeatCoolElement(struct RS485MSG *s)
 {
 	UINT8 i;
 	UINT16 u16WrRegNum;
+	struct HEAT_COOL_ELEMENT backup;
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == E2P_PARA_NUM_HEAT_COOL)
 	{
+		backup = Heat_Cool_Element;
 		for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
 		{
 			*(&Heat_Cool_Element.u16Heat_OpenTemp + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
 		}
 		u32E2P_HeatCool_WriteFlag |= E2P_PARA_ALL_HEAT_COOL_ELE;
+
+		if (!Sci_SaveHeatCoolOrRollback(&backup, s))
+		{
+			return;
+		}
 	}
 	else
 	{
@@ -2315,10 +2405,12 @@ void Sci_WrReg_0x06_Reset_ProtectElement(struct RS485MSG *s)
 {
 	UINT16 u16SciRegData;
 	UINT8 i;
+	struct PRT_E2ROM_PARAS backup;
 	const struct PRT_E2ROM_PARAS PrtE2PARAS_Default = E2P_PROTECT_DEFAULT_PRT;
 	u16SciRegData = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (0x0001 == u16SciRegData)
 	{
+		backup = PRT_E2ROMParas;
 		for (i = 0; i < E2P_PARA_NUM_PROTECT; ++i)
 		{
 			*(&PRT_E2ROMParas.u16VcellOvp_First + i) = *(&PrtE2PARAS_Default.u16VcellOvp_First + i);
@@ -2326,7 +2418,11 @@ void Sci_WrReg_0x06_Reset_ProtectElement(struct RS485MSG *s)
 		u32E2P_Pro_VolCur_WriteFlag = E2P_PARA_ALL_VOLCUR_PROTECT;
 		u32E2P_Pro_Temp_WriteFlag = E2P_PARA_ALL_TEM_PROTECT;
 		u32E2P_Pro_Other_WriteFlag = E2P_PARA_ALL_OTHER_PROTECT;
-		// SOC_Manager_Init();
+
+		if (!Sci_SaveProtectOrRollback(&backup, s))
+		{
+			return;
+		}
 	}
 	else
 	{
@@ -2339,20 +2435,27 @@ void Sci_WrReg_0x06_Reset_OtherCanAdd(struct RS485MSG *s)
 {
 	UINT16 u16SciRegData;
 	UINT8 i;
+	struct OTHER_ELEMENT backup;
 	const struct OTHER_ELEMENT OtherElement_Default = OtherElement_default;
 	u16SciRegData = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (0x0001 == u16SciRegData)
 	{
+		backup = OtherElement;
 		for (i = 0; i < E2P_PARA_NUM_OTHER_ELEMENT1; ++i)
 		{
 			*(&OtherElement.u16Balance_OpenVoltage + i) = *(&OtherElement_Default.u16Balance_OpenVoltage + i);
 		}
 		u32E2P_OtherElement1_WriteFlag = E2P_PARA_ALL_OTHER_ELEMENT1;
+
+		if (!Sci_SaveOtherOrRollback(&backup, s))
+		{
+			return;
+		}
+
 		SeriesNum = OtherElement.u16Sys_SeriesNum;
 		g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100;
 
 		SOC_Manager_Init();
-		// 同步更新安时数，循环次数等
 		SOC_Enhance_Element.u16_RefreshData_Flag = 2;
 		InitData_Drivers();
 
@@ -2371,16 +2474,23 @@ void Sci_WrReg_0x06_Reset_HeatCool(struct RS485MSG *s)
 {
 	UINT16 u16SciRegData;
 	UINT8 i;
+	struct HEAT_COOL_ELEMENT backup;
 	const struct HEAT_COOL_ELEMENT HeatCoolEle_Default = HeatCoolElement_Default;
 
 	u16SciRegData = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (0x0001 == u16SciRegData)
 	{
+		backup = Heat_Cool_Element;
 		for (i = 0; i < E2P_PARA_NUM_HEAT_COOL; ++i)
 		{
 			*(&Heat_Cool_Element.u16Heat_OpenTemp + i) = *(&HeatCoolEle_Default.u16Heat_OpenTemp + i);
 		}
 		u32E2P_HeatCool_WriteFlag = E2P_PARA_ALL_HEAT_COOL_ELE;
+
+		if (!Sci_SaveHeatCoolOrRollback(&backup, s))
+		{
+			return;
+		}
 	}
 	else
 	{

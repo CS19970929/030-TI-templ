@@ -269,6 +269,7 @@ UINT8 ReadEEPROM_Byte(UINT16 addr);
 UINT8 WriteEEPROM_Byte(UINT16 addr, UINT8 val);
 UINT16 ReadEEPROM_Word_NoZone(UINT16 addr);
 UINT8 WriteEEPROM_Word_NoZone(UINT16 addr, UINT16 data);
+UINT8 EEPROM_SaveRWParametersToFlash(void);
 
 void InitE2PROM(void);
 void App_E2promDeal(void);
