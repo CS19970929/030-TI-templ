@@ -1,4 +1,5 @@
 #include "main.h"
+#include "gan_huang_guan_logi.h"
 
 volatile union SLEEP_MODE Sleep_Mode; // 用于外部控制进入休眠标志�?
 enum SLEEP_STATUS Sleep_Status = SLEEP_HICCUP_SHIFT;
@@ -25,26 +26,38 @@ static UINT8 IsSleepWakeupValid(void)
 {
 	UINT16 hold_cnt = 0;
 
-	// if (IsPA0WakeupActive())
-	// {
-	// 	s_sleep_wakeup_by_di1 = 0;
-	// 	WakeDisplayState_Clear();
-	// 	return 1;
-	// }
+	if (!is_open_gan1())
+	{
+		s_sleep_wakeup_by_di1 = 0;
+		return 0;
+	}
+
+	if (IsPA0WakeupActive())
+	{
+		s_sleep_wakeup_by_di1 = 0;
+		WakeDisplayState_Clear();
+		return 1;
+	}
+
 	if (!IsDI1Pressed())
 	{
 		return 0;
 	}
 
-	// while (IsDI1Pressed() && is_open_gan1())
 	while (IsDI1Pressed())
 	{
-		// if (IsPA0WakeupActive())
-		// {
-		// 	s_sleep_wakeup_by_di1 = 0;
-		// 	WakeDisplayState_Clear();
-		// 	return 1;
-		// }
+		if (!is_open_gan1())
+		{
+			s_sleep_wakeup_by_di1 = 0;
+			return 0;
+		}
+
+		if (IsPA0WakeupActive())
+		{
+			s_sleep_wakeup_by_di1 = 0;
+			WakeDisplayState_Clear();
+			return 1;
+		}
 
 		__delay_ms(10);
 		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
@@ -117,7 +130,7 @@ void InitWakeUp_Base(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 使能PWR外�?�时钟，待机模式，RTC，看门狗
-#if 0
+#if 1
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0; // 选择要用的GPIO引脚
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
@@ -933,6 +946,28 @@ void SleepDeal_Test(void)
 	}
 }
 
+static void SleepStartup_WaitForWakeup(void)
+{
+	while (1)
+	{
+		do
+		{
+			Sys_StopMode();
+		} while (!IsSleepWakeupValid());
+#ifdef __FUNC__LED__
+		if (s_sleep_wakeup_by_di1)
+		{
+			s_sleep_wakeup_by_di1 = 0;
+			if (!LedBar_HandleWakePreviewBeforeBoot())
+			{
+				continue;
+			}
+		}
+#endif
+		break;
+	}
+}
+
 void IsSleepStartUp(void)
 {
 	UINT16 sleep_flag;
@@ -943,95 +978,50 @@ void IsSleepStartUp(void)
 	case FLASH_HICCUP_SLEEP_VALUE:
 		BootFlag_Clear();
 		Init_RTC();
-
 		IOstatus_RTCMode();
 		InitWakeUp_RTCMode();
-		while (1)
-		{
-			do
-			{
-				Sys_StopMode();
-			} while (!IsSleepWakeupValid());
-#ifdef __FUNC__LED__
-			if (s_sleep_wakeup_by_di1)
-			{
-				s_sleep_wakeup_by_di1 = 0;
-				if (!LedBar_HandleWakePreviewBeforeBoot())
-				{
-					continue;
-				}
-			}
-#endif
-			break;
-		}
-		// Sys_StandbyMode();
-		IORecover_RTCMode();
 		break;
+
 	case FLASH_NORMAL_SLEEP_VALUE:
 		BootFlag_Clear();
 		IOstatus_NormalMode();
 		InitWakeUp_NormalMode();
-		while (1)
-		{
-			do
-			{
-				Sys_StopMode();
-			} while (!IsSleepWakeupValid());
-#ifdef __FUNC__LED__
-			if (s_sleep_wakeup_by_di1)
-			{
-				s_sleep_wakeup_by_di1 = 0;
-				if (!LedBar_HandleWakePreviewBeforeBoot())
-				{
-					continue;
-				}
-			}
-#endif
-			break;
-		}
-		IORecover_NormalMode();
 		break;
+
 	case FLASH_DEEP_SLEEP_VALUE:
 		BootFlag_Clear();
 		IOstatus_DeepMode();
 		InitWakeUp_DeepMode();
-		// Sys_StandbyMode();		//??????IO???
-		while (1)
-		{
-			do
-			{
-				Sys_StopMode();
-			} while (!IsSleepWakeupValid());
-#ifdef __FUNC__LED__
-			if (s_sleep_wakeup_by_di1)
-			{
-				s_sleep_wakeup_by_di1 = 0;
-				if (!LedBar_HandleWakePreviewBeforeBoot())
-				{
-					continue;
-				}
-			}
-#endif
-			break;
-		}
-		// InitIO();
-		// InitSystemWakeUp();
-		// InitAFE1();
-		// BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
-		// BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
-		// extern void LedBar_RunBootAnimOn_test(void);
-		// LedBar_RunBootAnimOn_test();
-		IORecover_DeepMode();
 		break;
+
 	case FLASH_SLEEP_RESET_VALUE:
-		// ????
-		break;
+		return;
+
 	default:
 		BootFlag_Clear();
+		return;
+	}
+
+	SleepStartup_WaitForWakeup();
+
+	switch (sleep_flag)
+	{
+	case FLASH_HICCUP_SLEEP_VALUE:
+		IORecover_RTCMode();
+		break;
+
+	case FLASH_NORMAL_SLEEP_VALUE:
+		IORecover_NormalMode();
+		break;
+
+	case FLASH_DEEP_SLEEP_VALUE:
+		IORecover_DeepMode();
+		break;
+
+	default:
 		break;
 	}
 }
-
 extern UINT8 gu8_1000msAccClock_Flag;
 void App_SleepDeal(void)
 {
