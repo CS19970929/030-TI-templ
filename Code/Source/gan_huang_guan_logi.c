@@ -26,6 +26,11 @@ bool is_water_in(void)
     // todo
     return 0 == GPIO_ReadInputDataBit(GPIO_SWT_AD, PIN_SWT_AD);
 }
+bool is_charger_online(void)
+{
+    return 1 == GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0);
+    // return sys_time.test_1;
+}
 
 void ganhuangguan_Logi(void)
 {
@@ -45,6 +50,11 @@ void ganhuangguan_Logi(void)
     else
     {
         if (is_open_gan1() && is_open_gan2())
+        {
+            sleep_cnt = 0;
+            Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
+        }
+        else if (is_charger_online())
         {
             sleep_cnt = 0;
             Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
