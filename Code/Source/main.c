@@ -127,8 +127,6 @@ void InitDevice(void)
 	InitAFE1();
 	BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
 	BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
-	extern void LedBar_RunBootAnimOn_test(void);
-	LedBar_RunBootAnimOn_test();
 
 #ifdef wdog_enable
 	Init_IWDG();

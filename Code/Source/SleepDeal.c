@@ -26,17 +26,15 @@ static UINT8 IsSleepWakeupValid(void)
 {
 	UINT16 hold_cnt = 0;
 
-	if (!is_open_gan1())
-	{
-		s_sleep_wakeup_by_di1 = 0;
-		return 0;
-	}
-
 	if (IsPA0WakeupActive())
 	{
-		s_sleep_wakeup_by_di1 = 0;
-		WakeDisplayState_Clear();
-		return 1;
+		if (is_open_gan1())
+		{
+			s_sleep_wakeup_by_di1 = 0;
+			WakeDisplayState_Clear();
+			return 1;
+		}
+		return 0;
 	}
 
 	if (!IsDI1Pressed())
@@ -46,13 +44,7 @@ static UINT8 IsSleepWakeupValid(void)
 
 	while (IsDI1Pressed())
 	{
-		if (!is_open_gan1())
-		{
-			s_sleep_wakeup_by_di1 = 0;
-			return 0;
-		}
-
-		if (IsPA0WakeupActive())
+		if (IsPA0WakeupActive() && is_open_gan1())
 		{
 			s_sleep_wakeup_by_di1 = 0;
 			WakeDisplayState_Clear();
@@ -397,9 +389,6 @@ void SleepDeal_Continue(void)
 	{
 		App_AFEshutdown();
 
-		extern void LedBar_RunShutdownAnim_test(void);
-		if (sleep_reason == 1)
-			LedBar_RunShutdownAnim_test();
 		MCU_RESET();
 	}
 }

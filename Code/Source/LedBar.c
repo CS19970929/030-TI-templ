@@ -4,60 +4,46 @@
 
 uint8_t sleep_reason = 0;
 
-#ifndef WAKE_DISPLAY_MODE_NONE
-#define WAKE_DISPLAY_MODE_NONE ((UINT16)0x0000)
-#endif
-#ifndef WAKE_DISPLAY_MODE_SOC_PREVIEW
-#define WAKE_DISPLAY_MODE_SOC_PREVIEW ((UINT16)0x0001)
-#endif
-
 extern UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc);
 extern void WakeDisplayState_Clear(void);
 
 LEDBAR_COMMAND LedBar_Command = LED_BAR_NORMAL;
 
 #define LEDBAR_MASK_ALL ((UINT8)0x1F)
-#define LEDBAR_LONG_PRESS_TICKS_100MS ((UINT8)30)
-#define LEDBAR_SHORT_SHOW_TICKS_100MS ((UINT8)50)
-#define LEDBAR_BOOT_PREVIEW_SHOW_TICKS_100MS ((UINT8)30)
-#define LEDBAR_BOOT_POST_SHOW_TICKS_100MS ((UINT8)30)
-#define LEDBAR_BOOT_DELAY_TICKS_100MS ((UINT8)10)
-#define LEDBAR_KEY_DEBOUNCE_TICKS_100MS ((UINT8)1)
-#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)1)
-#define LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS ((UINT8)10)
+#define LEDBAR_SOC_TEMP_TICKS_100MS ((UINT16)30)
+#define LEDBAR_CHG_BLINK_TICKS_100MS ((UINT8)5)
+#define LEDBAR_WATER_BLINK_TICKS_100MS ((UINT8)5)
+#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)2)
+#define LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS ((UINT16)100)
 #define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_RELEASE_TICKS_10MS ((UINT16)10)
-#define LEDBAR_PREBOOT_WAKE_TICKS_10MS ((UINT16)5)
 
 typedef enum _LEDBAR_UI_MODE
 {
     LED_UI_NORMAL = 0,
-    LED_UI_SHORT_SHOW,
-    LED_UI_WAKE_PREVIEW_SHOW,
-    LED_UI_BOOT_DELAY,
+    LED_UI_SOC_TEMP,
     LED_UI_BOOT_ANIM_ON,
     LED_UI_BOOT_ANIM_OFF,
-    LED_UI_BOOT_POST_SHOW,
     LED_UI_SHUTDOWN_ANIM
 } LEDBAR_UI_MODE;
 
 static LEDBAR_UI_MODE s_led_ui_mode = LED_UI_NORMAL;
 static UINT8 s_anim_step = 0;
 static UINT8 s_anim_step_ticks = 0;
-static UINT8 s_ui_ticks = 0;
-static UINT8 s_pending_shutdown_sleep = 0;
-static UINT16 s_cached_soc = 0;
+static UINT16 s_ui_ticks = 0;
+static UINT16 s_temp_soc = 0;
+static UINT16 s_temp_duration_ticks = LEDBAR_SOC_TEMP_TICKS_100MS;
+static UINT8 s_discharge_display_enable = 0;
+static UINT8 s_charge_display_enable = 0;
+static UINT8 s_water_alarm_enable = 0;
+static UINT8 s_water_alarm_on = 0;
+static UINT8 s_water_alarm_ticks = 0;
+static UINT8 s_charge_blink_on = 1;
+static UINT8 s_charge_blink_ticks = 0;
+static UINT8 s_shutdown_animation_active = 0;
 
-static UINT8 s_key_press_ticks = 0;
-static UINT8 s_key_prev_pressed = 0;
-static UINT8 s_key_long_handled = 0;
-static UINT8 s_key_wait_release = 0;
-static UINT8 s_key_stable_pressed = 0;
-static UINT8 s_key_debounce_ticks = 0;
-static UINT8 s_short_press_block_ticks = 0;
-static UINT8 s_ignore_next_release_short = 0;
-static UINT8 s_wake_preview_hold_ticks = 0;
+void LedBar_Show_Fault(void);
 
 static UINT8 LedBar_ClampSoc(UINT16 soc)
 {
@@ -100,11 +86,6 @@ static UINT8 LedBar_GetLiveSocMask(void)
     return LedBar_GetSocMaskFromValue(g_stCellInfoReport.SocElement.u16Soc);
 }
 
-static UINT8 LedBar_GetCachedSocMask(void)
-{
-    return LedBar_GetSocMaskFromValue(s_cached_soc);
-}
-
 static void LedBar_SetByMask(UINT8 mask)
 {
     MCUO_SOC_20 = (mask & 0x01) ? 1 : 0;
@@ -117,22 +98,6 @@ static void LedBar_SetByMask(UINT8 mask)
 static void LedBar_SetAllOff(void)
 {
     LedBar_SetByMask(0);
-}
-
-static UINT8 LedBar_IsPowerOn(void)
-{
-    return (UINT8)System_OnOFF_Func.bits.b1OnOFF_MOS_Relay;
-}
-
-static UINT8 LedBar_IsKeyPressed(void)
-{
-    return (UINT8)(MCUI_ENI_DI1 == 0);
-}
-
-UINT8 LedBar_IsWakePreviewPending(void)
-{
-    /* 保留旧接口，避免再通过该标志改动系统开机功能位。 */
-    return 0;
 }
 
 static void LedBar_InitOutputPins(void)
@@ -149,140 +114,101 @@ static void LedBar_InitOutputPins(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
-static void LedBar_StartShortShow(void)
+UINT8 LedBar_IsWakePreviewPending(void)
 {
-    s_led_ui_mode = LED_UI_SHORT_SHOW;
-    s_ui_ticks = 0;
+    return 0;
 }
 
-static void LedBar_StartWakePreview(void)
+void LedBar_RequestSocTemporary(UINT16 soc, UINT16 duration_100ms)
 {
-    s_led_ui_mode = LED_UI_WAKE_PREVIEW_SHOW;
+    if (s_water_alarm_enable || s_led_ui_mode == LED_UI_SHUTDOWN_ANIM)
+    {
+        return;
+    }
+
+    s_temp_soc = soc;
+    s_temp_duration_ticks = duration_100ms;
+    if (s_temp_duration_ticks == 0)
+    {
+        s_temp_duration_ticks = LEDBAR_SOC_TEMP_TICKS_100MS;
+    }
     s_ui_ticks = 0;
-    s_wake_preview_hold_ticks = 0;
-    s_key_wait_release = 1;
-    s_ignore_next_release_short = 1;
-    LedBar_SetByMask(LedBar_GetCachedSocMask());
+    s_led_ui_mode = LED_UI_SOC_TEMP;
+    LedBar_SetByMask(LedBar_GetSocMaskFromValue(s_temp_soc));
 }
 
-static void LedBar_StartBootDelay(void)
+void LedBar_RequestBootAnimation(UINT16 soc)
 {
-    s_led_ui_mode = LED_UI_BOOT_DELAY;
+    if (s_water_alarm_enable)
+    {
+        return;
+    }
+
     s_anim_step = 0;
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
-    s_pending_shutdown_sleep = 0;
-    s_key_wait_release = 1;
-    s_key_long_handled = 1;
-    s_ignore_next_release_short = 1;
+    s_shutdown_animation_active = 0;
+    s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
     LedBar_SetAllOff();
 }
 
-static void LedBar_StartPowerOnAnim(void)
+void LedBar_RequestShutdownAnimation(void)
 {
-    s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
-    s_anim_step = 1;
-    s_anim_step_ticks = 0;
-    s_ui_ticks = 0;
-    s_pending_shutdown_sleep = 0;
-    s_key_wait_release = 1;
-    s_key_long_handled = 1;
-    s_ignore_next_release_short = 1;
-    LedBar_SetByMask(0x01);
-}
+    if (s_led_ui_mode == LED_UI_SHUTDOWN_ANIM)
+    {
+        return;
+    }
 
-static void LedBar_StartShutdownAnim(void)
-{
-    s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
     s_anim_step = 0;
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
-    s_pending_shutdown_sleep = 1;
-    s_ignore_next_release_short = 1;
+    s_shutdown_animation_active = 1;
+    s_led_ui_mode = LED_UI_SHUTDOWN_ANIM;
     LedBar_SetByMask(LEDBAR_MASK_ALL);
 }
 
-static void LedBar_ProcessKeyEvent(void)
+void LedBar_SetDischargeDisplay(UINT8 enable)
 {
-    UINT8 key_pressed_raw;
-    UINT8 key_pressed;
-
-    if (s_short_press_block_ticks > 0)
-    {
-        --s_short_press_block_ticks;
-    }
-
-    key_pressed_raw = LedBar_IsKeyPressed();
-    if (key_pressed_raw != s_key_stable_pressed)
-    {
-        if (++s_key_debounce_ticks >= LEDBAR_KEY_DEBOUNCE_TICKS_100MS)
-        {
-            s_key_stable_pressed = key_pressed_raw;
-            s_key_debounce_ticks = 0;
-        }
-    }
-    else
-    {
-        s_key_debounce_ticks = 0;
-    }
-
-    key_pressed = s_key_stable_pressed;
-
-    if (key_pressed)
-    {
-        if (!s_key_prev_pressed)
-        {
-            s_key_press_ticks = 0;
-            s_key_long_handled = 0;
-        }
-
-        if (s_key_press_ticks < 0xFF)
-        {
-            ++s_key_press_ticks;
-        }
-
-        if (LedBar_IsPowerOn() &&
-            s_led_ui_mode == LED_UI_NORMAL &&
-            !s_key_wait_release &&
-            !s_key_long_handled &&
-            s_key_press_ticks >= LEDBAR_LONG_PRESS_TICKS_100MS)
-        {
-            s_key_long_handled = 1;
-            s_key_wait_release = 1;
-            s_ignore_next_release_short = 1;
-            LedBar_StartShutdownAnim();
-        }
-    }
-    else
-    {
-        if (s_key_prev_pressed)
-        {
-            if (LedBar_IsPowerOn() &&
-                s_led_ui_mode == LED_UI_NORMAL &&
-                !s_key_long_handled &&
-                s_key_press_ticks > 0 &&
-                s_key_press_ticks < LEDBAR_LONG_PRESS_TICKS_100MS &&
-                !s_ignore_next_release_short &&
-                s_short_press_block_ticks == 0)
-            {
-                LedBar_StartShortShow();
-            }
-        }
-
-        s_key_press_ticks = 0;
-        s_key_long_handled = 0;
-        s_key_wait_release = 0;
-        s_ignore_next_release_short = 0;
-    }
-
-    s_key_prev_pressed = key_pressed;
+    s_discharge_display_enable = enable ? 1 : 0;
 }
 
-static void LedBar_RunShortShow(void)
+void LedBar_SetChargeDisplay(UINT8 enable)
 {
-    LedBar_SetByMask(LedBar_GetLiveSocMask());
+    s_charge_display_enable = enable ? 1 : 0;
+    if (!s_charge_display_enable)
+    {
+        s_charge_blink_on = 1;
+        s_charge_blink_ticks = 0;
+    }
+}
 
-    if (++s_ui_ticks < LEDBAR_SHORT_SHOW_TICKS_100MS)
+void LedBar_SetWaterAlarm(UINT8 enable)
+{
+    if (enable)
+    {
+        s_water_alarm_enable = 1;
+        return;
+    }
+
+    if (s_water_alarm_enable)
+    {
+        s_water_alarm_on = 0;
+        s_water_alarm_ticks = 0;
+        LedBar_SetAllOff();
+    }
+    s_water_alarm_enable = 0;
+}
+
+UINT8 LedBar_IsShutdownAnimationActive(void)
+{
+    return s_shutdown_animation_active;
+}
+
+static void LedBar_RunSocTemp(void)
+{
+    LedBar_SetByMask(LedBar_GetSocMaskFromValue(s_temp_soc));
+
+    if (++s_ui_ticks < s_temp_duration_ticks)
     {
         return;
     }
@@ -290,215 +216,10 @@ static void LedBar_RunShortShow(void)
     s_ui_ticks = 0;
     s_led_ui_mode = LED_UI_NORMAL;
     LedBar_SetAllOff();
-}
-UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
-{
-    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
-    UINT16 wake_soc = 0;
-    UINT16 hold_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 preview_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 release_ticks = 0;
-    UINT8 soc_mask;
-
-    LedBar_InitOutputPins();
-
-    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
-    {
-        wake_soc = 0;
-    }
-
-    soc_mask = LedBar_GetSocMaskFromValue(wake_soc);
-    LedBar_SetByMask(soc_mask);
-
-    while (1)
-    {
-        __delay_ms(10);
-
-        if (LedBar_IsKeyPressed() && is_open_gan1())
-        {
-            release_ticks = 0;
-            if (hold_ticks < LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                ++hold_ticks;
-            }
-            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                ++preview_ticks;
-            }
-
-            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                WakeDisplay_RequestBootSequence();
-                LedBar_SetAllOff();
-                return 1;
-            }
-        }
-        else
-        {
-            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                ++preview_ticks;
-            }
-
-            if (release_ticks < LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
-            {
-                ++release_ticks;
-                continue;
-            }
-
-            if (preview_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                WakeDisplayState_Clear();
-                WakeDisplaySocCache_Write(wake_soc);
-                LedBar_SetAllOff();
-                return 0;
-            }
-        }
-    }
-}
-
-#if 0
-UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
-{
-    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
-    UINT16 wake_soc = 0;
-    UINT16 hold_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 preview_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 release_ticks = 0;
-    UINT8 soc_mask;
-
-    LedBar_InitOutputPins();
-
-    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
-    {
-        wake_soc = 0;
-    }
-
-    soc_mask = LedBar_GetSocMaskFromValue(wake_soc);
-    LedBar_SetByMask(soc_mask);
-
-    while (1)
-    {
-        __delay_ms(10);
-
-        if (LedBar_IsKeyPressed())
-        {
-            release_ticks = 0;
-            if (hold_ticks < LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                ++hold_ticks;
-            }
-            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                ++preview_ticks;
-            }
-
-            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                WakeDisplay_RequestBootSequence();
-                LedBar_SetAllOff();
-                return 1;
-            }
-        }
-        else
-        {
-            if (preview_ticks < LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                ++preview_ticks;
-            }
-
-            if (release_ticks < LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
-            {
-                ++release_ticks;
-                continue;
-            }
-
-            if (preview_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-            {
-                WakeDisplayState_Clear();
-                WakeDisplaySocCache_Write(wake_soc);
-                LedBar_SetAllOff();
-                return 0;
-            }
-        }
-    }
-}
-#endif
-
-static void LedBar_RunWakePreviewShow(void)
-{
-    s_led_ui_mode = LED_UI_NORMAL;
-    s_wake_preview_hold_ticks = 0;
-    LedBar_SetAllOff();
-}
-
-static void LedBar_RunBootDelay(void)
-{
-    LedBar_SetAllOff();
-
-    if (++s_ui_ticks < LEDBAR_BOOT_DELAY_TICKS_100MS)
-    {
-        return;
-    }
-
-    LedBar_StartPowerOnAnim();
-}
-
-void LedBar_RunBootAnimOn_test(void)
-{
-    uint8_t i = 0;
-    s_anim_step_ticks = 0;
-    s_anim_step = 0;
-
-    for (i = 0; i < 5; i++)
-    {
-        if (s_anim_step < 5)
-        {
-            ++s_anim_step;
-            LedBar_SetByMask((UINT8)((1U << s_anim_step) - 1U));
-        }
-        __delay_ms(150);
-    }
-
-    s_anim_step_ticks = 0;
-    s_anim_step = 0;
-    for (i = 0; i < 5; i++)
-    {
-        if (s_anim_step < 5)
-        {
-            ++s_anim_step;
-            LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
-            __delay_ms(150);
-        }
-    }
-
-    s_anim_step = 0;
-    s_led_ui_mode = LED_UI_BOOT_ANIM_OFF;
-
-    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
-    UINT16 wake_soc = 0;
-    UINT16 hold_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 preview_ticks = LEDBAR_PREBOOT_WAKE_TICKS_10MS;
-    UINT16 release_ticks = 0;
-    UINT8 soc_mask;
-    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
-    {
-        wake_soc = 0;
-    }
-    soc_mask = LedBar_GetSocMaskFromValue(g_stCellInfoReport.SocElement.u16Soc);
-    LedBar_SetByMask(soc_mask);
-    // LedBar_SetByMask(LedBar_GetLiveSocMask());
-    // LedBar_SetByMask(7);
-    // __delay_ms(200);
-
-    s_ui_ticks = 0;
-    s_led_ui_mode = LED_UI_NORMAL;
-    // LedBar_SetAllOff();
 }
 
 static void LedBar_RunBootAnimOn(void)
 {
-#if 0
     if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
     {
         return;
@@ -509,14 +230,11 @@ static void LedBar_RunBootAnimOn(void)
     {
         ++s_anim_step;
         LedBar_SetByMask((UINT8)((1U << s_anim_step) - 1U));
+        return;
     }
 
-    if (s_anim_step >= 5)
-    {
-        s_anim_step = 0;
-        s_led_ui_mode = LED_UI_BOOT_ANIM_OFF;
-    }
-#endif
+    s_anim_step = 0;
+    s_led_ui_mode = LED_UI_BOOT_ANIM_OFF;
 }
 
 static void LedBar_RunBootAnimOff(void)
@@ -531,54 +249,18 @@ static void LedBar_RunBootAnimOff(void)
     {
         ++s_anim_step;
         LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
-    }
-
-    if (s_anim_step >= 5)
-    {
-        s_anim_step = 0;
-        s_ui_ticks = 0;
-        s_led_ui_mode = LED_UI_BOOT_POST_SHOW;
-        LedBar_SetByMask(LedBar_GetCachedSocMask());
-    }
-}
-
-static void LedBar_RunBootPostShow(void)
-{
-    LedBar_SetByMask(LedBar_GetCachedSocMask());
-
-    if (++s_ui_ticks < LEDBAR_BOOT_POST_SHOW_TICKS_100MS)
-    {
         return;
     }
 
-    s_ui_ticks = 0;
-    s_led_ui_mode = LED_UI_NORMAL;
-    s_short_press_block_ticks = LEDBAR_SHORT_BLOCK_AFTER_SEQUENCE_TICKS_100MS;
-    LedBar_SetAllOff();
-}
-
-void LedBar_RunShutdownAnim_test(void)
-{
-    uint8_t i = 0;
-    s_anim_step_ticks = 0;
     s_anim_step = 0;
-
-    for (i = 0; i < 5; i++)
-    {
-        if (s_anim_step < 5)
-        {
-            ++s_anim_step;
-            LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
-            __delay_ms(150);
-        }
-    }
-
-    LedBar_SetAllOff();
+    s_led_ui_mode = LED_UI_NORMAL;
+    s_discharge_display_enable = 1;
+    LedBar_Command = LED_BAR_NORMAL;
+    LedBar_SetByMask(LedBar_GetLiveSocMask());
 }
 
 static void LedBar_RunShutdownAnim(void)
 {
-#if 0
     if (++s_anim_step_ticks < LEDBAR_ANIM_STEP_TICKS_100MS)
     {
         return;
@@ -594,14 +276,196 @@ static void LedBar_RunShutdownAnim(void)
 
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
+    s_shutdown_animation_active = 0;
     LedBar_SetAllOff();
-    if (s_pending_shutdown_sleep)
+    sleep_reason = 0;
+    entersleep(DEEP_MODE);
+}
+
+static void LedBar_RunWaterAlarm(void)
+{
+    if (++s_water_alarm_ticks < LEDBAR_WATER_BLINK_TICKS_100MS)
     {
-        s_pending_shutdown_sleep = 0;
-    entersleep(DEEP_MODE);
+        return;
     }
-#endif
-    entersleep(DEEP_MODE);
+
+    s_water_alarm_ticks = 0;
+    s_water_alarm_on = s_water_alarm_on ? 0 : 1;
+    LedBar_SetByMask(s_water_alarm_on ? LEDBAR_MASK_ALL : 0);
+}
+
+static void LedBar_ShowCharge(void)
+{
+    UINT8 i;
+    UINT8 stage;
+    UINT8 mask = 0;
+    UINT16 soc = g_stCellInfoReport.SocElement.u16Soc;
+
+    if (++s_charge_blink_ticks >= LEDBAR_CHG_BLINK_TICKS_100MS)
+    {
+        s_charge_blink_ticks = 0;
+        s_charge_blink_on = s_charge_blink_on ? 0 : 1;
+    }
+
+    if (soc >= 99)
+    {
+        LedBar_SetByMask(LEDBAR_MASK_ALL);
+        return;
+    }
+
+    stage = (UINT8)(LedBar_ClampSoc(soc) / 20);
+    if (stage > 4)
+    {
+        stage = 4;
+    }
+
+    for (i = 0; i < stage; ++i)
+    {
+        mask |= (UINT8)(1U << i);
+    }
+
+    if (s_charge_blink_on)
+    {
+        mask |= (UINT8)(1U << stage);
+    }
+
+    LedBar_SetByMask(mask);
+}
+
+void LedBar_Show_Normal(void)
+{
+    if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA ||
+        System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) ||
+        System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
+    {
+        LedBar_Show_Fault();
+        return;
+    }
+
+    LedBar_SetByMask(LedBar_GetLiveSocMask());
+}
+
+void LedBar_Show_CHG(void)
+{
+    LedBar_ShowCharge();
+}
+
+void LedBar_Show_DSG(void)
+{
+    LedBar_SetByMask(LedBar_GetLiveSocMask());
+}
+
+void LedBar_Show_Fault(void)
+{
+    MCUO_SOC_20 = !MCUO_SOC_20;
+    MCUO_SOC_40 = 0;
+    MCUO_SOC_60 = 0;
+    MCUO_SOC_80 = 0;
+    MCUO_SOC_100 = 0;
+}
+
+void LedBar_Show_Sleep(void)
+{
+    LedBar_SetAllOff();
+}
+
+UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
+{
+    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+    UINT16 wake_soc = 0;
+    UINT16 hold_ticks = 0;
+    UINT16 show_ticks = 0;
+    UINT16 release_ticks = 0;
+    UINT8 soc_shown = 0;
+    UINT8 soc_expired = 0;
+
+    LedBar_InitOutputPins();
+
+    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
+    {
+        wake_soc = 0;
+    }
+
+    LedBar_SetAllOff();
+
+    while (1)
+    {
+        __delay_ms(10);
+
+        if (is_open_gan3())
+        {
+            release_ticks = 0;
+            if (hold_ticks < 0xFFFF)
+            {
+                ++hold_ticks;
+            }
+
+            if (!soc_shown && hold_ticks >= LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS)
+            {
+                soc_shown = 1;
+                show_ticks = 0;
+                LedBar_SetByMask(LedBar_GetSocMaskFromValue(wake_soc));
+            }
+
+            if (soc_shown && !soc_expired)
+            {
+                if (++show_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+                {
+                    soc_expired = 1;
+                    LedBar_SetAllOff();
+                }
+            }
+
+            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS &&
+                is_open_gan1() &&
+                is_open_gan2())
+            {
+                WakeDisplay_RequestBootSequence();
+                LedBar_SetAllOff();
+                return 1;
+            }
+        }
+        else
+        {
+            if (hold_ticks < LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS && !soc_shown)
+            {
+                if (++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
+                {
+                    LedBar_SetAllOff();
+                    return 0;
+                }
+            }
+            else
+            {
+                if (soc_shown && !soc_expired)
+                {
+                    if (++show_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+                    {
+                        soc_expired = 1;
+                        LedBar_SetAllOff();
+                    }
+                }
+
+                if (soc_expired && ++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
+                {
+                    WakeDisplayState_Clear();
+                    WakeDisplaySocCache_Write(wake_soc);
+                    LedBar_SetAllOff();
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+void LedBar_RunBootAnimOn_test(void)
+{
+    LedBar_RequestBootAnimation(g_stCellInfoReport.SocElement.u16Soc);
+}
+
+void LedBar_RunShutdownAnim_test(void)
+{
+    LedBar_RequestShutdownAnimation();
 }
 
 void LedBar_StartUp(void)
@@ -616,158 +480,38 @@ void LedBar_StartUp(void)
     s_anim_step = 0;
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
-    s_pending_shutdown_sleep = 0;
-    s_cached_soc = 0;
-    s_key_press_ticks = 0;
-    s_key_prev_pressed = 0;
-    s_key_long_handled = 0;
-    s_key_wait_release = 0;
-    s_key_stable_pressed = 0;
-    s_key_debounce_ticks = 0;
-    s_short_press_block_ticks = 0;
-    s_ignore_next_release_short = 0;
-    s_wake_preview_hold_ticks = 0;
+    s_temp_soc = 0;
+    s_temp_duration_ticks = LEDBAR_SOC_TEMP_TICKS_100MS;
+    s_discharge_display_enable = 0;
+    s_charge_display_enable = 0;
+    s_water_alarm_enable = 0;
+    s_water_alarm_on = 0;
+    s_water_alarm_ticks = 0;
+    s_charge_blink_on = 1;
+    s_charge_blink_ticks = 0;
+    s_shutdown_animation_active = 0;
 
     if (WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
-        s_cached_soc = wake_soc;
+        if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE)
+        {
+            LedBar_RequestBootAnimation(wake_soc);
+        }
+        else
+        {
+            LedBar_SetAllOff();
+        }
     }
     else
     {
-        s_cached_soc = g_stCellInfoReport.SocElement.u16Soc;
+        LedBar_SetAllOff();
     }
-
-    // if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE ||
-    //     (wake_mode == WAKE_DISPLAY_MODE_NONE && LedBar_IsKeyPressed()))
-    // {
-    //     s_key_stable_pressed = LedBar_IsKeyPressed();
-    //     s_key_prev_pressed = s_key_stable_pressed;
-    //     LedBar_StartBootDelay();
-    // }
-    // else
-    // {
-    //     LedBar_SetAllOff();
-    // }
 
     WakeDisplayState_Clear();
 }
 
-void LedBar_Show_Normal(void)
-{
-    if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
-    {
-        LedBar_Show_Fault();
-    }
-    else
-    {
-        if (g_stCellInfoReport.u16Ichg)
-        {
-            LedBar_Command = LED_BAR_CHG;
-            return;
-        }
-        else
-        {
-            MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc > 0 ? 1 : 0;
-            MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0;
-            MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0;
-            MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0;
-            MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc >= 80 ? 1 : 0;
-        }
-    }
-
-    // if (g_stCellInfoReport.u16IDischg)
-    // {
-    //     LedBar_Command = LED_BAR_DSG;
-    //     return;
-    // }
-
-    // LedBar_SetAllOff();
-}
-
-void LedBar_Show_CHG(void)
-{
-    static UINT8 su8_temp = 0;
-    static UINT16 su16_ShowDelay = 0;
-
-    if (++su16_ShowDelay <= 5)
-    {
-        su8_temp = ~(1 << (g_stCellInfoReport.SocElement.u16Soc / 20));
-    }
-    else if (++su16_ShowDelay <= 10)
-    {
-        su8_temp = 0xFF;
-    }
-    else
-    {
-        su16_ShowDelay = 0;
-    }
-
-    MCUO_SOC_20 = (su8_temp & 0x01) ? 1 : 0;
-    MCUO_SOC_40 = (g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0) && (su8_temp & 0x02);
-    MCUO_SOC_60 = (g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0) && (su8_temp & 0x04);
-    MCUO_SOC_80 = (g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0) && (su8_temp & 0x08);
-    MCUO_SOC_100 = (g_stCellInfoReport.SocElement.u16Soc >= 80 ? 1 : 0) && (su8_temp & 0x10);
-
-    if (g_stCellInfoReport.u16Ichg == 0)
-    {
-        LedBar_Command = LED_BAR_NORMAL;
-    }
-}
-
-void LedBar_Show_DSG(void)
-{
-    MCUO_SOC_20 = g_stCellInfoReport.SocElement.u16Soc > 0 ? 1 : 0;
-    MCUO_SOC_40 = g_stCellInfoReport.SocElement.u16Soc >= 20 ? 1 : 0;
-    MCUO_SOC_60 = g_stCellInfoReport.SocElement.u16Soc >= 40 ? 1 : 0;
-    MCUO_SOC_80 = g_stCellInfoReport.SocElement.u16Soc >= 60 ? 1 : 0;
-    MCUO_SOC_100 = g_stCellInfoReport.SocElement.u16Soc >= 80 ? 1 : 0;
-
-    if (g_stCellInfoReport.u16IDischg == 0)
-    {
-        MCUO_SOC_20 = 0;
-        MCUO_SOC_40 = 0;
-        MCUO_SOC_60 = 0;
-        MCUO_SOC_80 = 0;
-        MCUO_SOC_100 = 0;
-
-        LedBar_Command = LED_BAR_NORMAL;
-    }
-}
-
-void LedBar_Show_Fault(void)
-{
-    if (g_stCellInfoReport.unMdlFault_Third.all & 0x2FFA || System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) || System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG))
-    {
-        // MCUO_SOC_ALARM = !MCUO_SOC_ALARM;
-        MCUO_SOC_20 = !MCUO_SOC_20;
-        MCUO_SOC_40 = 0;
-        MCUO_SOC_60 = 0;
-        MCUO_SOC_80 = 0;
-        MCUO_SOC_100 = 0;
-    }
-}
-
-void LedBar_Show_Sleep(void)
-{
-    static UINT16 su16_SleepDelay_Tcnt = 0;
-
-    if (!MCUI_SOC_KEY)
-    {
-        if (++su16_SleepDelay_Tcnt >= 30)
-        {
-            entersleep(DEEP_MODE);
-        }
-    }
-    else
-    {
-        su16_SleepDelay_Tcnt = 0;
-    }
-}
-
 void APP_LedBar(void)
 {
-    static bool first_reset_status = true;
-
     if (0 == g_st_SysTimeFlag.bits.b1Sys100msFlag)
     {
         return;
@@ -778,64 +522,52 @@ void APP_LedBar(void)
         return;
     }
 
-    LedBar_ProcessKeyEvent();
-
-    if (is_water_in())
+    if (s_water_alarm_enable)
     {
-        if (s_led_ui_mode == LED_UI_SHUTDOWN_ANIM)
-        {
-            LedBar_RunShutdownAnim();
-            return;
-        }
-
-        if (first_reset_status)
-        {
-            first_reset_status = false;
-            MCUO_SOC_20 = 0;
-            MCUO_SOC_40 = 0;
-            MCUO_SOC_60 = 0;
-            MCUO_SOC_80 = 0;
-            MCUO_SOC_100 = 0;
-        }
-
-        MCUO_SOC_20 = !MCUO_SOC_20;
-        MCUO_SOC_40 = !MCUO_SOC_40;
-        MCUO_SOC_60 = !MCUO_SOC_60;
-        MCUO_SOC_80 = !MCUO_SOC_80;
-        MCUO_SOC_100 = !MCUO_SOC_100;
-    }
-    else
-    {
-        first_reset_status = true;
-
-        switch (s_led_ui_mode)
-        {
-        case LED_UI_NORMAL:
-            switch (LedBar_Command)
-            {
-            case LED_BAR_NORMAL:
-                LedBar_Show_Normal();
-                break;
-            case LED_BAR_CHG:
-                LedBar_Show_CHG();
-                break;
-            case LED_BAR_DSG:
-                LedBar_Show_DSG();
-                break;
-            case LED_BAR_FAULT:
-                break;
-            default:
-                break;
-            }
-            break;
-
-        default:
-            break;
-        }
+        LedBar_RunWaterAlarm();
+        return;
     }
 
-    // if (s_led_ui_mode == LED_UI_NORMAL)
-    // {
-    //     LedBar_Show_Fault();
-    // }
+    switch (s_led_ui_mode)
+    {
+    case LED_UI_SOC_TEMP:
+        LedBar_RunSocTemp();
+        return;
+
+    case LED_UI_BOOT_ANIM_ON:
+        LedBar_RunBootAnimOn();
+        return;
+
+    case LED_UI_BOOT_ANIM_OFF:
+        LedBar_RunBootAnimOff();
+        return;
+
+    case LED_UI_SHUTDOWN_ANIM:
+        LedBar_RunShutdownAnim();
+        return;
+
+    default:
+        break;
+    }
+
+    if (s_charge_display_enable || LedBar_Command == LED_BAR_CHG)
+    {
+        LedBar_Show_CHG();
+        return;
+    }
+
+    if (s_discharge_display_enable || LedBar_Command == LED_BAR_NORMAL)
+    {
+        if (s_discharge_display_enable)
+        {
+            LedBar_Show_Normal();
+        }
+        else
+        {
+            LedBar_SetAllOff();
+        }
+        return;
+    }
+
+    LedBar_SetAllOff();
 }

@@ -1,4 +1,5 @@
 #include "main.h"
+#include "gan_huang_guan_logi.h"
 
 struct RS485MSG g_stCurrentMsgPtr_SCI1;
 UINT16 gu16_CommuErrCnt_SCI1 = 0; // SCI通信异常计数

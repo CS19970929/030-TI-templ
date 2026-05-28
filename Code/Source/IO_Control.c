@@ -1,4 +1,5 @@
 #include "main.h"
+#include "gan_huang_guan_logi.h"
 
 enum RELAY_CTRL_STATUS RelayCtrl_Command = RELAY_PRE_DET;
 enum MOS_CTRL_STATUS MOSCtrl_Command = MOS_PRE_DET;
@@ -16,7 +17,10 @@ void RefreshData_Drivers(void)
 	Driver_Element.u16_CurChg = g_stCellInfoReport.u16Ichg;
 	Driver_Element.u16_CurDsg = g_stCellInfoReport.u16IDischg;
 
-	// 信息交换区
+	Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
+	ganhuangguan_Logi();
+
+	// protection overrides reed-switch business state
 	if (SystemStatus.bits.b1Status_BnCloseIO || SystemStatus.bits.b1Status_HeatCloseIO || SystemStatus.bits.b1Status_CBCCloseIO 
 	|| System_ErrFlag.u8ErrFlag_Com_AFE1 || System_ErrFlag.u8ErrFlag_Com_AFE2 || System_ErrFlag.u8ErrFlag_Com_EEPROM 
 	|| System_ErrFlag.u8ErrFlag_Store_EEPROM || CBC_Element.u8CBC_CHG_ErrFlag || CBC_Element.u8CBC_DSG_ErrFlag 
@@ -24,14 +28,9 @@ void RefreshData_Drivers(void)
 	|| is_water_in()/*|| Sleep_Mode.all & 0x2F != 0*/)
 	{
 
-		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE; // CBC保护放到这里
-	}
-	else
-	{
-		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
+		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE; // protection close
 	}
 
-	ganhuangguan_Logi();
 
 	// 这个写法很巧妙，刚开始执行一个动作，如果执行了，转向下一个动作，不执行则继续等待。相互切换
 	switch (su8_OnOFF_Status)
@@ -209,7 +208,7 @@ void App_DI1_Switch(void)
 	}
 #endif
 
-#if defined(_DI_SWITCH_longKEY_ONOFF) 
+#if defined(_DI_SWITCH_longKEY_ONOFF) && !defined(__FUNC__LED__)
 	static UINT16 su16_AntiShake_Cnt2 = 0;
 
 	if (0 == MCUI_ENI_DI1)

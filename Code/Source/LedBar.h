@@ -11,9 +11,19 @@ typedef enum _LEDBAR_COMMAND {
 	LED_BAR_FAULT,
 } LEDBAR_COMMAND;
 
+extern LEDBAR_COMMAND LedBar_Command;
+
 void LedBar_StartUp(void);
+void APP_LedBar(void);
 UINT8 LedBar_IsWakePreviewPending(void);
 UINT8 LedBar_HandleWakePreviewBeforeBoot(void);
+void LedBar_RequestSocTemporary(UINT16 soc, UINT16 duration_100ms);
+void LedBar_RequestBootAnimation(UINT16 soc);
+void LedBar_RequestShutdownAnimation(void);
+void LedBar_SetDischargeDisplay(UINT8 enable);
+void LedBar_SetChargeDisplay(UINT8 enable);
+void LedBar_SetWaterAlarm(UINT8 enable);
+UINT8 LedBar_IsShutdownAnimationActive(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)
 
