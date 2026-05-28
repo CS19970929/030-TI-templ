@@ -9,7 +9,7 @@ UINT8 RTC_ExtComCnt = 0;
 
 static UINT8 s_sleep_wakeup_by_di1 = 0;
 uint8_t reset_sleep_state = 0;
-#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)5) // PC13±ÕºÏ50msÏÈ»½ÐÑµ½µçÁ¿Ô¤ÀÀÌ¬
+#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)1) // PC13±ÕºÏºó¾¡¿ì»½ÐÑµ½µçÁ¿Ô¤ÀÀÌ¬
 
 static UINT8 IsPA0WakeupActive(void)
 {
@@ -20,6 +20,13 @@ static UINT8 IsDI1Pressed(void)
 {
 	// PC13¿ª¹Ø±ÕºÏÎªµÍµçÆ½£¨ÓëEXTI13ÏÂ½µÑØ»½ÐÑ±£³ÖÒ»ÖÂ£©
 	return (UINT8)(MCUI_ENI_DI1 == 0);
+}
+
+static void SleepDeal_ClearDi1Wakeup(void)
+{
+	s_sleep_wakeup_by_di1 = 0;
+	WakeDisplayState_Clear();
+	EXTI_ClearITPendingBit(EXTI_Line13);
 }
 
 static UINT8 IsSleepWakeupValid(void)
@@ -42,6 +49,12 @@ static UINT8 IsSleepWakeupValid(void)
 		return 0;
 	}
 
+	if (!is_open_gan2())
+	{
+		SleepDeal_ClearDi1Wakeup();
+		return 0;
+	}
+
 	while (IsDI1Pressed())
 	{
 		if (IsPA0WakeupActive() && is_open_gan1())
@@ -49,6 +62,12 @@ static UINT8 IsSleepWakeupValid(void)
 			s_sleep_wakeup_by_di1 = 0;
 			WakeDisplayState_Clear();
 			return 1;
+		}
+
+		if (!is_open_gan2())
+		{
+			SleepDeal_ClearDi1Wakeup();
+			return 0;
 		}
 
 		__delay_ms(10);
@@ -65,56 +84,12 @@ static UINT8 IsSleepWakeupValid(void)
 
 // é€šè??å”¤é†’å¯¹æ·±åº¦ä¼‘çœ ä¸èµ·æ•ˆæžœã€‚ä¸èƒ½å†BaseåŠ å…¥é€šè??å”¤é†’ã€?
 
-/*
- * ÐÝÃß²ßÂÔ¹³×Ó£ºÎªÁË±ãÓÚºóÐøÒÆÖ²£¬½öÐè¸ÄÒÔÏÂ3¸öº¯Êý¼´¿ÉÇ¨ÒÆ¡°¿ÕÏÐÇÒÕý³£½øÈëRTCÖÜÆÚÐÝÃß¡±Âß¼­¡£
- */
-static UINT8 SleepDeal_HasBlockingFault(void)
-{
-	if (is_water_in())
-	{
-		return 1;
-	}
-
-	if (g_stCellInfoReport.unMdlFault_Third.all != 0)
-	{
-		return 1;
-	}
-
-	if (System_ERROR_UserCallback(ERROR_STATUS_TEMP_BREAK) ||
-		System_ERROR_UserCallback(ERROR_STATUS_CBC_DSG) ||
-		System_ERROR_UserCallback(ERROR_STATUS_CBC_CHG))
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
 static UINT8 SleepDeal_IsIdleCurrent(void)
 {
 	return (UINT8)((g_stCellInfoReport.u16Ichg <= OtherElement.u16Sleep_VirCur_Chg) &&
 				   (g_stCellInfoReport.u16IDischg <= OtherElement.u16Sleep_VirCur_Dsg));
 }
 
-static UINT8 SleepDeal_IsRtcIdleNormal(void)
-{
-	if (OtherElement.u16Sleep_TimeRTC == 0)
-	{
-		return 0;
-	}
-
-	if (!SleepDeal_IsIdleCurrent())
-	{
-		return 0;
-	}
-
-	if (SleepDeal_HasBlockingFault())
-	{
-		return 0;
-	}
-
-	return (UINT8)(g_stCellInfoReport.u16VCellMin > OtherElement.u16Sleep_VNormal);
-}
 void InitWakeUp_Base(void)
 {
 	EXTI_InitTypeDef EXTI_InitStruct;
@@ -211,8 +186,6 @@ void delay(int n)
 
 void IOstatus_Base(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); // å¼€å¯GPIOAçš„å?–è?¾æ—¶é’?
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); // å¼€å¯GPIOBçš„å?–è?¾æ—¶é’?
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE); // å¼€å¯GPIOCçš„å?–è?¾æ—¶é’?
@@ -855,11 +828,6 @@ void SleepDeal_Normal_Select(void)
 			Sleep_Mode.bits.b1NormalSleep_L3 = 1;
 			Sleep_Status = SLEEP_HICCUP_NORMAL_L3;
 		}
-		// else if (SleepDeal_IsRtcIdleNormal())
-		// {
-		// 	Sleep_Mode.bits.b1NormalSleep_L1 = 1;
-		// 	Sleep_Status = SLEEP_HICCUP_NORMAL_L1;
-		// }
 		else
 		{ // ¿ÕÏÐµ«·ÇRTCÕý³£Çø¼ä£¬×ßÆÕÍ¨µÍ¹¦ºÄ½Ú×à
 			Sleep_Mode.bits.b1NormalSleep_L2 = 1;

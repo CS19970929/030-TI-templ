@@ -5,7 +5,7 @@
 #define GAN3_SOC_TICKS_10MS ((UINT16)100)
 #define GAN3_POWER_TICKS_10MS ((UINT16)300)
 #define WATER_SLEEP_TICKS_10MS ((UINT16)12000)
-#define CHARGER_LOST_TICKS_10MS ((UINT16)500)
+#define CHARGER_LOST_TICKS_10MS ((UINT16)100)
 #define CHARGE_CURRENT_MIN_0P1A ((UINT16)2)
 
 static UINT16 s_gan1_off_ticks = 0;
@@ -75,9 +75,26 @@ static UINT8 Gan_IsChargeCurrentActive(void)
     return (UINT8)(g_stCellInfoReport.u16Ichg > Gan_GetChargeCurrentThreshold());
 }
 
-static UINT8 Gan_IsPackFull(void)
+static UINT8 Gan_IsSocFull(void)
 {
-    return (UINT8)(g_stCellInfoReport.SocElement.u16Soc >= 99);
+    return (UINT8)(g_stCellInfoReport.SocElement.u16Soc >= 100);
+}
+
+static UINT8 Gan_IsPackAtSoc100Voltage(void)
+{
+    if (OtherElement.u16Soc_V_100 == 0)
+    {
+        return 0;
+    }
+
+    return (UINT8)(g_stCellInfoReport.u16VCellMax >= OtherElement.u16Soc_V_100);
+}
+
+static UINT8 Gan_IsChargerLostCondition(UINT8 charge_current_active)
+{
+    return (UINT8)((!charge_current_active) &&
+                   (!Gan_IsSocFull()) &&
+                   (!Gan_IsPackAtSoc100Voltage()));
 }
 
 static void Gan_RequestSleep(void)
@@ -164,7 +181,7 @@ static UINT8 Gan_ProcessCharge(UINT8 gan1_on)
     Gan_SetDriverKeep();
     LedBar_SetDischargeDisplay(0);
 
-    if (charge_current_active || Gan_IsPackFull())
+    if (charge_current_active || Gan_IsSocFull() || Gan_IsPackAtSoc100Voltage())
     {
         s_charger_lost_ticks = 0;
         LedBar_Command = LED_BAR_CHG;
@@ -172,11 +189,17 @@ static UINT8 Gan_ProcessCharge(UINT8 gan1_on)
     }
     else
     {
+        UINT8 charger_lost_condition = Gan_IsChargerLostCondition(charge_current_active);
+
         LedBar_Command = LED_BAR_NORMAL;
         LedBar_SetChargeDisplay(0);
-        if (s_charger_lost_ticks < CHARGER_LOST_TICKS_10MS)
+        if (charger_lost_condition && s_charger_lost_ticks < CHARGER_LOST_TICKS_10MS)
         {
             ++s_charger_lost_ticks;
+        }
+        if (!charger_lost_condition)
+        {
+            s_charger_lost_ticks = 0;
         }
         if (s_charger_lost_ticks >= CHARGER_LOST_TICKS_10MS)
         {
