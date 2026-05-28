@@ -277,8 +277,9 @@ static void LedBar_RunShutdownAnim(void)
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
     s_shutdown_animation_active = 0;
+    s_discharge_display_enable = 0;
+    s_charge_display_enable = 0;
     LedBar_SetAllOff();
-    sleep_reason = 0;
     entersleep(DEEP_MODE);
 }
 
@@ -562,6 +563,12 @@ void APP_LedBar(void)
 
     default:
         break;
+    }
+
+    if (sleep_reason == 1)
+    {
+        LedBar_SetAllOff();
+        return;
     }
 
     if (s_charge_display_enable || LedBar_Command == LED_BAR_CHG)
