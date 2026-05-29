@@ -29,9 +29,11 @@ static void SleepDeal_ClearDi1Wakeup(void)
 	EXTI_ClearITPendingBit(EXTI_Line13);
 }
 
+extern void InitIO_ganhuangguan(void);
 static UINT8 IsSleepWakeupValid(void)
 {
 	UINT16 hold_cnt = 0;
+	InitIO_ganhuangguan();
 
 	if (IsPA0WakeupActive())
 	{
@@ -49,11 +51,11 @@ static UINT8 IsSleepWakeupValid(void)
 		return 0;
 	}
 
-	if (!is_open_gan2())
-	{
-		SleepDeal_ClearDi1Wakeup();
-		return 0;
-	}
+	// if (!is_open_gan2())
+	// {
+	// 	SleepDeal_ClearDi1Wakeup();
+	// 	return 0;
+	// }
 
 	while (IsDI1Pressed())
 	{
@@ -64,11 +66,11 @@ static UINT8 IsSleepWakeupValid(void)
 			return 1;
 		}
 
-		if (!is_open_gan2())
-		{
-			SleepDeal_ClearDi1Wakeup();
-			return 0;
-		}
+		// if (!is_open_gan2())
+		// {
+		// 	SleepDeal_ClearDi1Wakeup();
+		// 	return 0;
+		// }
 
 		__delay_ms(10);
 		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
@@ -138,24 +140,24 @@ void InitWakeUp_Base(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
 	NVIC_Init(&NVIC_InitStructure);
 
-	{
-		GPIO_InitStructure.GPIO_Pin = PIN_GAN1; // 选择要用的GPIO引脚
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
-		GPIO_Init(GPIO_GAN1, &GPIO_InitStructure);
+	// {
+	// 	GPIO_InitStructure.GPIO_Pin = PIN_GAN1; // 选择要用的GPIO引脚
+	// 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	// 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // 设置引脚模式为上拉输入模�?
+	// 	GPIO_Init(GPIO_GAN1, &GPIO_InitStructure);
 
-		SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource4);
-		EXTI_InitStruct.EXTI_Line = EXTI_Line4;
-		EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
-		EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
-		EXTI_InitStruct.EXTI_LineCmd = ENABLE;
-		EXTI_Init(&EXTI_InitStruct);
-		// �?�?嵌�?��?��??
-		NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
-		NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
-		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
-		NVIC_Init(&NVIC_InitStructure);
-	}
+	// 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource4);
+	// 	EXTI_InitStruct.EXTI_Line = EXTI_Line4;
+	// 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	// 	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling; // 上升沿中�?
+	// 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	// 	EXTI_Init(&EXTI_InitStruct);
+	// 	// �?�?嵌�?��?��??
+	// 	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn; // 使能按键WK_UP所在的外部�?�?通道
+	// 	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;	// 抢占优先�?0
+	// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// 使能外部�?�?通道
+	// 	NVIC_Init(&NVIC_InitStructure);
+	// }
 }
 
 void InitWakeUp_NormalMode(void)

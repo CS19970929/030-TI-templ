@@ -13,7 +13,7 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_NORMAL;
 #define LEDBAR_SOC_TEMP_TICKS_100MS ((UINT16)30)
 #define LEDBAR_CHG_BLINK_TICKS_100MS ((UINT8)5)
 #define LEDBAR_WATER_BLINK_TICKS_100MS ((UINT8)5)
-#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)2)
+#define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)1)
 #define LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS ((UINT16)1)
 #define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS ((UINT16)300)
@@ -256,7 +256,7 @@ static void LedBar_RunBootAnimOff(void)
     s_led_ui_mode = LED_UI_NORMAL;
     s_discharge_display_enable = 1;
     LedBar_Command = LED_BAR_NORMAL;
-    LedBar_SetByMask(LedBar_GetLiveSocMask());
+    // LedBar_SetByMask(LedBar_GetLiveSocMask());
 }
 
 static void LedBar_RunShutdownAnim(void)
@@ -382,12 +382,12 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
 
     LedBar_InitOutputPins();
 
-    if (!is_open_gan2())
-    {
-        WakeDisplayState_Clear();
-        LedBar_SetAllOff();
-        return 0;
-    }
+    // if (!is_open_gan2())
+    // {
+    //     WakeDisplayState_Clear();
+    //     LedBar_SetAllOff();
+    //     return 0;
+    // }
 
     if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
@@ -400,12 +400,12 @@ UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
     {
         __delay_ms(10);
 
-        if (!is_open_gan2())
-        {
-            WakeDisplayState_Clear();
-            LedBar_SetAllOff();
-            return 0;
-        }
+        // if (!is_open_gan2())
+        // {
+        //     WakeDisplayState_Clear();
+        //     LedBar_SetAllOff();
+        //     return 0;
+        // }
 
         if (is_open_gan3())
         {

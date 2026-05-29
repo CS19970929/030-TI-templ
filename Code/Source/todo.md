@@ -88,3 +88,13 @@ stop mode唤醒后，使用的时钟好像是hsi，你调研确认下
 还是运行休眠状态 充电激活，并充电吧
 
 增加多种soc校准策略，例如ocv，静置只允许向下校准，每次变化只能是1，不允许跳变
+
+
+
+
+
+
+LedBar_HandleWakePreviewBeforeBoot ????
+
+
+长按gan3 3s休眠，休眠动画只需要以此熄灭led就行，目前现象是5个led依次熄灭led后，还会亮一下当前soc灯
