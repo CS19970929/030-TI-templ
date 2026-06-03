@@ -100,7 +100,8 @@ struct stCell_Info {
 #define	RS485_STA_IDLE				0
 #define	RS485_STA_RX_COMPLETE		1
 #define	RS485_STA_RX_OK				2
-#define	RS485_STA_TX_COMPLETE		3
+#define	RS485_STA_TX_BUSY			3
+#define	RS485_STA_TX_COMPLETE		4
 
 
 #define	RS485_ACK_POS			        0x00	// ����Ӧ
@@ -555,8 +556,10 @@ extern struct stCell_Info g_stCellInfoReport;
 
 void Sci1_CommonUpper_FaultChk(void);
 void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s);
+void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s);
 void Sci2_CommonUpper_FaultChk(void);
 void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s);
+void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s);
 
 
 void InitUSART_CommonUpper(void);
