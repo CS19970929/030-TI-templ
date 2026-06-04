@@ -11,6 +11,7 @@
 static UINT16 s_gan1_off_ticks = 0;
 static UINT16 s_gan2_off_ticks = 0;
 static UINT16 s_water_ticks = 0;
+static UINT16 s_water_gan3_hold_ticks = 0;
 static UINT16 s_charger_lost_ticks = 0;
 static UINT16 s_gan3_hold_ticks = 0;
 static UINT8 s_charge_latched = 0;
@@ -56,6 +57,16 @@ bool is_charger_online(void)
 UINT8 ganhuangguan_IsChargeLatched(void)
 {
     return s_charge_latched;
+}
+
+void ganhuangguan_WaitGan3ReleaseBeforeLongPress(void)
+{
+    s_gan3_hold_ticks = 0;
+    s_gan3_prev = is_open_gan3() ? 1 : 0;
+    s_gan3_long_handled = 0;
+    s_gan3_soc_handled = 0;
+    s_gan3_wait_release = 1;
+    s_water_gan3_hold_ticks = 0;
 }
 
 static UINT16 Gan_GetChargeCurrentThreshold(void)
@@ -131,6 +142,24 @@ static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
     LedBar_SetWaterAlarm(1);
     GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_RESET);
 
+    if (is_open_gan3())
+    {
+        if (s_water_gan3_hold_ticks < GAN3_POWER_TICKS_10MS)
+        {
+            ++s_water_gan3_hold_ticks;
+        }
+
+        if (s_water_gan3_hold_ticks >= GAN3_POWER_TICKS_10MS)
+        {
+            Gan_RequestSleep();
+            return;
+        }
+    }
+    else
+    {
+        s_water_gan3_hold_ticks = 0;
+    }
+
     if (!gan1_on || !gan2_on)
     {
         Gan_RequestSleep();
@@ -151,6 +180,7 @@ static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
 static void Gan_ClearWater(void)
 {
     s_water_ticks = 0;
+    s_water_gan3_hold_ticks = 0;
     LedBar_SetWaterAlarm(0);
     GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
 }

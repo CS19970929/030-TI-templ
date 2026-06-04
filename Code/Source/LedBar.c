@@ -418,6 +418,7 @@ static UINT8 LedBar_HandleWakeSocPreviewAfterReset(UINT16 wake_soc)
                 if (is_open_gan1() && is_open_gan2())
                 {
                     LedBar_RunBootAnimationBlocking(wake_soc);
+                    ganhuangguan_WaitGan3ReleaseBeforeLongPress();
                     return 1;
                 }
 
@@ -440,6 +441,7 @@ static void LedBar_HandleWakeWaterAlarmAfterReset(void)
 {
     UINT16 idle_ticks = 0;
     UINT16 blink_ticks = 0;
+    UINT16 gan3_hold_ticks = 0;
     UINT8 blink_on = 1;
     UINT8 gan3_last = is_open_gan3() ? 1 : 0;
     UINT8 gan3_now;
@@ -455,6 +457,25 @@ static void LedBar_HandleWakeWaterAlarmAfterReset(void)
         }
 
         gan3_now = is_open_gan3() ? 1 : 0;
+        if (gan3_now)
+        {
+            idle_ticks = 0;
+            if (gan3_hold_ticks < LEDBAR_PREBOOT_POWERON_TICKS_10MS)
+            {
+                ++gan3_hold_ticks;
+            }
+
+            if (gan3_hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
+            {
+                LedBar_SetAllOff();
+                return;
+            }
+        }
+        else
+        {
+            gan3_hold_ticks = 0;
+        }
+
         if (gan3_now || (gan3_now != gan3_last))
         {
             idle_ticks = 0;

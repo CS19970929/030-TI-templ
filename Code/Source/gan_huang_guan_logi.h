@@ -10,5 +10,6 @@ bool is_charger_online(void);
 
 void ganhuangguan_Logi(void);
 UINT8 ganhuangguan_IsChargeLatched(void);
+void ganhuangguan_WaitGan3ReleaseBeforeLongPress(void);
 
 #endif
