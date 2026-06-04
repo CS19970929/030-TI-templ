@@ -156,6 +156,32 @@ void WakeDisplay_RequestBootSequence(void)
 	WakeDisplayState_Write(WAKE_DISPLAY_MODE_BOOT_SEQUENCE, soc);
 }
 
+void WakeDisplay_RequestWaterAlarm(void)
+{
+	UINT32 value = 0;
+	UINT16 soc = 0;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		soc = (UINT16)value;
+	}
+
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_WATER_ALARM, soc);
+}
+
+void WakeDisplay_RequestChargerWake(void)
+{
+	UINT32 value = 0;
+	UINT16 soc = 0;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		soc = (UINT16)value;
+	}
+
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_CHARGER_WAKE, soc);
+}
+
 void WakeDisplayState_CaptureForBoot(void)
 {
 	UINT32 value = 0;
@@ -217,6 +243,19 @@ void WakeDisplayState_Clear(void)
 {
 	WakeDisplayState_Write(WAKE_DISPLAY_MODE_NONE, 0);
 	WakeDisplayState_UpdateShadow(WAKE_DISPLAY_MODE_NONE, 0, 0);
+}
+
+void WakeDisplayMode_ClearKeepSoc(void)
+{
+	UINT32 value = 0;
+	UINT16 soc = 0;
+
+	if (WakeDisplayState_ReadRaw(&value))
+	{
+		soc = (UINT16)value;
+	}
+
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_NONE, soc);
 }
 
 void App_FlashUpdateDet(void)

@@ -101,6 +101,18 @@ void InitIO_ganhuangguan(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIO_GAN4, &GPIO_InitStructure);
+	GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
+	GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PIN_SWT_AD;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_SWT_AD, &GPIO_InitStructure);
 }
 
 void InitIO(void)
@@ -135,12 +147,17 @@ void InitIO(void)
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 		GPIO_Init(GPIO_BLE_EN, &GPIO_InitStructure);
 
-		GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, 1);
+		GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
 		GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 		GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
+
+		GPIO_InitStructure.GPIO_Pin = PIN_SWT_AD;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+		GPIO_Init(GPIO_SWT_AD, &GPIO_InitStructure);
 	}
 	GPIO_InitStructure.GPIO_Pin = PIN_WK_AFE;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;

@@ -7,9 +7,7 @@ enum SLEEP_STATUS Sleep_Status = SLEEP_HICCUP_SHIFT;
 UINT8 gu8_SleepStatus = 0;
 UINT8 RTC_ExtComCnt = 0;
 
-static UINT8 s_sleep_wakeup_by_di1 = 0;
 uint8_t reset_sleep_state = 0;
-#define DI1_SOC_PREVIEW_WAKE_10MS ((UINT16)1) // PC13闭合后尽快唤醒到电量预览态
 
 static UINT8 IsPA0WakeupActive(void)
 {
@@ -22,63 +20,57 @@ static UINT8 IsDI1Pressed(void)
 	return (UINT8)(MCUI_ENI_DI1 == 0);
 }
 
-static void SleepDeal_ClearDi1Wakeup(void)
+extern void InitIO_ganhuangguan(void);
+
+static void SleepDeal_InitWakeDetectPins(void)
 {
-	s_sleep_wakeup_by_di1 = 0;
-	WakeDisplayState_Clear();
-	EXTI_ClearITPendingBit(EXTI_Line13);
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	InitIO_ganhuangguan();
+
+	GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
+	GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PIN_SWT_AD;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIO_SWT_AD, &GPIO_InitStructure);
 }
 
-extern void InitIO_ganhuangguan(void);
 static UINT8 IsSleepWakeupValid(void)
 {
-	UINT16 hold_cnt = 0;
-	InitIO_ganhuangguan();
+	SleepDeal_InitWakeDetectPins();
+
+	if (IsDI1Pressed())
+	{
+		if (is_water_in())
+		{
+			WakeDisplay_RequestWaterAlarm();
+		}
+		else
+		{
+			WakeDisplay_RequestSocPreview();
+		}
+		EXTI_ClearITPendingBit(EXTI_Line13);
+		MCU_RESET();
+		return 1;
+	}
 
 	if (IsPA0WakeupActive())
 	{
 		if (is_open_gan1())
 		{
-			s_sleep_wakeup_by_di1 = 0;
-			WakeDisplayState_Clear();
+			WakeDisplay_RequestChargerWake();
+			EXTI_ClearITPendingBit(EXTI_Line0);
+			MCU_RESET();
 			return 1;
 		}
 		return 0;
-	}
-
-	if (!IsDI1Pressed())
-	{
-		return 0;
-	}
-
-	// if (!is_open_gan2())
-	// {
-	// 	SleepDeal_ClearDi1Wakeup();
-	// 	return 0;
-	// }
-
-	while (IsDI1Pressed())
-	{
-		if (IsPA0WakeupActive() && is_open_gan1())
-		{
-			s_sleep_wakeup_by_di1 = 0;
-			WakeDisplayState_Clear();
-			return 1;
-		}
-
-		// if (!is_open_gan2())
-		// {
-		// 	SleepDeal_ClearDi1Wakeup();
-		// 	return 0;
-		// }
-
-		__delay_ms(10);
-		if (++hold_cnt >= DI1_SOC_PREVIEW_WAKE_10MS)
-		{
-			s_sleep_wakeup_by_di1 = 1;
-			WakeDisplay_RequestSocPreview();
-			return 1;
-		}
 	}
 
 	return 0;
@@ -267,17 +259,7 @@ void Sys_StopMode(void)
 
 // 濡傛灉淇″彿鍒颁簡锛屾病娉曞敜閱掞紝鍗曠墖鏈哄亣姝荤姸鎬併�?
 // 灏辨槸浠ヤ笅杩欐?佃瘽鎵ц?屽嚭闂?棰樹簡锛屽?栭儴鏅舵尟鍑洪棶棰?
-#if (defined _HSE_8M_PLL_48M) || (defined _HSE_12M_PLL_48M)
-	RCC_HSEConfig(RCC_HSE_ON); // 璧锋潵鍚庝細琚?鍒囨崲鍥濰SI
-	while (RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET)
-		;				// 绛夊緟 HSE 鍑嗗?囧氨缁?
-	RCC_PLLCmd(ENABLE); // 浣胯兘 PLL
-	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
-		;									   // 绛夊緟 PLL 鍑嗗?囧氨缁?
-	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); // 閫夋嫨PLL浣滀负绯荤粺鏃堕挓婧?
-	while (RCC_GetSYSCLKSource() != 0x08)
-		; // 绛夊緟PLL琚?閫夋嫨涓虹郴缁熸椂閽熸簮
-#endif
+/* STOP唤醒后由IsSleepWakeupValid记录原因并立即复位，不在这里恢复外部时钟。 */
 }
 
 void SleepDeal_Continue(void)
@@ -909,21 +891,8 @@ static void SleepStartup_WaitForWakeup(void)
 {
 	while (1)
 	{
-		do
-		{
-			Sys_StopMode();
-		} while (!IsSleepWakeupValid());
-#ifdef __FUNC__LED__
-		if (s_sleep_wakeup_by_di1)
-		{
-			s_sleep_wakeup_by_di1 = 0;
-			if (!LedBar_HandleWakePreviewBeforeBoot())
-			{
-				continue;
-			}
-		}
-#endif
-		break;
+		Sys_StopMode();
+		(void)IsSleepWakeupValid();
 	}
 }
 
@@ -1098,6 +1067,13 @@ void InitWakeUp_TestMode(void)
 
 void IORecover_TestMode(void)
 {
+	MCU_RESET();
+}
+
+void SleepDeal_ReenterDeepSleepFromWakePreview(void)
+{
+	WakeDisplayMode_ClearKeepSoc();
+	BootFlag_Write(FLASH_DEEP_SLEEP_VALUE);
 	MCU_RESET();
 }
 

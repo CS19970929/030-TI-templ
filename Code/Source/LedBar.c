@@ -5,7 +5,6 @@
 uint8_t sleep_reason = 0;
 
 extern UINT8 WakeDisplayState_Read(UINT16 *mode, UINT16 *soc);
-extern void WakeDisplayState_Clear(void);
 
 LEDBAR_COMMAND LedBar_Command = LED_BAR_NORMAL;
 
@@ -18,6 +17,8 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_NORMAL;
 #define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_RELEASE_TICKS_10MS ((UINT16)10)
+#define LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS ((UINT16)12000)
+#define LEDBAR_WATER_PREBOOT_BLINK_TICKS_10MS ((UINT16)50)
 
 typedef enum _LEDBAR_UI_MODE
 {
@@ -116,7 +117,17 @@ static void LedBar_InitOutputPins(void)
 
 UINT8 LedBar_IsWakePreviewPending(void)
 {
-    return 0;
+    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+    UINT16 wake_soc = 0;
+
+    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
+    {
+        return 0;
+    }
+
+    (void)wake_soc;
+    return (UINT8)((wake_mode == WAKE_DISPLAY_MODE_SOC_PREVIEW) ||
+                   (wake_mode == WAKE_DISPLAY_MODE_WATER_ALARM));
 }
 
 void LedBar_RequestSocTemporary(UINT16 soc, UINT16 duration_100ms)
@@ -148,6 +159,7 @@ void LedBar_RequestBootAnimation(UINT16 soc)
     s_anim_step_ticks = 0;
     s_ui_ticks = 0;
     s_shutdown_animation_active = 0;
+    s_temp_soc = soc;
     s_led_ui_mode = LED_UI_BOOT_ANIM_ON;
     LedBar_SetAllOff();
 }
@@ -235,6 +247,7 @@ static void LedBar_RunBootAnimOn(void)
 
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_BOOT_ANIM_OFF;
+    LedBar_SetAllOff();
 }
 
 static void LedBar_RunBootAnimOff(void)
@@ -245,18 +258,11 @@ static void LedBar_RunBootAnimOff(void)
     }
     s_anim_step_ticks = 0;
 
-    if (s_anim_step < 5)
-    {
-        ++s_anim_step;
-        LedBar_SetByMask((UINT8)(LEDBAR_MASK_ALL >> s_anim_step));
-        return;
-    }
-
     s_anim_step = 0;
     s_led_ui_mode = LED_UI_NORMAL;
     s_discharge_display_enable = 1;
     LedBar_Command = LED_BAR_NORMAL;
-    // LedBar_SetByMask(LedBar_GetLiveSocMask());
+    LedBar_SetByMask(LedBar_GetLiveSocMask());
 }
 
 static void LedBar_RunShutdownAnim(void)
@@ -370,107 +376,125 @@ void LedBar_Show_Sleep(void)
     LedBar_SetAllOff();
 }
 
-UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
+static void LedBar_RunBootAnimationBlocking(UINT16 soc)
 {
-    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
-    UINT16 wake_soc = 0;
-    UINT16 hold_ticks = 0;
-    UINT16 show_ticks = 0;
-    UINT16 release_ticks = 0;
-    UINT8 soc_shown = 0;
-    UINT8 soc_expired = 0;
+    UINT8 step;
 
-    LedBar_InitOutputPins();
-
-    // if (!is_open_gan2())
-    // {
-    //     WakeDisplayState_Clear();
-    //     LedBar_SetAllOff();
-    //     return 0;
-    // }
-
-    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
+    for (step = 1; step <= 5; ++step)
     {
-        wake_soc = 0;
+        LedBar_SetByMask((UINT8)((1U << step) - 1U));
+        __delay_ms((UINT16)LEDBAR_ANIM_STEP_TICKS_100MS * 100U);
     }
 
     LedBar_SetAllOff();
+    __delay_ms((UINT16)LEDBAR_ANIM_STEP_TICKS_100MS * 100U);
+
+    s_anim_step = 0;
+    s_anim_step_ticks = 0;
+    s_led_ui_mode = LED_UI_NORMAL;
+    s_discharge_display_enable = 1;
+    LedBar_Command = LED_BAR_NORMAL;
+    LedBar_SetByMask(LedBar_GetSocMaskFromValue(soc));
+}
+
+static UINT8 LedBar_HandleWakeSocPreviewAfterReset(UINT16 wake_soc)
+{
+    UINT16 hold_ticks = 0;
+    UINT16 show_ticks = 0;
+
+    LedBar_SetByMask(LedBar_GetSocMaskFromValue(wake_soc));
 
     while (1)
     {
-        __delay_ms(10);
-
-        // if (!is_open_gan2())
-        // {
-        //     WakeDisplayState_Clear();
-        //     LedBar_SetAllOff();
-        //     return 0;
-        // }
-
         if (is_open_gan3())
         {
-            release_ticks = 0;
             if (hold_ticks < 0xFFFF)
             {
                 ++hold_ticks;
             }
 
-            if (!soc_shown && hold_ticks >= LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS)
+            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
             {
-                soc_shown = 1;
-                show_ticks = 0;
-                LedBar_SetByMask(LedBar_GetSocMaskFromValue(wake_soc));
-            }
-
-            if (soc_shown && !soc_expired)
-            {
-                if (++show_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+                if (is_open_gan1() && is_open_gan2())
                 {
-                    soc_expired = 1;
-                    LedBar_SetAllOff();
+                    LedBar_RunBootAnimationBlocking(wake_soc);
+                    return 1;
                 }
-            }
 
-            if (hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS &&
-                is_open_gan1() &&
-                is_open_gan2())
-            {
-                WakeDisplay_RequestBootSequence();
                 LedBar_SetAllOff();
-                return 1;
+                return 0;
             }
         }
-        else
-        {
-            if (hold_ticks < LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS && !soc_shown)
-            {
-                if (++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
-                {
-                    LedBar_SetAllOff();
-                    return 0;
-                }
-            }
-            else
-            {
-                if (soc_shown && !soc_expired)
-                {
-                    if (++show_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
-                    {
-                        soc_expired = 1;
-                        LedBar_SetAllOff();
-                    }
-                }
 
-                if (soc_expired && ++release_ticks >= LEDBAR_PREBOOT_RELEASE_TICKS_10MS)
-                {
-                    WakeDisplayState_Clear();
-                    WakeDisplaySocCache_Write(wake_soc);
-                    LedBar_SetAllOff();
-                    return 0;
-                }
-            }
+        if (++show_ticks >= LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS)
+        {
+            LedBar_SetAllOff();
+            return 0;
         }
+
+        __delay_ms(10);
     }
+}
+
+static void LedBar_HandleWakeWaterAlarmAfterReset(void)
+{
+    UINT16 idle_ticks = 0;
+    UINT16 blink_ticks = 0;
+    UINT8 blink_on = 1;
+    UINT8 gan3_last = is_open_gan3() ? 1 : 0;
+    UINT8 gan3_now;
+
+    LedBar_SetByMask(LEDBAR_MASK_ALL);
+
+    while (1)
+    {
+        if (!is_open_gan2())
+        {
+            LedBar_SetAllOff();
+            return;
+        }
+
+        gan3_now = is_open_gan3() ? 1 : 0;
+        if (gan3_now || (gan3_now != gan3_last))
+        {
+            idle_ticks = 0;
+        }
+        else if (idle_ticks < LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS)
+        {
+            ++idle_ticks;
+        }
+        gan3_last = gan3_now;
+
+        if (++blink_ticks >= LEDBAR_WATER_PREBOOT_BLINK_TICKS_10MS)
+        {
+            blink_ticks = 0;
+            blink_on = blink_on ? 0 : 1;
+            LedBar_SetByMask(blink_on ? LEDBAR_MASK_ALL : 0);
+        }
+
+        if (idle_ticks >= LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS)
+        {
+            LedBar_SetAllOff();
+            return;
+        }
+
+        __delay_ms(10);
+    }
+}
+
+UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
+{
+    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+    UINT16 wake_soc = 0;
+
+    LedBar_InitOutputPins();
+    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
+    {
+        wake_soc = 0;
+    }
+
+    (void)wake_mode;
+    return LedBar_HandleWakeSocPreviewAfterReset(wake_soc);
 }
 
 void LedBar_RunBootAnimOn_test(void)
@@ -506,23 +530,41 @@ void LedBar_StartUp(void)
     s_charge_blink_ticks = 0;
     s_shutdown_animation_active = 0;
 
-    if (WakeDisplayState_Read(&wake_mode, &wake_soc))
-    {
-        if (wake_mode == WAKE_DISPLAY_MODE_BOOT_SEQUENCE)
-        {
-            LedBar_RequestBootAnimation(wake_soc);
-        }
-        else
-        {
-            LedBar_SetAllOff();
-        }
-    }
-    else
+    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
     {
         LedBar_SetAllOff();
+        WakeDisplayMode_ClearKeepSoc();
+        return;
     }
 
-    WakeDisplayState_Clear();
+    switch (wake_mode)
+    {
+    case WAKE_DISPLAY_MODE_SOC_PREVIEW:
+        if (LedBar_HandleWakeSocPreviewAfterReset(wake_soc))
+        {
+            WakeDisplayMode_ClearKeepSoc();
+            return;
+        }
+        SleepDeal_ReenterDeepSleepFromWakePreview();
+        return;
+
+    case WAKE_DISPLAY_MODE_WATER_ALARM:
+        LedBar_HandleWakeWaterAlarmAfterReset();
+        SleepDeal_ReenterDeepSleepFromWakePreview();
+        return;
+
+    case WAKE_DISPLAY_MODE_BOOT_SEQUENCE:
+        LedBar_RequestBootAnimation(wake_soc);
+        WakeDisplayMode_ClearKeepSoc();
+        return;
+
+    case WAKE_DISPLAY_MODE_CHARGER_WAKE:
+    case WAKE_DISPLAY_MODE_NONE:
+    default:
+        LedBar_SetAllOff();
+        WakeDisplayMode_ClearKeepSoc();
+        return;
+    }
 }
 
 void APP_LedBar(void)

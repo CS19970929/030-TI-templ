@@ -102,6 +102,9 @@ void InitDevice(void)
 	InitDelay();
 	IsSleepStartUp();
 	InitIO();
+#ifdef __FUNC__LED__
+	LedBar_StartUp();
+#endif
 	//__delay_ms(1000);
 	InitTimer();
 	InitSystemWakeUp();
@@ -121,9 +124,6 @@ void InitDevice(void)
 	MCU_GetResetType();
 	LoadParam();
 
-#ifdef __FUNC__LED__
-	LedBar_StartUp();
-#endif
 	InitAFE1();
 	BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
 	BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);

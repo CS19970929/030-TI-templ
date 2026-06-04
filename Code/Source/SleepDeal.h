@@ -86,6 +86,7 @@ void App_SleepDeal(void);
 void App_SleepTest(void);
 void IsSleepStartUp(void);
 void entersleep(enum _SLEEP_MODE mode);
+void SleepDeal_ReenterDeepSleepFromWakePreview(void);
 
 #endif	/* SLEEPDEAL_H */
 
