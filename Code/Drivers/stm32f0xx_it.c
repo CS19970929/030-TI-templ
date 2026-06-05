@@ -176,16 +176,22 @@ void EXTI4_15_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
 #if (defined _COMMOM_UPPER_SCI1)
-  Sci1_CommonUpper_FaultChk();
-  if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+  uint32_t isr = USART1->ISR;
+  uint32_t cr1 = USART1->CR1;
+
+  if ((((isr & USART_ISR_TXE) != RESET) && ((cr1 & USART_CR1_TXEIE) != RESET)) ||
+      (((isr & USART_ISR_TC) != RESET) && ((cr1 & USART_CR1_TCIE) != RESET)))
+  {
+    Sci1_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI1);
+  }
+  if ((isr & (USART_ISR_ORE | USART_ISR_NE | USART_ISR_FE | USART_ISR_PE)) != RESET)
+  {
+    Sci1_CommonUpper_FaultChk();
+  }
+  if (((isr & USART_ISR_RXNE) != RESET) && ((cr1 & USART_CR1_RXNEIE) != RESET))
   {
     RTC_ExtComCnt++;
     Sci1_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI1);
-  }
-  if ((USART_GetITStatus(USART1, USART_IT_TXE) != RESET) ||
-      (USART_GetITStatus(USART1, USART_IT_TC) != RESET))
-  {
-    Sci1_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI1);
   }
 #endif
 }
@@ -193,16 +199,22 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
 #ifdef _COMMOM_UPPER_SCI2
-  Sci2_CommonUpper_FaultChk();
-  if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+  uint32_t isr = USART2->ISR;
+  uint32_t cr1 = USART2->CR1;
+
+  if ((((isr & USART_ISR_TXE) != RESET) && ((cr1 & USART_CR1_TXEIE) != RESET)) ||
+      (((isr & USART_ISR_TC) != RESET) && ((cr1 & USART_CR1_TCIE) != RESET)))
+  {
+    Sci2_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI2);
+  }
+  if ((isr & (USART_ISR_ORE | USART_ISR_NE | USART_ISR_FE | USART_ISR_PE)) != RESET)
+  {
+    Sci2_CommonUpper_FaultChk();
+  }
+  if (((isr & USART_ISR_RXNE) != RESET) && ((cr1 & USART_CR1_RXNEIE) != RESET))
   {
     RTC_ExtComCnt++;
     Sci2_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI2);
-  }
-  if ((USART_GetITStatus(USART2, USART_IT_TXE) != RESET) ||
-      (USART_GetITStatus(USART2, USART_IT_TC) != RESET))
-  {
-    Sci2_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI2);
   }
 #endif
 }

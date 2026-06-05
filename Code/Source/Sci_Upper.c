@@ -540,23 +540,44 @@ static void Sci_StartTx(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEnabl
 
 	usart->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_TXEIE | USART_CR1_TCIE);
 	usart->CR1 |= USART_CR1_TE;
-	USART_ClearITPendingBit(usart, USART_IT_TC);
-	usart->CR1 |= USART_CR1_TXEIE;
+	usart->ICR = USART_ICR_TCCF;
+
+	if ((usart->ISR & USART_ISR_TXE) != RESET)
+	{
+		usart->TDR = s->u16Buffer[s->ptr_no];
+		s->ptr_no++;
+		if (s->ptr_no >= s->AckLenth)
+		{
+			usart->ICR = USART_ICR_TCCF;
+			usart->CR1 |= USART_CR1_TCIE;
+		}
+		else
+		{
+			usart->CR1 |= USART_CR1_TXEIE;
+		}
+	}
+	else
+	{
+		usart->CR1 |= USART_CR1_TXEIE;
+	}
 }
 
 static void Sci_TxISR_Deal(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEnablePtr, UINT8 *txFinishFlagPtr)
 {
+	UINT32 isr;
+
 	if ((0 == *txEnablePtr) || (RS485_STA_TX_BUSY != s->csr))
 	{
 		usart->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
-		if (USART_GetFlagStatus(usart, USART_FLAG_TC) != RESET)
+		if ((usart->ISR & USART_ISR_TC) != RESET)
 		{
-			USART_ClearITPendingBit(usart, USART_IT_TC);
+			usart->ICR = USART_ICR_TCCF;
 		}
 		return;
 	}
 
-	if (USART_GetITStatus(usart, USART_IT_TXE) != RESET)
+	isr = usart->ISR;
+	if (((usart->CR1 & USART_CR1_TXEIE) != RESET) && ((isr & USART_ISR_TXE) != RESET))
 	{
 		if (s->ptr_no < s->AckLenth)
 		{
@@ -567,15 +588,15 @@ static void Sci_TxISR_Deal(struct RS485MSG *s, USART_TypeDef *usart, UINT8 *txEn
 		if (s->ptr_no >= s->AckLenth)
 		{
 			usart->CR1 &= ~USART_CR1_TXEIE;
-			USART_ClearITPendingBit(usart, USART_IT_TC);
+			usart->ICR = USART_ICR_TCCF;
 			usart->CR1 |= USART_CR1_TCIE;
 		}
 	}
 
-	if (USART_GetITStatus(usart, USART_IT_TC) != RESET)
+	if (((usart->CR1 & USART_CR1_TCIE) != RESET) && ((usart->ISR & USART_ISR_TC) != RESET))
 	{
 		usart->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
-		USART_ClearITPendingBit(usart, USART_IT_TC);
+		usart->ICR = USART_ICR_TCCF;
 		s->ptr_no = 0;
 		s->csr = RS485_STA_TX_COMPLETE;
 		*txFinishFlagPtr = 1;
@@ -1441,7 +1462,7 @@ void InitSCI1_CommonUpper(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	// 串口初始化
@@ -1782,7 +1803,7 @@ void InitSCI2_CommonUpper(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	// 串口初始化
