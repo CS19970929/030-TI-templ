@@ -46,16 +46,16 @@ static UINT8 IsSleepWakeupValid(void)
 {
 	SleepDeal_InitWakeDetectPins();
 
+	if (is_water_in())
+	{
+		WakeDisplay_RequestWaterAlarm();
+		MCU_RESET();
+		return 1;
+	}
+
 	if (IsDI1Pressed())
 	{
-		if (is_water_in())
-		{
-			WakeDisplay_RequestWaterAlarm();
-		}
-		else
-		{
-			WakeDisplay_RequestSocPreview();
-		}
+		WakeDisplay_RequestSocPreview();
 		EXTI_ClearITPendingBit(EXTI_Line13);
 		MCU_RESET();
 		return 1;

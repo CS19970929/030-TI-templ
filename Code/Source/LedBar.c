@@ -439,68 +439,15 @@ static UINT8 LedBar_HandleWakeSocPreviewAfterReset(UINT16 wake_soc)
 
 static void LedBar_HandleWakeWaterAlarmAfterReset(void)
 {
-    UINT16 idle_ticks = 0;
-    UINT16 blink_ticks = 0;
-    UINT16 gan3_hold_ticks = 0;
-    UINT8 blink_on = 1;
-    UINT8 gan3_last = is_open_gan3() ? 1 : 0;
-    UINT8 gan3_now;
-
-    LedBar_SetByMask(LEDBAR_MASK_ALL);
-
-    while (1)
+    if (is_water_in())
     {
-        if (!is_open_gan2())
-        {
-            LedBar_SetAllOff();
-            return;
-        }
-
-        gan3_now = is_open_gan3() ? 1 : 0;
-        if (gan3_now)
-        {
-            idle_ticks = 0;
-            if (gan3_hold_ticks < LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                ++gan3_hold_ticks;
-            }
-
-            if (gan3_hold_ticks >= LEDBAR_PREBOOT_POWERON_TICKS_10MS)
-            {
-                LedBar_SetAllOff();
-                return;
-            }
-        }
-        else
-        {
-            gan3_hold_ticks = 0;
-        }
-
-        if (gan3_now || (gan3_now != gan3_last))
-        {
-            idle_ticks = 0;
-        }
-        else if (idle_ticks < LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS)
-        {
-            ++idle_ticks;
-        }
-        gan3_last = gan3_now;
-
-        if (++blink_ticks >= LEDBAR_WATER_PREBOOT_BLINK_TICKS_10MS)
-        {
-            blink_ticks = 0;
-            blink_on = blink_on ? 0 : 1;
-            LedBar_SetByMask(blink_on ? LEDBAR_MASK_ALL : 0);
-        }
-
-        if (idle_ticks >= LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS)
-        {
-            LedBar_SetAllOff();
-            return;
-        }
-
-        __delay_ms(10);
+        LedBar_SetWaterAlarm(1);
+        LedBar_SetByMask(LEDBAR_MASK_ALL);
+        return;
     }
+
+    LedBar_SetWaterAlarm(0);
+    LedBar_SetAllOff();
 }
 
 UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
@@ -571,7 +518,7 @@ void LedBar_StartUp(void)
 
     case WAKE_DISPLAY_MODE_WATER_ALARM:
         LedBar_HandleWakeWaterAlarmAfterReset();
-        SleepDeal_ReenterDeepSleepFromWakePreview();
+        WakeDisplayMode_ClearKeepSoc();
         return;
 
     case WAKE_DISPLAY_MODE_BOOT_SEQUENCE:

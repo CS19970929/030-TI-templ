@@ -119,15 +119,7 @@ void BootFlag_Clear(void)
 
 void WakeDisplaySocCache_Write(UINT16 soc)
 {
-	UINT32 value = 0;
-	UINT16 mode = WAKE_DISPLAY_MODE_NONE;
-
-	if (WakeDisplayState_ReadRaw(&value))
-	{
-		mode = (UINT16)(value >> 16);
-	}
-
-	WakeDisplayState_Write(mode, soc);
+	WakeDisplayState_Write(WAKE_DISPLAY_MODE_NONE, soc);
 }
 
 void WakeDisplay_RequestSocPreview(void)
