@@ -104,6 +104,7 @@ void InitDevice(void)
 	InitIO();
 #ifdef __FUNC__LED__
 	LedBar_StartUp();
+	sys_time.key_irq_scan_enable = true;
 #endif
 	//__delay_ms(1000);
 	InitTimer();
@@ -114,7 +115,7 @@ void InitDevice(void)
 
 	InitData_SOC();
 	// Init_RTC(); // 必须放在EEPROM读完数据后面！
-				// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
+	// 如果用了LSE_32KHz的口，暂时先关掉RTC，这个的配置使IO口配置失效不可控
 #ifdef __FUNC__HEAT__
 	InitHeat_Cool();
 #endif // DEBUG

@@ -24,35 +24,49 @@ extern void InitIO_ganhuangguan(void);
 
 static void SleepDeal_InitWakeDetectPins(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
 	InitIO_ganhuangguan();
-
-	GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
-	GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = PIN_SWT_AD;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIO_SWT_AD, &GPIO_InitStructure);
 }
 
+// ?????????
+// mcu?????????io???????do while
+//??????afe??alive?????????
 static UINT8 IsSleepWakeupValid(void)
 {
-	SleepDeal_InitWakeDetectPins();
+	uint16_t scan_water_cnt = 0;
+	bool water_in = false;
 
-	if (is_water_in())
+	SleepDeal_InitWakeDetectPins();
+	__delay_ms(100);
+
+	while ((!water_in) && scan_water_cnt <= 1000)
 	{
-		WakeDisplay_RequestWaterAlarm();
-		MCU_RESET();
-		return 1;
+		water_in = is_water_in();
+		// if (water_in)
+
+		// if (water_in)
+		// {
+		// 	WakeDisplay_RequestWaterAlarm();
+		// 	MCU_RESET();
+		// 	return 1;
+		// }
+		__delay_ms(1);
+		scan_water_cnt++;
+	}
+	if (water_in)
+	{
+		void test_water_in(void);
+		test_water_in();
+		return 0;
 	}
 
+	// if (is_water_in())
+	// {
+	// 	WakeDisplay_RequestWaterAlarm();
+	// 	MCU_RESET();
+	// 	return 1;
+	// }
+	if (!is_open_gan1())
+		return 0;
 	if (IsDI1Pressed())
 	{
 		WakeDisplay_RequestSocPreview();
@@ -60,17 +74,12 @@ static UINT8 IsSleepWakeupValid(void)
 		MCU_RESET();
 		return 1;
 	}
-
 	if (IsPA0WakeupActive())
 	{
-		if (is_open_gan1())
-		{
-			WakeDisplay_RequestChargerWake();
-			EXTI_ClearITPendingBit(EXTI_Line0);
-			MCU_RESET();
-			return 1;
-		}
-		return 0;
+		WakeDisplay_RequestChargerWake();
+		EXTI_ClearITPendingBit(EXTI_Line0);
+		MCU_RESET();
+		return 1;
 	}
 
 	return 0;
@@ -196,14 +205,7 @@ void IOstatus_Base(void)
 	GPIOF->PUPDR = 0;
 	GPIOF->MODER = 0XFFFFFFFF;
 
-	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
-	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	// GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	// GPIO_Init(GPIOB, &GPIO_InitStructure);
-	// GPIO_SetBits(GPIOB, GPIO_InitStructure.GPIO_Pin);
-
-	__delay_ms(100);
+	// __delay_ms(100);
 }
 
 void IOstatus_NormalMode(void)
@@ -257,9 +259,9 @@ void Sys_StopMode(void)
 	// RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
 	PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
-// 濡傛灉淇″彿鍒颁簡锛屾病娉曞敜閱掞紝鍗曠墖鏈哄亣姝荤姸鎬併�?
-// 灏辨槸浠ヤ笅杩欐?佃瘽鎵ц?屽嚭闂?棰樹簡锛屽?栭儴鏅舵尟鍑洪棶棰?
-/* STOP唤醒后由IsSleepWakeupValid记录原因并立即复位，不在这里恢复外部时钟。 */
+	// 濡傛灉淇″彿鍒颁簡锛屾病娉曞敜閱掞紝鍗曠墖鏈哄亣姝荤姸鎬併�?
+	// 灏辨槸浠ヤ笅杩欐?佃瘽鎵ц?屽嚭闂?棰樹簡锛屽?栭儴鏅舵尟鍑洪棶棰?
+	/* STOP唤醒后由IsSleepWakeupValid记录原因并立即复位，不在这里恢复外部时钟。 */
 }
 
 void SleepDeal_Continue(void)
@@ -891,6 +893,8 @@ static void SleepStartup_WaitForWakeup(void)
 {
 	while (1)
 	{
+		IOstatus_DeepMode();
+		InitWakeUp_DeepMode();
 		Sys_StopMode();
 		(void)IsSleepWakeupValid();
 	}
@@ -932,23 +936,23 @@ void IsSleepStartUp(void)
 
 	SleepStartup_WaitForWakeup();
 
-	switch (sleep_flag)
-	{
-	case FLASH_HICCUP_SLEEP_VALUE:
-		IORecover_RTCMode();
-		break;
+	// switch (sleep_flag)
+	// {
+	// case FLASH_HICCUP_SLEEP_VALUE:
+	// 	IORecover_RTCMode();
+	// 	break;
 
-	case FLASH_NORMAL_SLEEP_VALUE:
-		IORecover_NormalMode();
-		break;
+	// case FLASH_NORMAL_SLEEP_VALUE:
+	// 	IORecover_NormalMode();
+	// 	break;
 
-	case FLASH_DEEP_SLEEP_VALUE:
-		IORecover_DeepMode();
-		break;
+	// case FLASH_DEEP_SLEEP_VALUE:
+	// 	IORecover_DeepMode();
+	// 	break;
 
-	default:
-		break;
-	}
+	// default:
+	// 	break;
+	// }
 }
 extern UINT8 gu8_1000msAccClock_Flag;
 void App_SleepDeal(void)

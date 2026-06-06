@@ -134,30 +134,18 @@ static void Gan_SetDriverClose(void)
     Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE;
 }
 
-static void Gan_ProcessWater(void)
+static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
 {
     Gan_SetDriverClose();
     LedBar_SetChargeDisplay(0);
     LedBar_SetDischargeDisplay(0);
     LedBar_SetWaterAlarm(1);
-    GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
+    GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_RESET);
 
-    if (is_open_gan3())
+    if (!gan1_on || !gan2_on)
     {
-        if (s_water_gan3_hold_ticks < GAN3_POWER_TICKS_10MS)
-        {
-            ++s_water_gan3_hold_ticks;
-        }
-
-        if (s_water_gan3_hold_ticks >= GAN3_POWER_TICKS_10MS)
-        {
-            Gan_RequestSleep();
-            return;
-        }
-    }
-    else
-    {
-        s_water_gan3_hold_ticks = 0;
+        Gan_RequestSleep();
+        return;
     }
 
     if (s_water_ticks < WATER_SLEEP_TICKS_10MS)
@@ -357,17 +345,19 @@ void ganhuangguan_Logi(void)
         return;
     }
 
+    
+
     if (is_water_in())
     {
         s_charge_latched = 0;
-        Gan_ProcessWater();
+        Gan_ProcessWater(gan1_on, gan2_on);
         return;
     }
 
-    Gan_ClearWater();
+    // Gan_ClearWater();
 
     charge_path_active = Gan_ProcessCharge(gan1_on);
-    Gan_ProcessTopKey(gan1_on, gan2_on, charge_path_active);
+    // Gan_ProcessTopKey(gan1_on, gan2_on, charge_path_active);
 
     if (charge_path_active)
     {

@@ -357,9 +357,8 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 			if (u8IICFaultcnt1 == 30 && u8WakeCnt1 <= 20)
 			{
 				App_WakeUpAFE(); // 因为这两个会使两个AFE垮掉
-				// MCUO_WAKEUP_AFE = !MCUO_WAKEUP_AFE;
-				InitialisebqMaximo(DEVICE_ADDR_AFE1);
-				// InitialisebqMaximo2(DEVICE_ADDR_AFE1);
+				InitAFE1();
+				// InitialisebqMaximo(DEVICE_ADDR_AFE1);
 				++u8WakeCnt1;
 			}
 			SystemStatus.bits.b1Status_AFE1 = 0;

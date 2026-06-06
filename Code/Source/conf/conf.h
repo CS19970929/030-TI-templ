@@ -128,6 +128,7 @@ typedef struct
   uint16_t   test_sizeof_g_tParam;
   uint16_t cnt_enter_chg_open;
   uint16_t cnt_enter_dsg_open;
+  bool     key_irq_scan_enable;
 
 }Time_T;
 

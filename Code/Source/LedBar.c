@@ -11,10 +11,10 @@ LEDBAR_COMMAND LedBar_Command = LED_BAR_NORMAL;
 #define LEDBAR_MASK_ALL ((UINT8)0x1F)
 #define LEDBAR_SOC_TEMP_TICKS_100MS ((UINT16)30)
 #define LEDBAR_CHG_BLINK_TICKS_100MS ((UINT8)5)
-#define LEDBAR_WATER_BLINK_TICKS_100MS ((UINT8)5)
+#define LEDBAR_WATER_BLINK_TICKS_100MS ((UINT8)2)
 #define LEDBAR_ANIM_STEP_TICKS_100MS ((UINT8)1)
 #define LEDBAR_PREBOOT_SOC_TRIGGER_TICKS_10MS ((UINT16)1)
-#define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)300)
+#define LEDBAR_PREBOOT_POWERON_TICKS_10MS ((UINT16)200)
 #define LEDBAR_PREBOOT_SOC_SHOW_TICKS_10MS ((UINT16)300)
 #define LEDBAR_PREBOOT_RELEASE_TICKS_10MS ((UINT16)10)
 #define LEDBAR_WATER_PREBOOT_SLEEP_TICKS_10MS ((UINT16)12000)
@@ -387,7 +387,8 @@ static void LedBar_RunBootAnimationBlocking(UINT16 soc)
     }
 
     LedBar_SetAllOff();
-    __delay_ms((UINT16)LEDBAR_ANIM_STEP_TICKS_100MS * 100U);
+    // __delay_ms((UINT16)LEDBAR_ANIM_STEP_TICKS_100MS * 100U);
+    __delay_ms(500);
 
     s_anim_step = 0;
     s_anim_step_ticks = 0;
@@ -418,7 +419,8 @@ static UINT8 LedBar_HandleWakeSocPreviewAfterReset(UINT16 wake_soc)
                 if (is_open_gan1() && is_open_gan2())
                 {
                     LedBar_RunBootAnimationBlocking(wake_soc);
-                    ganhuangguan_WaitGan3ReleaseBeforeLongPress();
+                    // ganhuangguan_WaitGan3ReleaseBeforeLongPress();
+
                     return 1;
                 }
 
@@ -450,20 +452,20 @@ static void LedBar_HandleWakeWaterAlarmAfterReset(void)
     LedBar_SetAllOff();
 }
 
-UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
-{
-    UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
-    UINT16 wake_soc = 0;
+// UINT8 LedBar_HandleWakePreviewBeforeBoot(void)
+// {
+//     UINT16 wake_mode = WAKE_DISPLAY_MODE_NONE;
+//     UINT16 wake_soc = 0;
 
-    LedBar_InitOutputPins();
-    if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
-    {
-        wake_soc = 0;
-    }
+//     LedBar_InitOutputPins();
+//     if (!WakeDisplayState_Read(&wake_mode, &wake_soc))
+//     {
+//         wake_soc = 0;
+//     }
 
-    (void)wake_mode;
-    return LedBar_HandleWakeSocPreviewAfterReset(wake_soc);
-}
+//     (void)wake_mode;
+//     return LedBar_HandleWakeSocPreviewAfterReset(wake_soc);
+// }
 
 void LedBar_RunBootAnimOn_test(void)
 {
@@ -549,8 +551,15 @@ void APP_LedBar(void)
 
     if (s_water_alarm_enable)
     {
-        LedBar_RunWaterAlarm();
-        return;
+        if (s_led_ui_mode != LED_UI_SHUTDOWN_ANIM)
+        {
+            LedBar_RunWaterAlarm();
+            return;
+        }
+        else
+        {
+            LedBar_SetAllOff();
+        }
     }
 
     switch (s_led_ui_mode)
@@ -601,4 +610,19 @@ void APP_LedBar(void)
     }
 
     LedBar_SetAllOff();
+}
+
+void test_water_in(void)
+{
+    static bool toggle = false;
+    uint16_t i = 0;
+
+    LedBar_InitOutputPins();
+
+    for (i = 0; i < (5 * 60 * 2); i++)
+    {
+        LedBar_SetByMask(toggle ? LEDBAR_MASK_ALL : 0);
+        __delay_ms(200);
+        toggle = !toggle;
+    }
 }

@@ -372,6 +372,35 @@ void App_SysTime(void)
 	}
 }
 
+void key_can(void)
+{
+	static bool boot_key_release = 0;
+    static uint16_t key_sleep_cnt = 0;
+
+	if (sys_time.key_irq_scan_enable)
+	{
+		if (!is_open_gan3())
+			boot_key_release = true;
+
+		if (boot_key_release)
+		{
+			if (is_open_gan3())
+			{
+				if (++key_sleep_cnt >= (100 * 3))
+				{
+					key_sleep_cnt = 0;
+					sleep_reason = 1;
+					LedBar_RequestShutdownAnimation();
+				}
+			}
+			else
+			{
+				key_sleep_cnt = 0;
+			}
+		}
+	}
+}
+
 void TIM17_IRQHandler(void)
 {
 	static uint16_t count_1000 = 0;
@@ -392,6 +421,7 @@ void TIM17_IRQHandler(void)
 				{ // 10ms
 					sys_time.cnt_10ms++;
 					g_u810msClockCnt = 0;
+					key_can();
 				}
 			}
 			if (++gu8_200msCnt >= 200)
@@ -399,7 +429,7 @@ void TIM17_IRQHandler(void)
 				gu8_200msCnt = 0;
 				gu8_200msAccClock_Flag = 1;
 			}
-			if(++count_1000 >= 1000)
+			if (++count_1000 >= 1000)
 			{
 				count_1000 = 0;
 				gu8_1000msAccClock_Flag = 1;
