@@ -199,6 +199,7 @@ void LedBar_SetWaterAlarm(UINT8 enable)
     if (enable)
     {
         s_water_alarm_enable = 1;
+        GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_RESET);
         return;
     }
 
@@ -519,8 +520,9 @@ void LedBar_StartUp(void)
         return;
 
     case WAKE_DISPLAY_MODE_WATER_ALARM:
-        LedBar_HandleWakeWaterAlarmAfterReset();
-        WakeDisplayMode_ClearKeepSoc();
+        // LedBar_HandleWakeWaterAlarmAfterReset();
+        // WakeDisplayMode_ClearKeepSoc();
+        LedBar_SetWaterAlarm(1);
         return;
 
     case WAKE_DISPLAY_MODE_BOOT_SEQUENCE:

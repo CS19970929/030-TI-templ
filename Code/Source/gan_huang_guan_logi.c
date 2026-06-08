@@ -140,7 +140,6 @@ static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
     LedBar_SetChargeDisplay(0);
     LedBar_SetDischargeDisplay(0);
     LedBar_SetWaterAlarm(1);
-    GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_RESET);
 
     if (!gan1_on || !gan2_on)
     {

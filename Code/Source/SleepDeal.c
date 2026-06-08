@@ -54,9 +54,11 @@ static UINT8 IsSleepWakeupValid(void)
 	}
 	if (water_in)
 	{
-		void test_water_in(void);
-		test_water_in();
-		return 0;
+		// void test_water_in(void);
+		// test_water_in();
+		// return 0;
+		WakeDisplay_RequestWaterAlarm();
+		MCU_RESET();
 	}
 
 	// if (is_water_in())
@@ -65,16 +67,16 @@ static UINT8 IsSleepWakeupValid(void)
 	// 	MCU_RESET();
 	// 	return 1;
 	// }
-	if (!is_open_gan1())
-		return 0;
-	if (IsDI1Pressed())
-	{
-		WakeDisplay_RequestSocPreview();
-		EXTI_ClearITPendingBit(EXTI_Line13);
-		MCU_RESET();
-		return 1;
-	}
-	if (IsPA0WakeupActive())
+	// if (!is_open_gan1())
+	// 	return 0;
+	// if (IsDI1Pressed())
+	// {
+	// 	WakeDisplay_RequestSocPreview();
+	// 	EXTI_ClearITPendingBit(EXTI_Line13);
+	// 	MCU_RESET();
+	// 	return 1;
+	// }
+	if (IsPA0WakeupActive() && is_open_gan1())
 	{
 		WakeDisplay_RequestChargerWake();
 		EXTI_ClearITPendingBit(EXTI_Line0);
@@ -82,7 +84,10 @@ static UINT8 IsSleepWakeupValid(void)
 		return 1;
 	}
 
-	return 0;
+	WakeDisplay_RequestSocPreview();
+	MCU_RESET();
+
+	// return 0;
 }
 
 // 通�??唤醒对深度休眠不起效果。不能再Base加入通�??唤醒�?
@@ -893,8 +898,8 @@ static void SleepStartup_WaitForWakeup(void)
 {
 	while (1)
 	{
-		IOstatus_DeepMode();
-		InitWakeUp_DeepMode();
+		// IOstatus_DeepMode();
+		// InitWakeUp_DeepMode();
 		Sys_StopMode();
 		(void)IsSleepWakeupValid();
 	}
