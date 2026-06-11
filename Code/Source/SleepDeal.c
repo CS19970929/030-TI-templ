@@ -41,41 +41,15 @@ static UINT8 IsSleepWakeupValid(void)
 	while ((!water_in) && scan_water_cnt <= 1000)
 	{
 		water_in = is_water_in();
-		// if (water_in)
-
-		// if (water_in)
-		// {
-		// 	WakeDisplay_RequestWaterAlarm();
-		// 	MCU_RESET();
-		// 	return 1;
-		// }
 		__delay_ms(1);
 		scan_water_cnt++;
 	}
 	if (water_in)
 	{
-		// void test_water_in(void);
-		// test_water_in();
-		// return 0;
 		WakeDisplay_RequestWaterAlarm();
 		MCU_RESET();
 	}
 
-	// if (is_water_in())
-	// {
-	// 	WakeDisplay_RequestWaterAlarm();
-	// 	MCU_RESET();
-	// 	return 1;
-	// }
-	// if (!is_open_gan1())
-	// 	return 0;
-	// if (IsDI1Pressed())
-	// {
-	// 	WakeDisplay_RequestSocPreview();
-	// 	EXTI_ClearITPendingBit(EXTI_Line13);
-	// 	MCU_RESET();
-	// 	return 1;
-	// }
 	if (IsPA0WakeupActive() && is_open_gan1())
 	{
 		WakeDisplay_RequestChargerWake();
@@ -940,24 +914,6 @@ void IsSleepStartUp(void)
 	}
 
 	SleepStartup_WaitForWakeup();
-
-	// switch (sleep_flag)
-	// {
-	// case FLASH_HICCUP_SLEEP_VALUE:
-	// 	IORecover_RTCMode();
-	// 	break;
-
-	// case FLASH_NORMAL_SLEEP_VALUE:
-	// 	IORecover_NormalMode();
-	// 	break;
-
-	// case FLASH_DEEP_SLEEP_VALUE:
-	// 	IORecover_DeepMode();
-	// 	break;
-
-	// default:
-	// 	break;
-	// }
 }
 extern UINT8 gu8_1000msAccClock_Flag;
 void App_SleepDeal(void)
@@ -1041,7 +997,7 @@ void App_SleepDeal(void)
 		break;
 	}
 
-	if (g_stCellInfoReport.u16VCellMin < 2500)
+	if (g_stCellInfoReport.u16VCellMin < 2650)
 	{
 		++force_sleep_delay;
 		if (force_sleep_delay >= 60 * 60)

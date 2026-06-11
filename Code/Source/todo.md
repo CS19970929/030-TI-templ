@@ -98,3 +98,19 @@ LedBar_HandleWakePreviewBeforeBoot ????
 
 
 长按gan3 3s休眠，休眠动画只需要以此熄灭led就行，目前现象是5个led依次熄灭led后，还会亮一下当前soc灯
+
+参考E:\TODO\103 + 309 - 副本 项目，单独在当前分支开一个分支，用于把全部eeprom替换为内部flash实现参数读写
+
+
+为什么还有App_E2promDeal和{UINT32 u32E2P_Pro_VolCur_WriteFlag = 0;
+UINT32 u32E2P_Pro_Temp_WriteFlag = 0;
+UINT32 u32E2P_Pro_Other_WriteFlag = 0;
+UINT32 u32E2P_RTC_Element_WriteFlag = 0;
+UINT32 u32E2P_OtherElement1_WriteFlag = 0;
+UINT32 u32E2P_HeatCool_WriteFlag = 0;
+
+UINT8 u8E2P_SocTable_WriteFlag = 0;
+UINT8 u8E2P_CopperLoss_WriteFlag = 0;
+UINT8 u8E2P_KB_WriteFlag = 0;
+UINT8 u8E2P_KB_WritePos = 0;
+}这些变量，参考工程不是已经没有了吗
