@@ -918,7 +918,7 @@ void IsSleepStartUp(void)
 extern UINT8 gu8_1000msAccClock_Flag;
 void App_SleepDeal(void)
 {
-	static uint8_t force_sleep_delay = 0;
+	static uint32_t force_sleep_delay = 0;
 
 	if (reset_sleep_state)
 	{
