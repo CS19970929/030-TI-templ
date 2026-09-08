@@ -30,7 +30,7 @@ def main():
     constants = "\n".join(line for line in header.splitlines() if re.match(r"#define\s+(RS485_(?:STA_|ACK_|ERROR_|SLAVE_ADDR|BROADCAST_ADDR|MAX_BUFFER_SIZE)|SCI_TX_|P12_)", line))
     declarations = "\n".join(re.findall(r"enum (?:RS485_CMD_E|SCI_FRAME_PROTOCOL_E)\s*\{.*?\};|struct RS485MSG\s*\{.*?\};", header, re.S))
     port = re.search(r"typedef struct \{.*?\} SciPort;", source, re.S).group()
-    names = ["Sci_ClearFrameState", "Sci_ResetFrameState", "Sci_SetTxDirection", "Sci_IsValidWriteRegsByteCount", "Sci_StartTx", "Sci_FinishTx", "Sci_AbortTx", "Sci_TxWatchdog", "Sci_Tick10ms", "Sci_TxISR_Deal", "Sci_FaultChk", "Sci_RxISR_Deal", "Sci_ProcessRequest", "Sci_PrepareResponse", "Sci_Service"]
+    names = ["Sci_ClearFrameState", "Sci_ResetFrameState", "Sci_SetTxDirection", "Sci_RS485PowerIsOn", "Sci_RS485WakeFromISR", "Sci_RS485ValidRequest", "Sci_RS485PowerService", "Sci_IsValidWriteRegsByteCount", "Sci_StartTx", "Sci_FinishTx", "Sci_AbortTx", "Sci_TxWatchdog", "Sci_Tick10ms", "Sci_TxISR_Deal", "Sci_FaultChk", "Sci_RxISR_Deal", "Sci_ProcessRequest", "Sci_PrepareResponse", "Sci_Service"]
     code = PRELUDE + constants + "\n" + declarations + "\n" + port + STUBS
     code += "\n".join(function(source, name) for name in names) + TESTS
     (OUT / "test.c").write_text(code, encoding="utf-8")
@@ -70,6 +70,18 @@ static USART_TypeDef uart1, uart2;
 #define USART_ISR_TXE (1u << 7)
 #define USART_ICR_TCCF USART_ISR_TC
 #define USART_IT_TC USART_ISR_TC
+#define GPIO_M_CTR 1
+#define PIN_M_CTR 256
+#define RS485_POWER_WINDOW_SECONDS 30u
+#define USART_FLAG_ORE USART_ISR_ORE
+#define USART_FLAG_NE USART_ISR_NE
+#define USART_FLAG_FE USART_ISR_FE
+#define USART_FLAG_PE USART_ISR_PE
+static UINT32 s_rs485Tick10ms, s_rs485LastActivity;
+static UINT8 s_rs485PowerOn, s_rs485Ready;
+static int power, rejectFrame;
+static UINT16 USART_ReceiveData(USART_TypeDef *u) { return (UINT16)u->RDR; }
+static void USART_ClearFlag(USART_TypeDef *u, UINT32 flags) { u->ICR=flags; }
 #define GPIO_M_STB 0
 #define PIN_M_STB 2
 #define SCI_RX_TIMEOUT_TICKS 3u
@@ -81,8 +93,9 @@ static struct { struct { UINT8 b1Sys10msFlag1; } bits; } g_st_SysTimeFlag;
 static UINT32 __get_PRIMASK(void) { return irqMask; }
 static void __disable_irq(void) { irqMask = 1; }
 static void __set_PRIMASK(UINT32 mask) { irqMask = mask; }
-static void GPIO_SetBits(int gpio, int pin) { direction = 1; }
+static void GPIO_SetBits(int gpio, int pin) { if (gpio == GPIO_M_CTR) power=1; else direction = 1; }
 static void GPIO_ResetBits(int gpio, int pin) {
+    if (gpio == GPIO_M_CTR) { power=0; return; }
     /* 正常释放时接收已开启；故障释放时UE和TE必须都已关闭。 */
     if (uart2.CR1 & USART_CR1_UE)
         assert((uart2.CR1 & (USART_CR1_RE|USART_CR1_RXNEIE)) == (USART_CR1_RE|USART_CR1_RXNEIE));
@@ -107,9 +120,9 @@ STUBS = r'''
 static struct RS485MSG globalMsg1, globalMsg2;
 static SciPort sci1={USART1,&globalMsg1,0,0,0,0}, sci2={USART2,&globalMsg2,1,0,0,0};
 /* 主循环业务分发用桩记录调用；寄存器读写、P12内容本身不是本测试覆盖范围。 */
-static UINT8 P12_VerifyFrame(struct RS485MSG *s) { return 1; }
+static UINT8 P12_VerifyFrame(struct RS485MSG *s) { return !rejectFrame; }
 static UINT8 P12_BuildResponse(struct RS485MSG *s) { s->AckLenth = 8; return 1; }
-static void CRC_verify(struct RS485MSG *s) { s->AckType = RS485_ACK_POS; }
+static void CRC_verify(struct RS485MSG *s) { s->AckType = rejectFrame ? RS485_ACK_NEG : RS485_ACK_POS; }
 static void Sci_Deal_ReadRegs_0x03(struct RS485MSG *s) { requestCount++; }
 static void Sci_Deal_WrReg_0x06(struct RS485MSG *s) { requestCount++; }
 static void Sci_Deal_WrRegs_0x10(struct RS485MSG *s) { requestCount++; }
@@ -261,6 +274,36 @@ int main(void) {
     assert(sci1.msg->csr==RS485_STA_IDLE && sci2.msg->csr==RS485_STA_TX_BUSY && direction);
     for(n=1;n<SCI_TX_TIMEOUT_TICKS;n++) Sci_Tick10ms();
     assert(sci2.msg->csr==RS485_STA_IDLE && !direction);
+    /* Real power functions: boundary, repeated edges, UART isolation, CRC
+     * rejection, P12 success, wraparound, partial frame and active TX. */
+    init(&sci1); init(&sci2); s_rs485Ready=1;
+    assert(!Sci_RS485PowerIsOn() && !power);
+    s_rs485Tick10ms=100; Sci_RS485WakeFromISR();
+    assert(power && s_rs485LastActivity==100);
+    s_rs485Tick10ms=3099; Sci_RS485WakeFromISR();
+    assert(s_rs485LastActivity==100);
+    Sci_RS485PowerService(); assert(power);
+    Sci_RS485ValidRequest(&sci1); assert(s_rs485LastActivity==100);
+    s_rs485Tick10ms=3100; sci2.msg->ptr_no=2;
+    irqMask=1; Sci_RS485PowerService(); assert(irqMask==1); irqMask=0;
+    assert(!power && !s_rs485PowerOn && sci2.msg->ptr_no==0);
+    assert(!(uart2.CR1 & USART_CR1_RXNEIE));
+    Sci_RS485WakeFromISR(); assert(power && (uart2.CR1 & USART_CR1_RXNEIE));
+    s_rs485Tick10ms=4000; rejectFrame=1;
+    sci2.msg->u8FrameProtocol=SCI_FRAME_PROTOCOL_MODBUS;
+    Sci_ProcessRequest(&sci2); assert(s_rs485LastActivity==3100);
+    rejectFrame=0; Sci_ProcessRequest(&sci2); assert(s_rs485LastActivity==4000);
+    s_rs485Tick10ms=5000; sci2.msg->u8FrameProtocol=SCI_FRAME_PROTOCOL_P12;
+    rejectFrame=1; Sci_ProcessRequest(&sci2); assert(s_rs485LastActivity==4000);
+    rejectFrame=0; sci2.msg->u8FrameProtocol=SCI_FRAME_PROTOCOL_P12;
+    Sci_ProcessRequest(&sci2); assert(s_rs485LastActivity==5000);
+    s_rs485Tick10ms=8000; sci2.msg->csr=RS485_STA_TX_BUSY;
+    Sci_RS485PowerService(); assert(power);
+    Sci_ResetFrameState(&sci2); Sci_RS485PowerService(); assert(!power);
+    s_rs485Tick10ms=0xfffffff0u; Sci_RS485WakeFromISR();
+    s_rs485Tick10ms=0xfffffff0u+2999u; Sci_RS485PowerService(); assert(power);
+    s_rs485Tick10ms++; Sci_RS485PowerService(); assert(!power);
+    puts("PASS: RS485 power window, valid activity, rejection, repeat edges, partial RX, TX deferral, wraparound");
     puts("PASS: immediate RX, TX watchdog abort/recovery, TXE/TC direction, 1/8/251-byte TX, RX bounds, timeout, faults, dispatch, dual-port isolation");
     return 0;
 }

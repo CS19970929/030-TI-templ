@@ -133,7 +133,7 @@ void InitIO(void)
 		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 		GPIO_Init(GPIO_M_STB, &GPIO_InitStructure);
 
-		GPIO_WriteBit(GPIO_M_CTR, PIN_M_CTR, 1);
+		GPIO_WriteBit(GPIO_M_CTR, PIN_M_CTR, Bit_RESET);
 		GPIO_InitStructure.GPIO_Pin = PIN_M_CTR;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;

@@ -170,6 +170,7 @@ void EXTI4_15_IRQHandler(void)
   if (EXTI_GetITStatus(EXTI_Line14) != RESET)
   {
     EXTI_ClearITPendingBit(EXTI_Line14);
+    Sci_RS485WakeFromISR();
   }
 }
 

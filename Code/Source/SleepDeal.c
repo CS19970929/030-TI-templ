@@ -35,6 +35,13 @@ static UINT8 IsSleepWakeupValid(void)
 	uint16_t scan_water_cnt = 0;
 	bool water_in = false;
 
+    if (Sci_RS485PowerIsOn())
+    {
+        BootFlag_Write(BOOT_FLAG_RS485_WAKE_VALUE);
+        MCU_RESET();
+        return 1;
+    }
+
 	SleepDeal_InitWakeDetectPins();
 	__delay_ms(100);
 
@@ -58,10 +65,17 @@ static UINT8 IsSleepWakeupValid(void)
 		return 1;
 	}
 
+    if (Sci_RS485PowerIsOn())
+    {
+        BootFlag_Write(BOOT_FLAG_RS485_WAKE_VALUE);
+        MCU_RESET();
+        return 1;
+    }
+
 	WakeDisplay_RequestSocPreview();
 	MCU_RESET();
 
-	// return 0;
+	return 0;
 }
 
 // é€šè??å”¤é†’å¯¹æ·±åº¦ä¼‘çœ ä¸èµ·æ•ˆæžœã€‚ä¸èƒ½å†BaseåŠ å…¥é€šè??å”¤é†’ã€?
@@ -138,6 +152,8 @@ void InitWakeUp_Base(void)
 	// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;		// ä½¿èƒ½å¤–éƒ¨ä¸?æ–?é€šé“
 	// 	NVIC_Init(&NVIC_InitStructure);
 	// }
+
+	Sci_RS485WakeInit();
 }
 
 void InitWakeUp_NormalMode(void)
@@ -168,6 +184,8 @@ void delay(int n)
 
 void IOstatus_Base(void)
 {
+	GPIO_InitTypeDef GPIO_InitStructure;
+
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); // å¼€å¯GPIOAçš„å?–è?¾æ—¶é’?
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); // å¼€å¯GPIOBçš„å?–è?¾æ—¶é’?
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE); // å¼€å¯GPIOCçš„å?–è?¾æ—¶é’?
@@ -183,6 +201,14 @@ void IOstatus_Base(void)
 	GPIOC->MODER = 0XFFFFFFFF;
 	GPIOF->PUPDR = 0;
 	GPIOF->MODER = 0XFFFFFFFF;
+
+	GPIO_StructInit(&GPIO_InitStructure);
+	GPIO_WriteBit(GPIO_M_CTR, PIN_M_CTR, Bit_RESET);
+	GPIO_InitStructure.GPIO_Pin = PIN_M_CTR;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_M_CTR, &GPIO_InitStructure);
 
 	// __delay_ms(100);
 }
@@ -302,6 +328,14 @@ void SleepDeal_Continue(void)
 	{
 		s_u8SleepModeSelect = NORMAL_MODE;
 	}
+
+    /* Normal idle sleep must not truncate the communication window.
+     * Protection, test and explicit forced sleep retain priority. */
+    if (Sci_RS485PowerIsOn() && ((Sleep_Mode.all & 0x1FF1u) == 0))
+    {
+        Sleep_Mode.bits.b1_ToSleepFlag = 0;
+        return;
+    }
 
 	WakeDisplaySocCache_Write(g_stCellInfoReport.SocElement.u16Soc);
 
@@ -870,11 +904,17 @@ void SleepDeal_Test(void)
 
 static void SleepStartup_WaitForWakeup(void)
 {
+    UINT32 primask;
 	while (1)
 	{
 		// IOstatus_DeepMode();
 		// InitWakeUp_DeepMode();
-		Sys_StopMode();
+        /* Keep a wake edge pending across the check/WFI boundary. */
+        primask = __get_PRIMASK();
+        __disable_irq();
+        if (!Sci_RS485PowerIsOn())
+            Sys_StopMode();
+        __set_PRIMASK(primask);
 		(void)IsSleepWakeupValid();
 	}
 }
@@ -904,6 +944,10 @@ void IsSleepStartUp(void)
 		IOstatus_DeepMode();
 		InitWakeUp_DeepMode();
 		break;
+
+    case BOOT_FLAG_RS485_WAKE_VALUE:
+        /* Consumed after GPIO and USART are ready, following STOP reset. */
+        return;
 
 	case FLASH_SLEEP_RESET_VALUE:
 		return;

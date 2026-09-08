@@ -24,6 +24,11 @@ static SciPort sci2 = { USART2, &g_stCurrentMsgPtr_SCI2, 1, 0, 0, 0 };
 #define SCI_TX_TIMEOUT_TICKS 20u /* 最短约190ms，大于251字节/19200/8N1的131ms。 */
 #define SCI_RX_TIMEOUT_TICKS 3u  /* 保留原有三个10ms调度节拍超时。 */
 
+static volatile UINT32 s_rs485Tick10ms;
+static volatile UINT32 s_rs485LastActivity;
+static volatile UINT8 s_rs485PowerOn;
+static volatile UINT8 s_rs485Ready;
+
 UINT8 g_u8SCITxBuff[SCI_TX_BUF_LEN];
 
 struct stCell_Info g_stCellInfoReport;
@@ -507,6 +512,87 @@ static void Sci_SetTxDirection(SciPort *port, UINT8 transmitting)
     }
 }
 
+/* PB14 is armed both at normal startup and before STOP. */
+void Sci_RS485WakeInit(void)
+{
+    GPIO_InitTypeDef gpio;
+    EXTI_InitTypeDef exti;
+    NVIC_InitTypeDef nvic;
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+    GPIO_StructInit(&gpio);
+    gpio.GPIO_Pin = PIN_INT_WK_CMNT;
+    gpio.GPIO_Mode = GPIO_Mode_IN;
+    gpio.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIO_INT_WK_CMNT, &gpio);
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource14);
+    exti.EXTI_Line = EXTI_Line14;
+    exti.EXTI_Mode = EXTI_Mode_Interrupt;
+    exti.EXTI_Trigger = EXTI_Trigger_Rising;
+    exti.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&exti);
+    nvic.NVIC_IRQChannel = EXTI4_15_IRQn;
+    nvic.NVIC_IRQChannelPriority = 0;
+    nvic.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvic);
+}
+
+UINT8 Sci_RS485PowerIsOn(void)
+{
+    return s_rs485PowerOn;
+}
+
+void Sci_RS485WakeFromISR(void)
+{
+    /* Repeated wake edges while powered do not extend the window. */
+    if (!s_rs485PowerOn)
+    {
+#ifdef _COMMOM_UPPER_SCI2
+        if (s_rs485Ready)
+        {
+            USART_ReceiveData(USART2);
+            USART_ClearFlag(USART2, USART_FLAG_ORE | USART_FLAG_NE |
+                                    USART_FLAG_FE | USART_FLAG_PE);
+            Sci_ResetFrameState(&sci2);
+        }
+#endif
+        GPIO_SetBits(GPIO_M_CTR, PIN_M_CTR);
+        s_rs485LastActivity = s_rs485Tick10ms;
+        s_rs485PowerOn = 1;
+    }
+}
+
+static void Sci_RS485ValidRequest(SciPort *port)
+{
+    UINT32 primask = __get_PRIMASK();
+    __disable_irq();
+    if ((port->usart == USART2) && s_rs485PowerOn)
+        s_rs485LastActivity = s_rs485Tick10ms;
+    __set_PRIMASK(primask);
+}
+
+static void Sci_RS485PowerService(void)
+{
+#ifdef _COMMOM_UPPER_SCI2
+    UINT32 primask = __get_PRIMASK();
+    __disable_irq();
+    /* Complete validated requests and TX before cutting power. Partial/noisy
+     * frames cannot keep the supply on; TX watchdog bounds a stuck transfer. */
+    if (s_rs485PowerOn &&
+        ((UINT32)(s_rs485Tick10ms - s_rs485LastActivity) >=
+         (UINT32)RS485_POWER_WINDOW_SECONDS * 100u) &&
+        (sci2.msg->csr == RS485_STA_IDLE))
+    {
+        Sci_ResetFrameState(&sci2);
+        Sci_SetTxDirection(&sci2, 0);
+        USART2->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
+        GPIO_ResetBits(GPIO_M_CTR, PIN_M_CTR);
+        s_rs485PowerOn = 0;
+    }
+    __set_PRIMASK(primask);
+#endif
+}
+
 static UINT8 Sci_IsValidWriteRegsByteCount(struct RS485MSG *s)
 {
 	UINT16 regNum;
@@ -596,6 +682,7 @@ static void Sci_TxWatchdog(SciPort *port)
 /* TIM17与USART当前均为优先级0，互不抢占；这里无等待、无协议业务。 */
 void Sci_Tick10ms(void)
 {
+    ++s_rs485Tick10ms;
 #ifdef _COMMOM_UPPER_SCI1
     Sci_TxWatchdog(&sci1);
 #endif
@@ -1497,7 +1584,10 @@ static void Sci_ProcessRequest(SciPort *port)
     {
     case SCI_FRAME_PROTOCOL_P12:
         if (P12_VerifyFrame(s) && P12_BuildResponse(s))
+        {
             s->csr = RS485_STA_RX_OK;
+            Sci_RS485ValidRequest(port);
+        }
         else
             Sci_ResetFrameState(port);
         break;
@@ -1524,6 +1614,8 @@ static void Sci_ProcessRequest(SciPort *port)
                 break;
             }
         }
+        if (s->AckType == RS485_ACK_POS)
+            Sci_RS485ValidRequest(port);
         s->csr = RS485_STA_RX_OK;
         break;
 
@@ -2406,6 +2498,14 @@ void InitUSART_CommonUpper(void)
 
 #ifdef _COMMOM_UPPER_SCI2
 	InitSCI2_CommonUpper();
+    USART2->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
+    s_rs485Ready = 1;
+    Sci_RS485WakeInit();
+    if (BootFlag_Read() == BOOT_FLAG_RS485_WAKE_VALUE)
+    {
+        BootFlag_Clear();
+        Sci_RS485WakeFromISR();
+    }
 #endif
 }
 
@@ -2416,7 +2516,9 @@ void App_CommonUpper(void)
 #endif
 
 #ifdef _COMMOM_UPPER_SCI2
-	Sci_Service(&sci2);
+    if (s_rs485PowerOn)
+        Sci_Service(&sci2);
+    Sci_RS485PowerService();
 #endif
 }
 

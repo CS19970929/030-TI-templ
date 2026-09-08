@@ -563,5 +563,16 @@ void InitUSART_CommonUpper(void);
 void App_CommonUpper(void);
 void Sci_Tick10ms(void);
 
+/* Configurable inactivity window, seconds; compile-time override supported. */
+#ifndef RS485_POWER_WINDOW_SECONDS
+#define RS485_POWER_WINDOW_SECONDS 30u
+#endif
+#if (RS485_POWER_WINDOW_SECONDS < 1) || (RS485_POWER_WINDOW_SECONDS > 86400)
+#error RS485_POWER_WINDOW_SECONDS_must_be_1_to_86400
+#endif
+void Sci_RS485WakeInit(void);
+void Sci_RS485WakeFromISR(void);
+UINT8 Sci_RS485PowerIsOn(void);
+
 #endif	/* SCI_H */
 
