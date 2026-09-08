@@ -1,7 +1,5 @@
 #include "main.h"
 
-#define EVENT_RECORD_LENGTH 100
-
 UINT8 BMS_LOG_POINT = 0;
 UINT8 BMS_LOG_RECORD[EVENT_RECORD_LENGTH][2]; // 0是事件编号，1是与上一个事件的时间间隔
 LOG_RECORD_FLAG LogRecord_Flag;

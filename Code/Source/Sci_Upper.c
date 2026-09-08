@@ -726,70 +726,142 @@ static void Sci_TxISR_Deal(SciPort *port)
     }
 }
 
+/* Wire exceptions are distinct from legacy application error codes. */
+#define SCI_EX_ILLEGAL_ADDRESS 2u
+#define SCI_EX_ILLEGAL_VALUE   3u
+#define SCI_MAX_READ_REGS ((RS485_MAX_BUFFER_SIZE - 5u) / 2u)
+#define SCI_OTHER_REGS (SOC_TABLE_SIZE + 2u * CompensateNUM + E2P_PARA_NUM_RTC)
+#define SCI_EXTRA_REGS (E2P_PARA_NUM_OTHER_ELEMENT1 + E2P_PARA_NUM_HEAT_COOL)
+/* Every serializer writes a whole page into the shared scratch buffer. */
+typedef char SciScratchCapacityCheck[
+    (4u * KB_NUM <= SCI_TX_BUF_LEN &&
+     2u * E2P_PARA_NUM_PROTECT <= SCI_TX_BUF_LEN &&
+     2u * SCI_OTHER_REGS <= SCI_TX_BUF_LEN &&
+     2u * SCI_EXTRA_REGS <= SCI_TX_BUF_LEN &&
+     2u * 97u <= SCI_TX_BUF_LEN && 14u * Record_len <= SCI_TX_BUF_LEN &&
+     3u * PRODUCT_ID_LENGTH_MAX <= SCI_TX_BUF_LEN &&
+     2u * EVENT_RECORD_LENGTH <= SCI_TX_BUF_LEN &&
+     sizeof(g_stCellInfoReport) >= 126u &&
+     sizeof(PRT_E2ROMParas) >= 2u * E2P_PARA_NUM_PROTECT &&
+     sizeof(OtherElement) >= 2u * E2P_PARA_NUM_OTHER_ELEMENT1 &&
+     sizeof(Heat_Cool_Element) >= 2u * E2P_PARA_NUM_HEAT_COOL) ? 1 : -1];
+
+static void Sci_RejectRequest(struct RS485MSG *s, UINT8 exception)
+{
+    s->AckType = RS485_ACK_NEG;
+    s->ErrorType = exception;
+    s->u16RdRegByteNum = 0;
+}
+
+static UINT8 Sci_ModbusFrameValid(struct RS485MSG *s)
+{
+    UINT16 length = s->ptr_no;
+    if (length < 8u || length > RS485_MAX_BUFFER_SIZE)
+        return 0;
+    if (s->u16Buffer[0] != RS485_SLAVE_ADDR &&
+        s->u16Buffer[0] != RS485_BROADCAST_ADDR)
+        return 0;
+    switch (s->u16Buffer[1])
+    {
+    case RS485_CMD_READ_REGS:
+    case RS485_CMD_WRITE_REG:
+        return (UINT8)(length == 8u);
+    case RS485_CMD_WRITE_REGS:
+        return (UINT8)(Sci_IsValidWriteRegsByteCount(s) &&
+                       length == (UINT16)s->u16Buffer[6] + 9u);
+    default:
+        return 0;
+    }
+}
+
 void CRC_verify(struct RS485MSG *s)
 {
-	UINT16 u16SciVerify;
-	UINT16 t_u16FrameLenth;
+    UINT16 length, received;
+    if (!Sci_ModbusFrameValid(s))
+    {
+        Sci_RejectRequest(s, RS485_ERROR_CRC_ERROR);
+        return;
+    }
+    length = (UINT16)s->ptr_no - 2u;
+    received = (UINT16)(s->u16Buffer[length] | (s->u16Buffer[length + 1u] << 8));
+    if (received != Sci_CRC16RTU(s->u16Buffer, (UINT8)length))
+    {
+        Sci_RejectRequest(s, RS485_ERROR_CRC_ERROR);
+        return;
+    }
+    s->AckType = RS485_ACK_POS;
+}
 
-	t_u16FrameLenth = s->ptr_no - 2;
-	u16SciVerify = s->u16Buffer[t_u16FrameLenth] + (s->u16Buffer[t_u16FrameLenth + 1] << 8);
-	if (u16SciVerify == Sci_CRC16RTU((UINT8 *)s->u16Buffer, t_u16FrameLenth))
-	{
-		s->AckType = RS485_ACK_POS;
-	}
-	else
-	{
-		s->u16RdRegByteNum = 0;
-		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CRC_ERROR;
-	}
+/* C000/C001/C002/C008 are legacy page selectors, not linear registers. */
+static UINT8 Sci_ValidateReadRequest(struct RS485MSG *s)
+{
+    UINT16 address = (UINT16)((s->u16Buffer[2] << 8) | s->u16Buffer[3]);
+    UINT16 count = (UINT16)((s->u16Buffer[4] << 8) | s->u16Buffer[5]);
+    UINT16 base = 0, words = 0, offset = 0, pageOffset = 0;
+    s->u16RdRegStartAddrActure = address;
+    if (count == 0 || count > SCI_MAX_READ_REGS)
+    {
+        Sci_RejectRequest(s, SCI_EX_ILLEGAL_VALUE);
+        return 0;
+    }
+    if (address >= RS485_ADDR_RO_START2)
+    {
+        base = RS485_ADDR_RO_START2; words = 1; pageOffset = 96;
+    }
+    else if (address >= RS485_ADDR_RO_START1)
+    {
+        base = RS485_ADDR_RO_START1; words = 33; pageOffset = 63;
+    }
+    else if (address >= RS485_ADDR_RO_START0)
+    {
+        base = RS485_ADDR_RO_START0; words = 63;
+    }
+    else if (address >= RS485_ADDR_RO_LCD)
+    {
+        switch (address)
+        {
+        case RS485_ADDR_RO_LCD: words = 5; break;
+        case RS485_ADDR_RO_FA_RTC: words = 7u * Record_len; break;
+        case RS485_ADDR_SN_READ: words = 3u * PRODUCT_ID_LENGTH_MAX / 2u; break;
+        case RS485_ADDR_EVENT_RECORD: words = EVENT_RECORD_LENGTH; break;
+        default: break;
+        }
+        base = address;
+    }
+    else if (address >= RS485_ADDR_RW_OTHER_CANADD)
+    {
+        base = RS485_ADDR_RW_OTHER_CANADD; words = SCI_EXTRA_REGS;
+    }
+    else if (address >= RS485_ADDR_RW_OTHER)
+    {
+        base = RS485_ADDR_RW_OTHER; words = SCI_OTHER_REGS;
+    }
+    else if (address >= RS485_ADDR_RW_PORTECT)
+    {
+        base = RS485_ADDR_RW_PORTECT; words = E2P_PARA_NUM_PROTECT;
+    }
+    else if (address >= RS485_ADDR_RW_CALIB)
+    {
+        base = RS485_ADDR_RW_CALIB; words = 2u * KB_NUM;
+    }
+    offset = (UINT16)(address - base);
+    /* Subtraction only after offset validation: no end-address wraparound. */
+    if (words == 0 || offset >= words || count > words - offset ||
+        ((UINT32)pageOffset + offset + count) * 2u > SCI_TX_BUF_LEN)
+    {
+        Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
+        return 0;
+    }
+    s->u16RdRegStartAddr = (UINT16)(offset + pageOffset);
+    if (address >= RS485_ADDR_RO_LCD && address < RS485_ADDR_RO_START0)
+        s->u16RdRegStartAddr = (UINT16)(address - RS485_ADDR_RO_LCD);
+    s->u16RdRegByteNum = (UINT8)(count * 2u);
+    return 1;
 }
 
 void Sci_Deal_ReadRegs_0x03(struct RS485MSG *s)
 {
-	UINT16 t_u16Temp;
-
-	t_u16Temp = s->u16Buffer[3] + (s->u16Buffer[2] << 8);
-	s->u16RdRegStartAddrActure = t_u16Temp;
-
-	if (t_u16Temp >= RS485_ADDR_RO_START2)
-	{ // 1个字
-		t_u16Temp -= (RS485_ADDR_RO_START2 - 63 - 33);
-	}
-
-	else if (t_u16Temp >= RS485_ADDR_RO_START1)
-	{ // 33个字
-		t_u16Temp -= (RS485_ADDR_RO_START1 - 63);
-	}
-
-	else if (t_u16Temp >= RS485_ADDR_RO_START0)
-	{ // 63个字
-		t_u16Temp -= RS485_ADDR_RO_START0;
-	}
-	// 新加进来的
-	else if (t_u16Temp >= RS485_ADDR_RO_LCD)
-	{
-		t_u16Temp -= RS485_ADDR_RO_LCD; // LCD，有一次顺序乱了，显示数据不对导致找不到原因
-	}
-	else if (t_u16Temp >= RS485_ADDR_RW_OTHER_CANADD)
-	{
-		t_u16Temp -= RS485_ADDR_RW_OTHER_CANADD;
-	}
-	else if (t_u16Temp >= RS485_ADDR_RW_OTHER)
-	{
-		t_u16Temp -= RS485_ADDR_RW_OTHER;
-	}
-	else if (t_u16Temp >= RS485_ADDR_RW_PORTECT)
-	{
-		t_u16Temp -= RS485_ADDR_RW_PORTECT;
-	}
-	else if (t_u16Temp >= RS485_ADDR_RW_CALIB)
-	{
-		t_u16Temp -= RS485_ADDR_RW_CALIB;
-	}
-
-	s->u16RdRegStartAddr = t_u16Temp;
-	s->u16RdRegByteNum = (s->u16Buffer[5] + (s->u16Buffer[4] << 8)) << 1;
+    (void)Sci_ValidateReadRequest(s);
 }
 
 void Sci_Deal_WrReg_0x06(struct RS485MSG *s)
@@ -844,7 +916,7 @@ void Sci_Deal_WrReg_0x06(struct RS485MSG *s)
 
 	default:
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_NO_PERMISSION;
+		s->ErrorType = SCI_EX_ILLEGAL_ADDRESS;
 		break;
 	}
 }
@@ -969,7 +1041,7 @@ void Sci_Deal_WrRegs_0x10(struct RS485MSG *s)
 		break; // 少了个BREAK导致OVER。
 	default:
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_ADDRESS;
 		break;
 	}
 }
@@ -1269,6 +1341,7 @@ void Sci_ACK_0x03_RW_Data_Other(struct RS485MSG *s, UINT8 t_u8BuffTemp[])
 			u16SciTemp = SocTable_TernaryLi[j];
 			break;
 		case SOC_TABLE_LIFEPO2:
+            u16SciTemp = SOC_Table_Set[j];
 			// u16SciTemp = SocTable_LiFePO2[j];
 			break;
 		default:
@@ -1326,61 +1399,47 @@ void Sci_ACK_0x03_RW_Data_OtherCanAdd(struct RS485MSG *s, UINT8 t_u8BuffTemp[])
 
 void Sci_ACK_0x03(struct RS485MSG *s)
 {
-	UINT8 i;
-	UINT16 u16SciTemp;
-	if (s->AckType == RS485_ACK_POS)
-	{
-		if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_CALIB)
-		{
-			if (s->u16RdRegStartAddrActure >= RS485_ADDR_RO_START0)
-			{
-				Sci_ACK_0x03_ReadRegs_Data(s, g_u8SCITxBuff);
-			}
-			else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RO_LCD)
-			{
-				Sci_ACK_0x03_ReadRegs_LCD(s, g_u8SCITxBuff);
-			}
-			else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_OTHER_CANADD)
-			{
-				Sci_ACK_0x03_RW_Data_OtherCanAdd(s, g_u8SCITxBuff);
-			}
-			else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_OTHER)
-			{
-				Sci_ACK_0x03_RW_Data_Other(s, g_u8SCITxBuff);
-			}
-			else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_PORTECT)
-			{
-				Sci_ACK_0x03_RW_Data_Pro(s, g_u8SCITxBuff);
-			}
-			else
-			{
-				Sci_ACK_0x03_RW_Data_Cali(s, g_u8SCITxBuff);
-			}
-			// 头码，前三个字节保持不变
-			s->u16Buffer[0] = (s->u16Buffer[0] != 0) ? RS485_SLAVE_ADDR : s->u16Buffer[0];
-			s->u16Buffer[1] = s->enRs485CmdType;
-			s->u16Buffer[2] = s->u16RdRegByteNum;
-			// 数据
-			for (i = 0; i < (s->u16RdRegByteNum); i++)
-			{
-				s->u16Buffer[i + 3] = g_u8SCITxBuff[i + ((s->u16RdRegStartAddr) << 1)];
-			}
-			i = s->u16RdRegByteNum + 3;
-		}
-	}
-	else
-	{
-		i = 1;
-		s->u16Buffer[i++] = s->enRs485CmdType | 0x80;
-		s->u16Buffer[i++] = s->ErrorType;
-	}
-	u16SciTemp = Sci_CRC16RTU((UINT8 *)s->u16Buffer, i);
-	s->u16Buffer[i++] = u16SciTemp & 0x00FF;
-	s->u16Buffer[i++] = u16SciTemp >> 8;
-	s->AckLenth = i;
-
-	s->ptr_no = 0;
-	s->csr = RS485_STA_TX_BUSY;
+    UINT16 i = 0, offset, crc;
+    /* Revalidate at the response boundary before any serializer or copy. */
+    if (s->AckType == RS485_ACK_POS && Sci_ValidateReadRequest(s))
+    {
+        if (s->u16RdRegStartAddrActure >= RS485_ADDR_RO_START0)
+            Sci_ACK_0x03_ReadRegs_Data(s, g_u8SCITxBuff);
+        else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RO_LCD)
+            Sci_ACK_0x03_ReadRegs_LCD(s, g_u8SCITxBuff);
+        else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_OTHER_CANADD)
+            Sci_ACK_0x03_RW_Data_OtherCanAdd(s, g_u8SCITxBuff);
+        else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_OTHER)
+            Sci_ACK_0x03_RW_Data_Other(s, g_u8SCITxBuff);
+        else if (s->u16RdRegStartAddrActure >= RS485_ADDR_RW_PORTECT)
+            Sci_ACK_0x03_RW_Data_Pro(s, g_u8SCITxBuff);
+        else
+            Sci_ACK_0x03_RW_Data_Cali(s, g_u8SCITxBuff);
+        offset = (UINT16)(s->u16RdRegStartAddr * 2u);
+        if ((UINT32)offset + s->u16RdRegByteNum > SCI_TX_BUF_LEN ||
+            (UINT16)s->u16RdRegByteNum + 5u > RS485_MAX_BUFFER_SIZE)
+            Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
+        else
+        {
+            s->u16Buffer[1] = RS485_CMD_READ_REGS;
+            s->u16Buffer[2] = s->u16RdRegByteNum;
+            for (i = 0; i < s->u16RdRegByteNum; ++i)
+                s->u16Buffer[i + 3u] = g_u8SCITxBuff[offset + i];
+            i += 3u;
+        }
+    }
+    if (s->AckType != RS485_ACK_POS)
+    {
+        s->u16Buffer[1] = RS485_CMD_READ_REGS | 0x80u;
+        s->u16Buffer[2] = s->ErrorType;
+        i = 3;
+    }
+    crc = Sci_CRC16RTU(s->u16Buffer, (UINT8)i);
+    s->u16Buffer[i++] = (UINT8)crc;
+    s->u16Buffer[i++] = (UINT8)(crc >> 8);
+    s->AckLenth = (UINT8)i;
+    s->ptr_no = 0;
+    s->csr = RS485_STA_TX_BUSY;
 }
 
 void Sci_ACK_0x06_0x10(struct RS485MSG *s)
@@ -1597,6 +1656,11 @@ static void Sci_ProcessRequest(SciPort *port)
 
     case SCI_FRAME_PROTOCOL_MODBUS:
         CRC_verify(s);
+        if (s->AckType != RS485_ACK_POS)
+        {
+            Sci_ResetFrameState(port);
+            break;
+        }
         if (s->AckType == RS485_ACK_POS)
         {
             switch (s->enRs485CmdType)
@@ -1877,6 +1941,11 @@ void Sci_WrRegs_0x10_CalibCoef(UINT16 u16Channel, struct RS485MSG *s)
 		}
 
 		t_u16Temp = (u16Channel - RS485_CMD_ADDR_VC1CALIB_K) >> 1;
+        if (t_u16Temp >= KB_NUM)
+        {
+            Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
+            return;
+        }
 		g_u16CalibCoefK[t_u16Temp] = t_u16K;
 		g_i16CalibCoefB[t_u16Temp] = t_i16B;
 		u8E2P_KB_WriteFlag = 1;
@@ -1885,7 +1954,7 @@ void Sci_WrRegs_0x10_CalibCoef(UINT16 u16Channel, struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -1898,6 +1967,12 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 	if (u16WrRegNum == 5)
 	{
 		t_u16Temp = u16Channel - RS485_CMD_ADDR_VCELL_OVP_FIRST;
+        if (t_u16Temp >= E2P_PARA_NUM_PROTECT ||
+            5u > E2P_PARA_NUM_PROTECT - t_u16Temp)
+        {
+            Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
+            return;
+        }
 		for (i = 0; i < 5; ++i)
 		{
 			*(&PRT_E2ROMParas.u16VcellOvp_First + i + t_u16Temp) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -1922,7 +1997,7 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -1930,14 +2005,17 @@ void Sci_WrRegs_0x10_Protect(UINT16 u16Channel, struct RS485MSG *s)
 // 但是上位机会有EEPROM写失败标志位弥补
 void Sci_WrRegs_0x10_SocTable(struct RS485MSG *s)
 {
+    Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
 }
 
 void Sci_WrRegs_0x10_CopperLoss(struct RS485MSG *s)
 {
+    Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
 }
 
 void Sci_WrRegs_0x10_RTC(struct RS485MSG *s)
 {
+    Sci_RejectRequest(s, SCI_EX_ILLEGAL_ADDRESS);
 }
 
 void Sci_WrRegs_0x10_Balance(struct RS485MSG *s)
@@ -1963,7 +2041,7 @@ void Sci_WrRegs_0x10_Balance(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -1992,7 +2070,7 @@ void Sci_WrRegs_0x10_SysOther(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2021,7 +2099,7 @@ void Sci_WrRegs_0x10_SleepElement(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2047,7 +2125,7 @@ void Sci_WrRegs_0x10_SocElement(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2058,6 +2136,17 @@ void Sci_WrRegs_0x10_SystemElement(struct RS485MSG *s)
 	u16WrRegNum = s->u16Buffer[5] + (s->u16Buffer[4] << 8);
 	if (u16WrRegNum == 4)
 	{
+        /* Validate before mutating parameters: these values index cell
+         * tables and are used as a divisor immediately after this write. */
+        UINT16 series = (UINT16)((s->u16Buffer[7] << 8) | s->u16Buffer[8]);
+        UINT16 resistance = (UINT16)((s->u16Buffer[9] << 8) | s->u16Buffer[10]);
+        UINT16 resistors = (UINT16)((s->u16Buffer[11] << 8) | s->u16Buffer[12]);
+        if (series == 0 || series > sizeof(SeriesSelect_AFE1) / sizeof(SeriesSelect_AFE1[0]) ||
+            resistance == 0 || resistors == 0)
+        {
+            Sci_RejectRequest(s, SCI_EX_ILLEGAL_VALUE);
+            return;
+        }
 		for (i = 0; i < 4; ++i)
 		{
 			*(&OtherElement.u16Sys_SeriesNum + i) = (UINT16)(s->u16Buffer[2 * i + 8] + (s->u16Buffer[2 * i + 7] << 8));
@@ -2066,7 +2155,7 @@ void Sci_WrRegs_0x10_SystemElement(struct RS485MSG *s)
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_CS_RESIS;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_CS_NUM;
 		u32E2P_OtherElement1_WriteFlag |= EE_FLAG_OTHER1_SYS_PRECHG_TIME;
-		SeriesNum = OtherElement.u16Sys_SeriesNum;
+		SeriesNum = (UINT8)OtherElement.u16Sys_SeriesNum;
 		// CS，直接使用不需要再赋值，TODO
 		// 还是赋值吧，提高效率
 		g_u32CS_Res_AFE = ((UINT32)OtherElement.u16Sys_CS_Res_Num * 844 << 10) / OtherElement.u16Sys_CS_Res / 100;
@@ -2075,7 +2164,7 @@ void Sci_WrRegs_0x10_SystemElement(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2095,7 +2184,7 @@ void Sci_WrRegs_0x10_HeatCoolElement(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2119,7 +2208,7 @@ void Sci_WrRegs_0x10_FlashConnect(struct RS485MSG *s)
 	else
 	{
 		s->AckType = RS485_ACK_NEG;
-		s->ErrorType = RS485_ERROR_CMD_INVALID;
+		s->ErrorType = SCI_EX_ILLEGAL_VALUE;
 	}
 }
 
@@ -2133,6 +2222,11 @@ void Sci_WrRegs_0x10_SN_Version(UINT16 startADDR, struct RS485MSG *s)
 	UINT16 u16WrSNlength;
 
 	u16WrSNlength = (UINT16)((UINT16)s->u16Buffer[5] + ((UINT16)s->u16Buffer[4] << 8)) << 1;
+    if (u16WrSNlength == 0 || u16WrSNlength > PRODUCT_ID_LENGTH_MAX)
+    {
+        Sci_RejectRequest(s, SCI_EX_ILLEGAL_VALUE);
+        return;
+    }
 
 	switch (startADDR - RS485_ADDR_SN_SERIAL_NUM)
 	{
