@@ -1,8 +1,8 @@
 """编译真实的新旧 Fault.c，逐字节比较每拍状态、滤波计数和事件顺序。
 
 运行：python tools/test_warn_ctrl.py [--report artifacts/warn-refactor/test-report.json]
-依赖：Git、Python 3、Visual Studio 2022 C++。不连接硬件。
-基准固定为重构前提交；不是把新算法再写一遍作为预期。
+依赖：Git、Python 3、Visual Studio 2022 C++、Keil ARMCC。不连接硬件。
+基准固定为重构前提交；比较对外状态及全部独立计数，不绑定内部函数架构。
 全部生成的 C、EXE、OBJ 和轨迹位于 LOCALAPPDATA/CodexTemp。
 """
 import argparse
@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import struct
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,8 +47,8 @@ def header():
     data = clean((ROOT / "Code/Source/DataDeal.h").read_bytes())
     text = PRELUDE + fault + "\n"
     text += declaration(data, r"enum TempArray\s*\{.*?\};")
-    for name in ("SOC_CAL_ELEMENT_UPPER", "MDLCHGFAULT_BITS", "stCell_Info"):
-        text += declaration(sci, r"struct " + name + r"\s*\{.*?\};") if name != "stCell_Info" else ""
+    for name in ("SOC_CAL_ELEMENT_UPPER", "MDLCHGFAULT_BITS"):
+        text += declaration(sci, r"struct " + name + r"\s*\{.*?\};")
     text += declaration(sci, r"union\s+MDLCHGFAULT_REG\s*\{.*?\};")
     text += declaration(sci, r"struct stCell_Info\s*\{.*?\};")
     text += declaration(sys, r"union SYS_TIME\s*\{.*?\n\};")
@@ -129,7 +130,8 @@ static void snapshot(void) {
     emit(FaultPoint_First2); emit(FaultPoint_Second2); emit(FaultPoint_Third2);
     for(i=0;i<Record_len;i++) {
         emit(Fault_record_First2[i]); emit(Fault_record_Second2[i]); emit(Fault_record_Third2[i]);
-        emit(Fault_record_First[i]); emit(Fault_record_Second[i]); emit(Fault_record_Third[i]);
+        /* Unused old First/Second banks were removed; keep zero trace slots. */
+        emit(0); emit(0); emit(Fault_record_Third[i]);
     }
     emit(sys_time.cnt_10ms1); emit(sys_time.cnt_10ms2); emit(sys_time.cnt_10ms3);
     emit(sys_time.cnt_10ms4); emit(sys_time.cnt_10ms5);
@@ -137,17 +139,7 @@ static void snapshot(void) {
     for(i=0;i<(int)counterCount;i++) emit(*counters[i]);
 }
 UINT8 App_PubOPUPChk(SPUBOPUPCHK *c) {
-    unsigned i;
-    UINT8 result;
-    for(i=0;i<counterCount;i++) if(counters[i] == c->i16ChkCnt) break;
-    if(i == counterCount) { assert(counterCount < 26); counters[counterCount++] = c->i16ChkCnt; }
-    emit(0xF001); emit((UINT16)i);
-    emit(c->u16ChkVal); emit(c->u16OPValB); emit(c->u16OPValS);
-    emit(c->u16TimeCntB); emit(c->u16TimeCntS); emit(c->u8FlagLogic);
-    emit(c->u8FlagBit); emit(*c->i16ChkCnt);
-    result = Real_PubOPUPChk(c);
-    emit(result); emit(c->u8FlagBit); emit(*c->i16ChkCnt);
-    return result;
+    return Real_PubOPUPChk(c);
 }
 UINT8 System_ERROR_UserCallback(int code) {
     callbacks++;
@@ -205,6 +197,7 @@ int main(int argc, char **argv) {
     UINT16 filters[] = {0, 1, 3, 50000, 62535, 62536, 65535};
     assert(argc == 2); trace = fopen(argv[1], "wb"); assert(trace);
     assert(setvbuf(trace, NULL, _IOFBF, 1024*1024) == 0);
+    register_counters();
     reset(); step(-1); assert(counterCount == 26);
     /* Every protection independently: exact boundaries, invalid/equal bounds,
        uint16 recovery-delay wrap, frozen gates, counter overflow and ring wrap. */
@@ -254,10 +247,162 @@ int main(int argc, char **argv) {
         flags(n%3 ? 1u << (n%5) : rnd()%32); step(-1);
     }
     assert(callbacks > 0); assert(fclose(trace) == 0);
+    business_tests();
     printf("frames=%u callbacks=%u counters=%u\n", frames, callbacks, counterCount);
     return 0;
 }
 '''
+
+
+def mapping_tests(old):
+    code = 'static void check_output_mapping(void) {\n'
+    code += ' union MDLCHGFAULT_REG fault; union FAULT_FLAG_SECOND second; union FAULT_FLAG_THIRD third;\n'
+    for i, row in enumerate(rules(old)):
+        body = function(old, row['name'])
+        event = re.search(r'FaultWarnRecord\((\w+)\)', body).group(1)
+        record = 'second' if row['level'] == 'Second' else 'third'
+        code += f' fault.all=0; fault.bits.{row["bit"]}=1;\n'
+        code += f' assert(fault.all == protectionOutputs[{i//2}].faultMask);\n'
+        code += f' {record}.all=0; {record}.bits.{event}=1;\n'
+        code += f' assert({record}.all == protectionOutputs[{i//2}].recordMask[{i%2}]);\n'
+        code += f' assert({event} == protectionOutputs[{i//2}].event[{i%2}]);\n'
+    return code + '}\n'
+
+
+BUSINESS_TESTS = r'''
+/* Independent requirements, not expectations obtained from the old program. */
+static void business_tests(void) {
+    ProtectionLimits l = {200, 200, 100, 3, 4, TRIP_ABOVE};
+    UINT16 count = 0;
+    UINT8 active = 0;
+    unsigned savedCallbacks = callbacks;
+    int i;
+    trace = fopen("business.trace", "wb"); assert(trace);
+    check_output_mapping();
+    assert(Protection_Evaluate(&l,&count,&active) && count==1 && !active);
+    l.sample=199; Protection_Evaluate(&l,&count,&active); assert(count==0 && !active);
+    l.sample=200;
+    for(i=0;i<3;i++) Protection_Evaluate(&l,&count,&active);
+    assert(active==1 && count==0);
+    l.sample=100;
+    for(i=0;i<3;i++) Protection_Evaluate(&l,&count,&active);
+    assert(active==1 && count==3);
+    Protection_Evaluate(&l,&count,&active); assert(!active && count==0);
+    l.direction=TRIP_BELOW; l.trigger=100; l.recovery=200; l.sample=100;
+    for(i=0;i<3;i++) Protection_Evaluate(&l,&count,&active);
+    assert(active==1 && count==0);
+    l.sample=200;
+    for(i=0;i<4;i++) Protection_Evaluate(&l,&count,&active);
+    assert(!active && count==0);
+    l.trigger=300; count=2;
+    assert(!Protection_Evaluate(&l,&count,&active) && count==2 && !active);
+    l.trigger=100; l.sample=100; count=65535; l.triggerTicks=65535;
+    assert(Protection_Evaluate(&l,&count,&active) && count==0 && !active);
+    l.triggerTicks=0;
+    assert(Protection_Evaluate(&l,&count,&active) && count==0 && active);
+
+    reset();
+    for(i=0;i<3;i++) {
+        g_stCellInfoReport.u16Ichg = g_stCellInfoReport.u16IDischg = (UINT16)i;
+        assert(Protection_GateOpen(GATE_CHARGE_CURRENT,0) == (i>1));
+        assert(Protection_GateOpen(GATE_DISCHARGE_CURRENT,0) == (i>1));
+        assert(Protection_GateOpen(GATE_CHARGE_CURRENT,1));
+        assert(Protection_GateOpen(GATE_DISCHARGE_CURRENT,1));
+    }
+    g_stCellInfoReport.u16TempMax=200;
+    Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    assert(protectionCounts[PROTECTION_CHARGE_HOT][LEVEL_SECOND]==2);
+    g_stCellInfoReport.u16Ichg=0;
+    for(i=0;i<10;i++) Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    assert(protectionCounts[PROTECTION_CHARGE_HOT][LEVEL_SECOND]==2);
+    assert(!g_stCellInfoReport.unMdlFault_Second.bits.b1CellChgOtp);
+    g_stCellInfoReport.u16Ichg=2;
+    Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    assert(g_stCellInfoReport.unMdlFault_Second.bits.b1CellChgOtp);
+    assert(Fault_Flag_Second.bits.CellChgOTp_Second && FaultPoint_Second2==1);
+    assert(Fault_record_Second2[0]==CellChgOTp_Second);
+    clear_records();
+    Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    assert(g_stCellInfoReport.unMdlFault_Second.bits.b1CellChgOtp);
+    assert(FaultPoint_Second2==1 && Fault_record_Second2[0]==CellChgOTp_Second);
+    g_stCellInfoReport.u16Ichg=0; g_stCellInfoReport.u16TempMax=100;
+    for(i=0;i<3;i++) Protection_Process(PROTECTION_CHARGE_HOT,LEVEL_SECOND);
+    assert(!g_stCellInfoReport.unMdlFault_Second.bits.b1CellChgOtp);
+    assert(!Fault_Flag_Second.bits.CellChgOTp_Second);
+
+    reset(); g_stCellInfoReport.u16Ichg=220;
+    for(i=0;i<3;i++) Protection_Process(PROTECTION_CHARGE_OC,LEVEL_THIRD);
+    assert(g_stCellInfoReport.unMdlFault_Third.bits.b1IchgOcp);
+    g_stCellInfoReport.u16Ichg=120;
+    for(i=0;i<3002;i++) Protection_Process(PROTECTION_CHARGE_OC,LEVEL_THIRD);
+    assert(g_stCellInfoReport.unMdlFault_Third.bits.b1IchgOcp);
+    Protection_Process(PROTECTION_CHARGE_OC,LEVEL_THIRD);
+    assert(!g_stCellInfoReport.unMdlFault_Third.bits.b1IchgOcp);
+
+    reset();
+    g_stCellInfoReport.unMdlFault_Third.bits.b1Rcved2=1;
+    Protection_Publish(PROTECTION_CELL_DELTA,LEVEL_THIRD,1);
+    assert(g_stCellInfoReport.unMdlFault_Third.bits.b1VcellDeltaBig);
+    assert(g_stCellInfoReport.unMdlFault_Third.bits.b1Rcved2);
+    assert(FaultPoint_Third2==1 && Fault_record_Third2[0]==VdeltaOvp_Third);
+    Protection_Publish(PROTECTION_CELL_DELTA,LEVEL_THIRD,0);
+    assert(!g_stCellInfoReport.unMdlFault_Third.bits.b1VcellDeltaBig);
+    assert(g_stCellInfoReport.unMdlFault_Third.bits.b1Rcved2);
+    clear_records();
+    for(i=0;i<12;i++) Protection_RecordEvent(CellOvp_Third);
+    assert(FaultPoint_Third2==2 && Fault_record_Third2[0]==CellOvp_Third);
+    assert(fclose(trace)==0);
+    callbacks=savedCallbacks;
+}
+'''
+
+
+def check_arm_layout(out, old, current):
+    """用目标编译器实际生成位域对象，校验协议掩码，避免只依赖主机布局。"""
+    entries = rules(old)
+    arrays = {
+        "layout_fault": ("MDLCHGFAULT_REG", [r['bit'] for r in entries[::2]]),
+        "layout_second": ("FAULT_FLAG_SECOND", []),
+        "layout_third": ("FAULT_FLAG_THIRD", []),
+    }
+    for i, r in enumerate(entries):
+        event = re.search(r'FaultWarnRecord\((\w+)\)', function(old, r['name'])).group(1)
+        arrays['layout_second' if i % 2 == 0 else 'layout_third'][1].append(event)
+    code = header()
+    for name, (kind, bits) in arrays.items():
+        code += f'const union {kind} {name}[] = {{\n'
+        code += ',\n'.join(f' {{ .bits = {{ .{bit} = 1 }} }}' for bit in bits)
+        code += '\n};\n'
+    source, obj = out / 'layout.c', out / 'layout.o'
+    source.write_text(code, encoding='utf-8')
+    compiler = Path('C:/Keil_v5/ARM/ARMCC/bin/armcc.exe')
+    result = subprocess.run([str(compiler), '--c99', '--cpu', 'Cortex-M0', '-O2', '-c', str(source), '-o', str(obj)], cwd=out, capture_output=True)
+    (out / 'layout-build.log').write_bytes(result.stdout + result.stderr)
+    if result.returncode:
+        raise SystemExit(result.stderr.decode(errors='replace'))
+    data = obj.read_bytes()
+    assert data[:6] == b'\x7fELF\x01\x01'
+    elf = struct.unpack_from('<16sHHIIIIIHHHHHH', data)
+    sections = [struct.unpack_from('<IIIIIIIIII', data, elf[6]+i*elf[11]) for i in range(elf[12])]
+    actual = {}
+    for section in sections:
+        if section[1] != 2:  # SHT_SYMTAB
+            continue
+        strings = sections[section[6]]
+        for offset in range(section[4], section[4]+section[5], section[9]):
+            sym = struct.unpack_from('<IIIBBH', data, offset)
+            start = strings[4] + sym[0]
+            name = data[start:data.index(b'\0', start)].decode('ascii', errors='replace')
+            if name in arrays:
+                storage = sections[sym[5]]
+                actual[name] = data[storage[4]+sym[1]:storage[4]+sym[1]+sym[2]]
+    masks = re.findall(r'\[PROTECTION_\w+\]\s*=\s*\{\s*(0x\w+),\s*\{\s*(0x\w+),\s*(0x\w+)', current)
+    assert len(masks) == 13 and len(actual) == 3
+    for i, name in enumerate(arrays):
+        expected = struct.pack('<13H', *(int(row[i],16) for row in masks))
+        assert actual[name] == expected, f'ARM 目标位域映射不一致：{name}'
+    return {'status': 'PASS', 'compiler': str(compiler), 'fault_masks': 13, 'record_masks': 26}
 
 
 def main():
@@ -270,19 +415,40 @@ def main():
     baseline_bytes = subprocess.check_output(["git", "show", f"{BASELINE}:Code/Source/Fault.c"], cwd=ROOT)
     current_bytes = (ROOT / "Code/Source/Fault.c").read_bytes()
     old = clean(baseline_bytes)
+    layout = check_arm_layout(out, old, clean(current_bytes))
     pub = function(clean((ROOT / "Code/Source/PubFunc.c").read_bytes()), "App_PubOPUPChk")
     pub = pub.replace("App_PubOPUPChk", "Real_PubOPUPChk", 1)
     common = header()
-    harness = driver(old) + "\n" + pub + "\n" + TRACE + TEST_MAIN
+    harness = driver(old) + "\n" + pub + "\n" + TRACE
     vcvars = Path(r"C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvars64.bat")
     if not vcvars.exists():
         raise SystemExit("未找到 Visual Studio 2022 C++ vcvars64.bat")
     results = {}
     for label, source in (("baseline", old), ("refactored", clean(current_bytes))):
         source = source.replace('#include "main.h"', '')
-        (out / f"{label}.c").write_text(common + source + harness, encoding="utf-8")
+        adapter = ""
+        if label == "baseline":
+            # Only lift old static counters into a test array; expressions and
+            # executed statements stay unchanged. No production source edits.
+            for i, row in enumerate(rules(old)):
+                body = function(source, row['name'])
+                lifted = re.sub(r'static UINT16 s_i16TimeCnt = 0;', '', body)
+                lifted = re.sub(r'\bs_i16TimeCnt\b', f'baselineCounts[{i}]', lifted)
+                source = source.replace(body, lifted)
+            source = 'static UINT16 baselineCounts[26];\n' + source
+            counts = 'baselineCounts[i]'
+            business = "static void business_tests(void) {}\n"
+        else:
+            # These legacy-name adapters exist only in the host harness. The
+            # firmware has no generated/per-protection wrapper functions.
+            for i, row in enumerate(rules(old)):
+                adapter += f"static void {row['name']}(void) {{ if (Protection_SlotReady(protectionRules[{i//2}].slot)) Protection_Process((ProtectionId){i//2}, {i%2}); }}\n"
+            counts = 'protectionCounts[i/2][i%2]'
+            business = mapping_tests(old) + BUSINESS_TESTS
+        register = f'static void register_counters(void) {{ unsigned i; counterCount=26; for(i=0;i<26;i++) counters[i]=&{counts}; }}\n'
+        (out / f"{label}.c").write_text(common + source + adapter + harness + register + business + TEST_MAIN, encoding="utf-8")
         batch = out / f"{label}.cmd"
-        batch.write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /utf-8 /W3 /O2 {label}.c /Fe:{label}.exe\nexit /b %errorlevel%\n', encoding="utf-8")
+        batch.write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /utf-8 /std:c11 /W3 /O2 {label}.c /Fe:{label}.exe\nexit /b %errorlevel%\n', encoding="utf-8")
         build = subprocess.run(["cmd", "/c", str(batch)], cwd=out, capture_output=True)
         (out / f"{label}-build.log").write_bytes(build.stdout + build.stderr)
         if build.returncode:
@@ -307,6 +473,8 @@ def main():
                   refactored_source_sha256=hashlib.sha256(current_bytes).hexdigest(),
                   pubfunc_sha256=hashlib.sha256((ROOT / 'Code/Source/PubFunc.c').read_bytes()).hexdigest(),
                   results=results, compared_bytes=size, trace_sha256=digest.hexdigest(),
+                  business_tests="PASS: threshold, recovery, counter decay/pause/wrap, gate, record replay, callback, 26 protocol mappings",
+                  arm_bitfield_layout=layout,
                   temp_directory=str(out), limitation="主机逻辑等价测试，不证明板上执行耗时或电气时序。")
     text = json.dumps(report, indent=2, ensure_ascii=False)
     if args.report:

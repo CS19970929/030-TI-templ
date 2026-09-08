@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "baseline_ref": "9a04ed8d1aa8649422b4ba8d91407adfdf356c12",
+  "baseline_source_sha256": "4ab3263e5ee45a42bb21b7e8757119187e9b630a7a604dac8e8dd41ed78edf8e",
+  "refactored_source_sha256": "45a37407fe1379e6de2c52931514c54f213f8e9c765675c223ebbf630742c29c",
+  "pubfunc_sha256": "ba165b1fd95887d45352da066db5749f33a74d86e2c24fee2d03cea3aa85f672",
+  "results": {
+    "baseline": "frames=6055327 callbacks=2564 counters=26",
+    "refactored": "frames=6055327 callbacks=2564 counters=26"
+  },
+  "compared_bytes": 1260036200,
+  "trace_sha256": "5821db8561932d4052e60b550f415e7add3a2320f3f66677333ede46be6eeb6a",
+  "business_tests": "PASS: threshold, recovery, counter decay/pause/wrap, gate, record replay, callback, 26 protocol mappings",
+  "arm_bitfield_layout": {
+    "status": "PASS",
+    "compiler": "C:\\Keil_v5\\ARM\\ARMCC\\bin\\armcc.exe",
+    "fault_masks": 13,
+    "record_masks": 26
+  },
+  "temp_directory": "C:\\Users\\Administrator\\AppData\\Local\\CodexTemp\\030-TI\\warn-equivalence-qpzwv5wi",
+  "limitation": "主机逻辑等价测试，不证明板上执行耗时或电气时序。"
+}
