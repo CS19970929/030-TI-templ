@@ -182,7 +182,7 @@ void USART1_IRQHandler(void)
   if ((((isr & USART_ISR_TXE) != RESET) && ((cr1 & USART_CR1_TXEIE) != RESET)) ||
       (((isr & USART_ISR_TC) != RESET) && ((cr1 & USART_CR1_TCIE) != RESET)))
   {
-    Sci1_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI1);
+    Sci1_CommonUpper_Tx_Deal();
   }
   if ((isr & (USART_ISR_ORE | USART_ISR_NE | USART_ISR_FE | USART_ISR_PE)) != RESET)
   {
@@ -191,7 +191,7 @@ void USART1_IRQHandler(void)
   if (((isr & USART_ISR_RXNE) != RESET) && ((cr1 & USART_CR1_RXNEIE) != RESET))
   {
     RTC_ExtComCnt++;
-    Sci1_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI1);
+    Sci1_CommonUpper_Rx_Deal();
   }
 #endif
 }
@@ -205,7 +205,7 @@ void USART2_IRQHandler(void)
   if ((((isr & USART_ISR_TXE) != RESET) && ((cr1 & USART_CR1_TXEIE) != RESET)) ||
       (((isr & USART_ISR_TC) != RESET) && ((cr1 & USART_CR1_TCIE) != RESET)))
   {
-    Sci2_CommonUpper_Tx_Deal(&g_stCurrentMsgPtr_SCI2);
+    Sci2_CommonUpper_Tx_Deal();
   }
   if ((isr & (USART_ISR_ORE | USART_ISR_NE | USART_ISR_FE | USART_ISR_PE)) != RESET)
   {
@@ -214,7 +214,7 @@ void USART2_IRQHandler(void)
   if (((isr & USART_ISR_RXNE) != RESET) && ((cr1 & USART_CR1_RXNEIE) != RESET))
   {
     RTC_ExtComCnt++;
-    Sci2_CommonUpper_Rx_Deal(&g_stCurrentMsgPtr_SCI2);
+    Sci2_CommonUpper_Rx_Deal();
   }
 #endif
 }

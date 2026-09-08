@@ -119,8 +119,8 @@ struct stCell_Info {
 
 // SCI_485 Message Structure
 struct RS485MSG {
-	UINT8	ptr_no;          	// Word stating what state msg is in
-	UINT8	csr;          		// I2C address of slave msg is intended for
+	volatile UINT8	ptr_no;          	// ÖÐ¶ÏÓëÖ÷Ñ­»·¹²ÏíµÄ»º³åÇø¶ÁÐ´Î»ÖÃ
+	volatile UINT8	csr;          		// ÖÐ¶ÏÓëÖ÷Ñ­»·¹²ÏíµÄRS485_STA_*×´Ì¬
 	UINT16	u16RdRegStartAddr;	// read reg start addr
 	UINT16	u16RdRegStartAddrActure;	//ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½
 	UINT8	u16RdRegByteNum;    // read byte lenth
@@ -543,8 +543,6 @@ enum RS485_CMD_RW_E {
 
 extern UINT8 u8FlashUpdateFlag;
 extern UINT8 u8FlashUpdateE2PROM;
-extern UINT8 gu8_TxEnable_SCI1;
-extern UINT8 gu8_TxEnable_SCI2;
 
 extern uint8_t reset_sleep_state;
 
@@ -555,11 +553,11 @@ extern struct stCell_Info g_stCellInfoReport;
 
 
 void Sci1_CommonUpper_FaultChk(void);
-void Sci1_CommonUpper_Rx_Deal(struct RS485MSG *s);
-void Sci1_CommonUpper_Tx_Deal(struct RS485MSG *s);
+void Sci1_CommonUpper_Rx_Deal(void);
+void Sci1_CommonUpper_Tx_Deal(void);
 void Sci2_CommonUpper_FaultChk(void);
-void Sci2_CommonUpper_Rx_Deal(struct RS485MSG *s);
-void Sci2_CommonUpper_Tx_Deal(struct RS485MSG *s);
+void Sci2_CommonUpper_Rx_Deal(void);
+void Sci2_CommonUpper_Tx_Deal(void);
 
 
 void InitUSART_CommonUpper(void);

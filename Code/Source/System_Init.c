@@ -126,7 +126,7 @@ void InitIO(void)
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE); // 开启GPIOF的外设时钟
 
 	{
-		GPIO_WriteBit(GPIO_M_STB, PIN_M_STB, 1);
+		GPIO_WriteBit(GPIO_M_STB, PIN_M_STB, 0);
 		GPIO_InitStructure.GPIO_Pin = PIN_M_STB;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
