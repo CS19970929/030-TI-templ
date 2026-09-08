@@ -352,7 +352,8 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 			{ // 20次1s
 				Init_Registers(num);
 				u8IICFaultcnt1 = 0;
-				System_ERROR_UserCallback(ERROR_AFE1); // 这里调用便可
+				if (!System_ErrFlag.u8ErrFlag_Com_AFE1)
+					System_ERROR_UserCallback(ERROR_AFE1); // 这里调用便可
 			}
 			if (u8IICFaultcnt1 == 30 && u8WakeCnt1 <= 20)
 			{
@@ -378,7 +379,7 @@ void MonitorAFE(UINT8 num, UINT8 Result)
 			{
 				SystemStatus.bits.b1Status_AFE1 = 1;
 				// MCUO_WAKEUP_AFE = 0;
-				// System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
+				System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
 			}
 		}
 		break;

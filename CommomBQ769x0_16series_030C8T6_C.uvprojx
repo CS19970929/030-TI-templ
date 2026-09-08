@@ -479,6 +479,11 @@
               <FilePath>.\Code\Source\Heat_Cool.c</FilePath>
             </File>
             <File>
+              <FileName>I2C_AFE_Transport.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Code\Source\I2C_AFE_Transport.c</FilePath>
+            </File>
+            <File>
               <FileName>I2C_AFE1.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Code\Source\I2C_AFE1.c</FilePath>

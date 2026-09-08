@@ -412,6 +412,7 @@ void TIM17_IRQHandler(void)
 		{ // 1ms
 			g_u81msCnt = 0;
 			g_u81msClockCnt++;
+			AFE_I2C_Tick1ms();
 
 			if (g_u81msClockCnt >= 2)
 			{ // 2ms

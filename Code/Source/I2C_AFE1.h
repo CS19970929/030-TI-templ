@@ -13,10 +13,7 @@
 #define AFE_ODC_H       110
 #endif
 
-#define FLAG_TIMEOUT         ((uint32_t)0x1000)
-//#define LONG_TIMEOUT         ((uint32_t)(10 * FLAG_TIMEOUT))
-//ԭ��*10���������λ���������ݶ��ҵ�����������޸ģ���û�ˣ�����ԭ����
-#define LONG_TIMEOUT         ((uint32_t)(FLAG_TIMEOUT))
+#include "I2C_AFE_Transport.h"
 
 #define I2C_SYSTEM
 

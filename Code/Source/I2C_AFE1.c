@@ -1,6 +1,5 @@
 #include "main.h"
 
-__IO uint32_t Timeout = LONG_TIMEOUT;
 
 RegisterGroup Registers_AFE1;
 struct stBq769x0_Read g_stBq769x0_Read_AFE1;
@@ -242,264 +241,48 @@ int I2CReadBytes(unsigned char I2CSlaveAddress, unsigned char *DataBuffer, unsig
 }
 #endif
 
-#ifdef I2C_SYSTEM
-void Init_I2C(void)
+
+
+int I2CWriteBlockWithCRC(unsigned char address, unsigned char reg, unsigned char *buffer, unsigned char length)
 {
-
-	I2C_InitTypeDef I2C_InitStruct;
-	GPIO_InitTypeDef GPIO_InitStructure;
-	/* I2C configuration */
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE); // 开启I2C2外设时钟
-
-	I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
-	I2C_InitStruct.I2C_AnalogFilter = I2C_AnalogFilter_Enable; // 0: 模拟噪声滤波器开启
-	I2C_InitStruct.I2C_DigitalFilter = 0x00;				   // 数字滤波器关闭
-	I2C_InitStruct.I2C_OwnAddress1 = 0x00;
-	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
-	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	I2C_InitStruct.I2C_Timing = 0x00901D2B; // 这句话我不管先，是一个excel计算出来的，8MHz
-	// I2C_InitStruct.I2C_Timing = 0x30E3363D;							//48MHz
-	/* I2C Peripheral Enable */
-	I2C_Cmd(I2C2, ENABLE);
-	/* Apply I2C configuration after enabling it */
-	I2C_Init(I2C2, &I2C_InitStruct);
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOF, &GPIO_InitStructure);
-
-	/*
-	GPIO_PinAFConfig(GPIOF , GPIO_Pin_6, GPIO_AF_1);		//GPIOF无复用功能，默认I2C
-	GPIO_PinAFConfig(GPIOF ,GPIO_Pin_7, GPIO_AF_1);
-	*/
+    unsigned int sent = 0;
+    unsigned int i;
+    if (!buffer || !length || (2u * length + 2u > sizeof(BufferCRCC)))
+        return AFE_I2C_ProtocolError(AFE_I2C_ARGUMENT);
+    BufferCRCC[0] = address << 1;
+    BufferCRCC[1] = reg;
+    BufferCRCC[2] = buffer[0];
+    BufferCRCC[3] = CRC8(BufferCRCC, 3, CRC_KEY);
+    for (i = 1; i < length; ++i)
+    {
+        BufferCRCC[2u + 2u * i] = buffer[i];
+        BufferCRCC[3u + 2u * i] = CRC8(&BufferCRCC[2u + 2u * i], 1, CRC_KEY);
+    }
+    return I2CSendBytes(address, BufferCRCC + 1, 2u * length + 1u, &sent);
 }
 
-uint32_t TIMEOUT_UserCallback(void)
+int I2CReadBlockWithCRC(unsigned char address, unsigned char reg, unsigned char *buffer, unsigned char length)
 {
-	/* Block communication and all processes */
-
-	System_ERROR_UserCallback(ERROR_AFE1);
-	return 1;
-}
-
-/*
-这次调试I2C产生问题汇总
-A，IO端口可能有问题，第一次模拟I2C发现SCL端口坏了，不能输出高电平
-B，I2C_TransferHandling没了解清楚有什么用，这个不仅可以产生start信号，还同时输出地址(看手册！这里困扰了很久！也没动手用示波器观察！)
-C，输出地址不能自动左移动，必须自己手动左移！不能相信别人，要用示波器去观察输出波形是否是自己需要的！
-D，I2C_AutoEnd_Mode，I2C_Generate_Start_Write，I2C_Generate_Start_Read了解好，例如写完读完相应字节能自动产生END,ACK信号。reload模式就不是之类的
-E，貌似地址左移1位就可以了，不需要加读写控制位，I2C_Generate_Start_Write，I2C_Generate_Start_Read会自动加，但是就算自己加了也不影响。
-*/
-
-int I2CSendBytes(unsigned char I2CSlaveAddress, unsigned char *DataBuffer, unsigned int ByteCount, unsigned int *SentByte)
-{
-
-	unsigned int NumberOfBytesSent = 0;
-	unsigned char *DataPointer;
-	DataPointer = DataBuffer;
-
-	Timeout = LONG_TIMEOUT;
-	Feed_IWatchDog;
-	while (I2C_GetFlagStatus(I2C_AFE, I2C_FLAG_BUSY) != RESET)
-	{ // 等待总线不忙
-		if ((Timeout--) == 0)
-		{
-			*SentByte = NumberOfBytesSent;
-			return TIMEOUT_UserCallback();
-		}
-	}
-
-	I2C_TransferHandling(I2C_AFE, (I2CSlaveAddress << 1) | I2C_RW_W, ByteCount, I2C_AutoEnd_Mode, I2C_Generate_Start_Write);
-
-	Feed_IWatchDog;
-	while (ByteCount--)
-	{
-		Timeout = LONG_TIMEOUT;
-		while (I2C_GetFlagStatus(I2C_AFE, I2C_ISR_TXIS) == RESET)
-		{ // 出现在发送中断，则发
-			if ((Timeout--) == 0)
-			{ // 等待可写数据进写缓冲寄存器
-				*SentByte = NumberOfBytesSent;
-				I2C_GenerateSTOP(I2C_AFE, ENABLE);
-				return TIMEOUT_UserCallback();
-			}
-		}
-		I2C_SendData(I2C_AFE, *DataPointer);
-		DataPointer++;
-	}
-
-	/* Wait until STOPF flag is set */
-	Timeout = LONG_TIMEOUT;
-	Feed_IWatchDog;
-	while (I2C_GetFlagStatus(I2C_AFE, I2C_ISR_STOPF) == RESET)
-	{
-		if ((Timeout--) == 0)
-		{
-			*SentByte = NumberOfBytesSent;
-			I2C_GenerateSTOP(I2C_AFE, ENABLE);
-			return TIMEOUT_UserCallback();
-		}
-	}
-	I2C_ClearFlag(I2C_AFE, I2C_ICR_STOPCF);
-
-	*SentByte = NumberOfBytesSent;
-	return 0;
-}
-
-int I2CReadBytes(unsigned char I2CSlaveAddress, unsigned char *DataBuffer, unsigned int ExpectedByteNumber, unsigned int *NumberOfReceivedBytes)
-{
-	// unsigned long int DelayCounter = 0;
-	unsigned char *DataPointer;
-	unsigned int *NumberOfReceivedBytesPointer;
-
-	NumberOfReceivedBytesPointer = NumberOfReceivedBytes;
-	*NumberOfReceivedBytesPointer = 0; // 目前没用到
-	DataPointer = DataBuffer;
-
-	Timeout = LONG_TIMEOUT;
-	Feed_IWatchDog;
-	while (I2C_GetFlagStatus(I2C_AFE, I2C_FLAG_BUSY) != RESET)
-	{ // 等待总线不忙
-		if ((Timeout--) == 0)
-		{ // 因为PIC代码是先写再读，写函数有stop标志把TC标志位去掉
-			return TIMEOUT_UserCallback();
-		}
-	}
-
-	I2C_TransferHandling(I2C_AFE, (I2CSlaveAddress << 1) | I2C_RW_R, ExpectedByteNumber, I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
-	// I2C_TransferHandling(I2C2, (I2CSlaveAddress<<1), ExpectedByteNumber,  I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
-	Feed_IWatchDog;
-	while (ExpectedByteNumber)
-	{
-		Timeout = LONG_TIMEOUT;
-		while (I2C_GetFlagStatus(I2C_AFE, I2C_ISR_RXNE) == RESET)
-		{ // 收到非空，则读
-			if ((Timeout--) == 0)
-			{
-				return TIMEOUT_UserCallback();
-			}
-		}
-		*DataPointer = I2C_ReceiveData(I2C_AFE);
-		DataPointer++;
-		ExpectedByteNumber--;
-	}
-
-	Timeout = LONG_TIMEOUT;
-	Feed_IWatchDog;
-	while (I2C_GetFlagStatus(I2C_AFE, I2C_ISR_STOPF) == RESET)
-	{
-		if ((Timeout--) == 0)
-		{
-			return TIMEOUT_UserCallback();
-		}
-	}
-	I2C_ClearFlag(I2C_AFE, I2C_ICR_STOPCF);
-
-	return 0;
-}
-#endif
-
-int I2CWriteBlockWithCRC(unsigned char I2CSlaveAddress, unsigned char StartAddress, unsigned char *Buffer, unsigned char Length)
-{
-	unsigned char *Pointer;
-	int i;
-	unsigned int SentByte = 0;
-	int result;
-
-	Pointer = BufferCRCC;
-	*Pointer = I2CSlaveAddress << 1;
-	Pointer++;
-	*Pointer = StartAddress;
-	Pointer++;
-	*Pointer = *Buffer;
-	Pointer++;
-	*Pointer = CRC8(BufferCRCC, 3, CRC_KEY);
-
-	for (i = 1; i < Length; i++)
-	{
-		Pointer++;
-		Buffer++;
-		*Pointer = *Buffer;
-		*(Pointer + 1) = CRC8(Pointer, 1, CRC_KEY);
-		Pointer++;
-	}
-
-	result = I2CSendBytes(I2CSlaveAddress, BufferCRCC + 1, 2 * Length + 1, &SentByte);
-
-	// free(BufferCRC);
-	BufferCRCC[0] = 255;
-
-	return result;
-}
-
-int I2CReadBlockWithCRC(unsigned char I2CSlaveAddress, unsigned char Register, unsigned char *Buffer, unsigned char Length)
-{
-	unsigned char TargetRegister = Register;
-	unsigned int SentByte = 0;
-	// unsigned char *ReadData = NULL;		//去掉NULL可以吧
-	unsigned char *ReadData;
-	unsigned int ReadDataCount = 0;
-	unsigned char CRCInput[2];
-
-	unsigned char CRCC = 0;
-	int ReadStatus = 0;
-	int WriteStatus = 0;
-	int i;
-
-	ReadData = startData_;
-
-	WriteStatus = I2CSendBytes(I2CSlaveAddress, &TargetRegister, 1, &SentByte);
-
-	ReadStatus = I2CReadBytes(I2CSlaveAddress, ReadData, 2 * Length, &ReadDataCount);
-
-	if (ReadStatus != 0 || WriteStatus != 0)
-	{
-		// free(StartData);
-		startData_[0] = 255;
-
-		return 1;
-	}
-
-	CRCInput[0] = (I2CSlaveAddress << 1) + 1;
-	CRCInput[1] = *ReadData;
-
-	CRCC = CRC8(CRCInput, 2, CRC_KEY);
-
-	ReadData++;
-	if (CRCC != *ReadData)
-	{
-		// free(StartData);
-		startData_[0] = 255;
-		return 1;
-	}
-	else
-		*Buffer = *(ReadData - 1);
-
-	for (i = 1; i < Length; i++)
-	{
-		ReadData++;
-		CRCC = CRC8(ReadData, 1, CRC_KEY);
-		ReadData++;
-		Buffer++;
-
-		if (CRCC != *ReadData)
-		{
-			// free(StartData);
-			startData_[0] = 255;
-
-			return 1;
-		}
-		else
-			*Buffer = *(ReadData - 1);
-	}
-
-	// free(StartData);
-	startData_[0] = 255;
-
-	return 0;
+    unsigned int transferred = 0;
+    unsigned int i;
+    unsigned char crcInput[2];
+    if (!buffer || !length || (2u * length > sizeof(startData_)))
+        return AFE_I2C_ProtocolError(AFE_I2C_ARGUMENT);
+    if (I2CSendBytes(address, &reg, 1, &transferred) != 0)
+        return 1;
+    if (I2CReadBytes(address, startData_, 2u * length, &transferred) != 0)
+        return 1;
+    crcInput[0] = (address << 1) | 1u;
+    crcInput[1] = startData_[0];
+    if (CRC8(crcInput, 2, CRC_KEY) != startData_[1])
+        return AFE_I2C_ProtocolError(AFE_I2C_CRC);
+    for (i = 1; i < length; ++i)
+        if (CRC8(&startData_[2u * i], 1, CRC_KEY) != startData_[2u * i + 1u])
+            return AFE_I2C_ProtocolError(AFE_I2C_CRC);
+    /* 完整校验后才发布，不能将前半包更新到有效的AFE寄存器缓存。 */
+    for (i = 0; i < length; ++i)
+        buffer[i] = startData_[2u * i];
+    return 0;
 }
 
 int I2CWriteRegisterByteWithCRC(unsigned char I2CSlaveAddress, unsigned char Register, unsigned char Data)
@@ -515,44 +298,19 @@ int I2CWriteRegisterByteWithCRC(unsigned char I2CSlaveAddress, unsigned char Reg
 	return (I2CSendBytes(I2CSlaveAddress, DataBuffer + 1, 3, &SentByte));
 }
 
-int I2CReadRegisterByteWithCRC(unsigned char I2CSlaveAddress, unsigned char Register, unsigned char *Data)
+int I2CReadRegisterByteWithCRC(unsigned char address, unsigned char reg, unsigned char *data)
 {
-	unsigned char TargetRegister = Register;
-	unsigned int SentByte = 0;
-	unsigned char ReadData[2];
-	unsigned int ReadDataCount = 0;
-	unsigned char CRCInput[2];
-	unsigned char CRCC = 0;
-	int ReadStatus = 0;
-	int WriteStatus = 0;
-
-	WriteStatus = I2CSendBytes(I2CSlaveAddress, &TargetRegister, 1, &SentByte);
-
-	ReadStatus = I2CReadBytes(I2CSlaveAddress, ReadData, 2, &ReadDataCount);
-
-	if (ReadStatus != 0 || WriteStatus != 0)
-	{
-		return 1;
-	}
-
-	CRCInput[0] = (I2CSlaveAddress << 1) + 1;
-	CRCInput[1] = ReadData[0];
-
-	CRCC = CRC8(CRCInput, 2, CRC_KEY);
-
-	if (CRCC != ReadData[1])
-		return 1;
-
-	*Data = ReadData[0];
-	return 0;
+    return I2CReadBlockWithCRC(address, reg, data, 1);
 }
 
 int GetADCGainOffset(unsigned char I2CSlaveAddress)
 {
 	int result;
 	result = I2CReadRegisterByteWithCRC(I2CSlaveAddress, ADCGAIN1, &(Registers_AFE1.ADCGain1.ADCGain1Byte));
-	result += I2CReadRegisterByteWithCRC(I2CSlaveAddress, ADCGAIN2, &(Registers_AFE1.ADCGain2.ADCGain2Byte));
-	result += I2CReadRegisterByteWithCRC(I2CSlaveAddress, ADCOFFSET, &(Registers_AFE1.ADCOffset));
+	if (result != 0) return result;
+	result = I2CReadRegisterByteWithCRC(I2CSlaveAddress, ADCGAIN2, &(Registers_AFE1.ADCGain2.ADCGain2Byte));
+	if (result != 0) return result;
+	result = I2CReadRegisterByteWithCRC(I2CSlaveAddress, ADCOFFSET, &(Registers_AFE1.ADCOffset));
 	return result;
 }
 
@@ -565,7 +323,9 @@ int ConfigureBqMaximo(unsigned char I2CSlaveAddress)
 	// result += I2CReadBlockWithOutCRC(I2CSlaveAddress, SYS_CTRL1, bqMaximoProtectionConfig, 8);
 
 	result = I2CWriteBlockWithCRC(I2CSlaveAddress, SYS_CTRL1, &(Registers_AFE1.SysCtrl1.SysCtrl1Byte), 8);
-	result += I2CReadBlockWithCRC(I2CSlaveAddress, SYS_CTRL1, bqMaximoProtectionConfig, 8);
+	if (result != 0) return result;
+    result = I2CReadBlockWithCRC(I2CSlaveAddress, SYS_CTRL1, bqMaximoProtectionConfig, 8);
+    if (result != 0) return result;
 
 #if 1
 	if ((bqMaximoProtectionConfig[0] != Registers_AFE1.SysCtrl1.SysCtrl1Byte) || (bqMaximoProtectionConfig[1] != Registers_AFE1.SysCtrl2.SysCtrl2Byte) || (bqMaximoProtectionConfig[2] != Registers_AFE1.Protect1.Protect1Byte) || (bqMaximoProtectionConfig[3] != Registers_AFE1.Protect2.Protect2Byte) || (bqMaximoProtectionConfig[4] != Registers_AFE1.Protect3.Protect3Byte) || (bqMaximoProtectionConfig[5] != Registers_AFE1.OVTrip) || (bqMaximoProtectionConfig[6] != Registers_AFE1.UVTrip) || (bqMaximoProtectionConfig[7] != Registers_AFE1.CCCfg))
@@ -582,7 +342,8 @@ int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 {
 	int result = 0;
 
-	I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte));
+	if (I2CReadRegisterByteWithCRC(I2CSlaveAddress, SYS_CTRL2, &(Registers_AFE1.SysCtrl2.SysCtrl2Byte)) != 0)
+        return 1;
 
 	Registers_AFE1.SysCtrl1.SysCtrl1Byte = 0;
 	Registers_AFE1.SysCtrl1.SysCtrl1Bit.ADC_EN = 1;
@@ -606,6 +367,7 @@ int InitialisebqMaximo(unsigned char I2CSlaveAddress)
 	Registers_AFE1.Protect3.Protect3Bit.UV_DELAY = UVDelay; // 4s
 
 	result = GetADCGainOffset(I2CSlaveAddress);
+    if (result != 0) return result;
 
 	g_stBq769x0_Read_AFE1.f32Gain = (365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5)) / 1000.0;
 	g_stBq769x0_Read_AFE1.i16Gain = 365 + ((Registers_AFE1.ADCGain1.ADCGain1Byte & 0x0C) << 1) + ((Registers_AFE1.ADCGain2.ADCGain2Byte & 0xE0) >> 5);
@@ -621,88 +383,23 @@ UINT8 App_AFEshutdown(void)
 	UINT8 data = 0;
 	// I2CReadRegisterByteWithCRC(DEVICE_ADDR_AFE1,0x04,&data);
 	// data &= 0xfc;
-	I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data);
+	if (I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data) != 0) return 1;
 	data |= 1;
-	I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data);
+	if (I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data) != 0) return 1;
 	data = 0;
 	data |= 2;
-	I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data);
+	if (I2CWriteRegisterByteWithCRC(DEVICE_ADDR_AFE1, 0x04, data) != 0) return 1;
 	return 0;
 }
 
-// 初始化IIC
-void InitAFE1_F6F7(void)
-{
-	I2C_InitTypeDef I2C_InitStruct;
-	GPIO_InitTypeDef GPIO_InitStructure;
-	/* I2C configuration */
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE); // 开启I2C2外设时钟
-
-	I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
-	I2C_InitStruct.I2C_AnalogFilter = I2C_AnalogFilter_Enable; // 0: 模拟噪声滤波器开启
-	I2C_InitStruct.I2C_DigitalFilter = 0x00;				   // 数字滤波器关闭
-	I2C_InitStruct.I2C_OwnAddress1 = 0x00;
-	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
-	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	// I2C_InitStruct.I2C_Timing = 0x00901D2B;						//这句话我不管先，是一个excel计算出来的，8MHz
-	I2C_InitStruct.I2C_Timing = 0x30E3363D; // 48MHz
-	/* I2C Peripheral Enable */
-	I2C_Cmd(I2C2, ENABLE);
-	/* Apply I2C configuration after enabling it */
-	I2C_Init(I2C2, &I2C_InitStruct);
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOF, &GPIO_InitStructure);
-
-	InitialisebqMaximo(DEVICE_ADDR_AFE1);
-}
-
+/* 传输初始化不再隐式混入总线恢复；AFE配置失败由上层监控重试。 */
 void InitAFE1(void)
 {
-	I2C_InitTypeDef I2C_InitStruct;
-	GPIO_InitTypeDef GPIO_InitStructure;
-	// RCC_I2CCLKConfig(RCC_I2C1CLK_SYSCLK);		//I2C1需要这个
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-
-	/* I2C configuration */
-	I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
-	I2C_InitStruct.I2C_AnalogFilter = I2C_AnalogFilter_Enable; // 0: 模拟噪声滤波器开启
-	I2C_InitStruct.I2C_DigitalFilter = 0x00;				   // 数字滤波器关闭
-	I2C_InitStruct.I2C_OwnAddress1 = 0x00;
-	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
-	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	I2C_InitStruct.I2C_Timing = 0x00901D2B; // 这句话我不管先，是一个excel计算出来的，8MHz
-	// I2C_InitStruct.I2C_Timing = 0x30E3363D;							//48MHz
-
-	/* I2C Peripheral Enable */
-	I2C_Cmd(I2C2, ENABLE);
-	/* Apply I2C configuration after enabling it */
-	I2C_Init(I2C2, &I2C_InitStruct);
-
-	/* Connect PXx to I2C_SCL*/
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	/*!< Configure sEE_I2C pins: SDA */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_1); // 这个AF选项找芯片手册非reg版
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_1); // 只有PA和PB才会有
-
-	InitialisebqMaximo(DEVICE_ADDR_AFE1);
-
-	InitShortCur();
+    if (AFE_I2C_Init() != 0)
+        return;
+    if (InitialisebqMaximo(DEVICE_ADDR_AFE1) != 0)
+        return;
+    InitShortCur();
 }
 
 int UpdateVoltageFromBqMaximo(unsigned char I2CSlaveAddress)
@@ -715,6 +412,7 @@ int UpdateVoltageFromBqMaximo(unsigned char I2CSlaveAddress)
 	INT32 iTemp2 = 0;
 
 	Result = I2CReadBlockWithCRC(I2CSlaveAddress, VC1_HI_BYTE, &(Registers_AFE1.VCell1.VCell1Byte.VC1_HI), 40);
+    if (Result != 0) return Result;
 
 	pRawADCData = &Registers_AFE1.VCell1.VCell1Byte.VC1_HI;
 	for (i = 0; i < 20; i++)
@@ -769,6 +467,7 @@ int UpdateVoltageFromBqMaximo_Partition(unsigned char I2CSlaveAddress, UINT8 Par
 	INT32 iTemp2 = 0;
 
 	Result = I2CReadBlockWithCRC(I2CSlaveAddress, VC1_HI_BYTE + Part * 10, &(Registers_AFE1.VCell1.VCell1Byte.VC1_HI) + Part * 10, 10);
+    if (Result != 0) return Result;
 
 	pRawADCData = &(Registers_AFE1.VCell1.VCell1Byte.VC1_HI) + Part * 10;
 	for (i = Part * 5; i < Part * 5 + 5; i++)
