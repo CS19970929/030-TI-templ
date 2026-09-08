@@ -420,6 +420,7 @@ void TIM17_IRQHandler(void)
 				if (g_u810msClockCnt >= 5)
 				{ // 10ms
 					sys_time.cnt_10ms++;
+					Sci_Tick10ms();
 					g_u810msClockCnt = 0;
 					key_can();
 				}

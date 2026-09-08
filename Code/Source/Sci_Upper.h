@@ -101,7 +101,6 @@ struct stCell_Info {
 #define	RS485_STA_RX_COMPLETE		1
 #define	RS485_STA_RX_OK				2
 #define	RS485_STA_TX_BUSY			3
-#define	RS485_STA_TX_COMPLETE		4
 
 
 #define	RS485_ACK_POS			        0x00	// ����Ӧ
@@ -562,6 +561,7 @@ void Sci2_CommonUpper_Tx_Deal(void);
 
 void InitUSART_CommonUpper(void);
 void App_CommonUpper(void);
+void Sci_Tick10ms(void);
 
 #endif	/* SCI_H */
 

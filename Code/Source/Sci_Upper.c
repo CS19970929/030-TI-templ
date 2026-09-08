@@ -11,15 +11,17 @@ typedef struct {
     UINT8 supportsP12;
     volatile UINT8 rxFault;       /* 只需记录本帧是否出错，无需累计次数。 */
     volatile UINT8 rxTimeoutTick;
+    volatile UINT8 txTimeoutTick; /* 仅TX_BUSY时由10ms定时中断递增。 */
 } SciPort;
 
 #ifdef _COMMOM_UPPER_SCI1
-static SciPort sci1 = { USART1, &g_stCurrentMsgPtr_SCI1, 0, 0, 0 };
+static SciPort sci1 = { USART1, &g_stCurrentMsgPtr_SCI1, 0, 0, 0, 0 };
 #endif
 #ifdef _COMMOM_UPPER_SCI2
-static SciPort sci2 = { USART2, &g_stCurrentMsgPtr_SCI2, 1, 0, 0 };
+static SciPort sci2 = { USART2, &g_stCurrentMsgPtr_SCI2, 1, 0, 0, 0 };
 #endif
 
+#define SCI_TX_TIMEOUT_TICKS 20u /* 最短约190ms，大于251字节/19200/8N1的131ms。 */
 #define SCI_RX_TIMEOUT_TICKS 3u  /* 保留原有三个10ms调度节拍超时。 */
 
 UINT8 g_u8SCITxBuff[SCI_TX_BUF_LEN];
@@ -487,6 +489,7 @@ static void Sci_ResetFrameState(SciPort *port)
     usart->CR1 &= ~(USART_CR1_RXNEIE | USART_CR1_TXEIE | USART_CR1_TCIE);
     Sci_ClearFrameState(port->msg);
     port->rxTimeoutTick = 0;
+    port->txTimeoutTick = 0;
     port->rxFault = 0;
     USART_ClearITPendingBit(usart, USART_IT_TC);
     usart->CR1 |= USART_CR1_RE | USART_CR1_RXNEIE;
@@ -538,6 +541,7 @@ static void Sci_StartTx(SciPort *port)
         return;
     }
     usart->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_TXEIE | USART_CR1_TCIE);
+    port->txTimeoutTick = 0;
     s->ptr_no = 0;
     s->csr = RS485_STA_TX_BUSY;
     Sci_SetTxDirection(port, 1);
@@ -545,6 +549,59 @@ static void Sci_StartTx(SciPort *port)
     usart->ICR = USART_ICR_TCCF;
     /* 首字节也由TXE搬运，避免两份发送/末字节判断逻辑。 */
     usart->CR1 |= USART_CR1_TXEIE;
+}
+
+/* TC确认后立即准备接收，再释放485方向；主循环不再二次清帧。 */
+static void Sci_FinishTx(SciPort *port)
+{
+    if (u8FlashUpdateE2PROM)
+    {
+        u8FlashUpdateE2PROM = 0;
+        u8FlashUpdateFlag = 1;
+    }
+    Sci_ResetFrameState(port);
+    Sci_SetTxDirection(port, 0);
+}
+
+/* 超时是故障中止，不是正常完成；不能仅清TE后立即释放方向。
+ * RM0360: UE=0立即停止输出并丢弃当前传输，配置保留。
+ */
+static void Sci_AbortTx(SciPort *port)
+{
+    USART_TypeDef *usart = port->usart;
+    usart->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE | USART_CR1_RXNEIE);
+    USART_Cmd(usart, DISABLE);
+    usart->CR1 &= ~USART_CR1_TE;
+    Sci_ResetFrameState(port);
+    /* UE仍关闭，先释放总线再使能接收；下次发送由StartTx重新开启TE。 */
+    Sci_SetTxDirection(port, 0);
+    USART_Cmd(usart, ENABLE);
+}
+
+static void Sci_TxWatchdog(SciPort *port)
+{
+    if ((RS485_STA_TX_BUSY == port->msg->csr) &&
+        (++port->txTimeoutTick >= SCI_TX_TIMEOUT_TICKS))
+    {
+        /* 末字节已装载且TC确实置位：补做丢失的完成中断，不误判失败。 */
+        if ((port->msg->ptr_no == port->msg->AckLenth) &&
+            (port->msg->AckLenth != 0) &&
+            ((port->usart->ISR & USART_ISR_TC) != RESET))
+            Sci_FinishTx(port);
+        else
+            Sci_AbortTx(port);
+    }
+}
+
+/* TIM17与USART当前均为优先级0，互不抢占；这里无等待、无协议业务。 */
+void Sci_Tick10ms(void)
+{
+#ifdef _COMMOM_UPPER_SCI1
+    Sci_TxWatchdog(&sci1);
+#endif
+#ifdef _COMMOM_UPPER_SCI2
+    Sci_TxWatchdog(&sci2);
+#endif
 }
 
 static void Sci_TxISR_Deal(SciPort *port)
@@ -575,16 +632,7 @@ static void Sci_TxISR_Deal(SciPort *port)
     if (((usart->CR1 & USART_CR1_TCIE) != RESET) &&
         ((usart->ISR & USART_ISR_TC) != RESET))
     {
-        usart->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
-        usart->ICR = USART_ICR_TCCF;
-        Sci_SetTxDirection(port, 0);
-        s->ptr_no = 0;
-        s->csr = RS485_STA_TX_COMPLETE;
-        if (u8FlashUpdateE2PROM)
-        {
-            u8FlashUpdateE2PROM = 0;
-            u8FlashUpdateFlag = 1;
-        }
+        Sci_FinishTx(port);
     }
 }
 
@@ -1559,12 +1607,6 @@ static void Sci_Service(SciPort *port)
         break;
     }
 
-    case RS485_STA_TX_COMPLETE:
-    {
-        Sci_ResetFrameState(port);
-        break;
-    }
-
     default:
     {
         Sci_ResetFrameState(port);
@@ -1614,6 +1656,7 @@ void InitSCI1_CommonUpper(void)
 	Sci_DataInit(sci1.msg);
 	sci1.rxFault = 0;
 	sci1.rxTimeoutTick = 0;
+	sci1.txTimeoutTick = 0;
 	Sci_SetTxDirection(&sci1, 0);
 	USART_Cmd(USART1, ENABLE);					   // 使能串口1
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); // 使能接收中断
@@ -1678,6 +1721,7 @@ void InitSCI2_CommonUpper(void)
 	Sci_DataInit(sci2.msg);
 	sci2.rxFault = 0;
 	sci2.rxTimeoutTick = 0;
+	sci2.txTimeoutTick = 0;
 	Sci_SetTxDirection(&sci2, 0);
 	USART_Cmd(USART2, ENABLE);					   // 使能串口1
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); // 使能接收中断
