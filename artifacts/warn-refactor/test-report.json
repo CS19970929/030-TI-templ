@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "baseline_ref": "9a04ed8d1aa8649422b4ba8d91407adfdf356c12",
+  "baseline_source_sha256": "4ab3263e5ee45a42bb21b7e8757119187e9b630a7a604dac8e8dd41ed78edf8e",
+  "refactored_source_sha256": "74f0b9c704e68358c6b3b17077760b9501a73dfd23d1c3b98fb55f34bc79f260",
+  "pubfunc_sha256": "ba165b1fd95887d45352da066db5749f33a74d86e2c24fee2d03cea3aa85f672",
+  "results": {
+    "baseline": "frames=6055327 callbacks=2564 counters=26",
+    "refactored": "frames=6055327 callbacks=2564 counters=26"
+  },
+  "compared_bytes": 1431322380,
+  "trace_sha256": "ddd55ad0b94b22e90292002665847f80a4d408d08066cdf7f4c5ea7f138258e8",
+  "temp_directory": "C:\\Users\\Administrator\\AppData\\Local\\CodexTemp\\030-TI\\warn-equivalence-2ij4d_uj",
+  "limitation": "主机逻辑等价测试，不证明板上执行耗时或电气时序。"
+}

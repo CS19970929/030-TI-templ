@@ -1,0 +1,137 @@
+{
+  "App_BatOvp_SecondCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_BatOvp_ThirdCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_BatUvp_SecondCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_BatUvp_ThirdCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 69,
+    "new_instruction_count": 69
+  },
+  "App_CellChgOtp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 75,
+    "new_instruction_count": 71
+  },
+  "App_CellChgOtp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 74,
+    "new_instruction_count": 70
+  },
+  "App_CellChgUtp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 75,
+    "new_instruction_count": 71
+  },
+  "App_CellChgUtp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 75,
+    "new_instruction_count": 71
+  },
+  "App_CellDisChgOtp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 73,
+    "new_instruction_count": 69
+  },
+  "App_CellDisChgOtp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 71,
+    "new_instruction_count": 68
+  },
+  "App_CellDischgUtp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 74,
+    "new_instruction_count": 70
+  },
+  "App_CellDischgUtp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 74,
+    "new_instruction_count": 70
+  },
+  "App_CellOvp_SecondCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_CellOvp_ThirdCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_CellSocUp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 67,
+    "new_instruction_count": 67
+  },
+  "App_CellSocUp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 71,
+    "new_instruction_count": 71
+  },
+  "App_CellUvp_SecondCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 65,
+    "new_instruction_count": 65
+  },
+  "App_CellUvp_ThirdCheck": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 69,
+    "new_instruction_count": 69
+  },
+  "App_IchgOcp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 67,
+    "new_instruction_count": 67
+  },
+  "App_IchgOcp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 67,
+    "new_instruction_count": 67
+  },
+  "App_IdischgOcp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 67,
+    "new_instruction_count": 67
+  },
+  "App_IdischgOcp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 71,
+    "new_instruction_count": 71
+  },
+  "App_MosOtp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 66,
+    "new_instruction_count": 66
+  },
+  "App_MosOtp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 66,
+    "new_instruction_count": 66
+  },
+  "App_VdeltaOp_SecondCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 70,
+    "new_instruction_count": 70
+  },
+  "App_VdeltaOp_ThirdCheck": {
+    "instruction_bytes_equal": false,
+    "old_instruction_count": 71,
+    "new_instruction_count": 71
+  },
+  "App_WarnCtrl": {
+    "instruction_bytes_equal": true,
+    "old_instruction_count": 28,
+    "new_instruction_count": 28
+  }
+}
