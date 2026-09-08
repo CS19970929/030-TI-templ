@@ -512,7 +512,7 @@ static void Sci_SetTxDirection(SciPort *port, UINT8 transmitting)
     }
 }
 
-/* PB14 is armed both at normal startup and before STOP. */
+/* PB14 activates RS485 only while the MCU is running. */
 void Sci_RS485WakeInit(void)
 {
     GPIO_InitTypeDef gpio;
@@ -544,6 +544,9 @@ UINT8 Sci_RS485PowerIsOn(void)
 
 void Sci_RS485WakeFromISR(void)
 {
+    if (!s_rs485Ready)
+        return;
+
     /* Repeated wake edges while powered do not extend the window. */
     if (!s_rs485PowerOn)
     {
@@ -2501,11 +2504,6 @@ void InitUSART_CommonUpper(void)
     USART2->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
     s_rs485Ready = 1;
     Sci_RS485WakeInit();
-    if (BootFlag_Read() == BOOT_FLAG_RS485_WAKE_VALUE)
-    {
-        BootFlag_Clear();
-        Sci_RS485WakeFromISR();
-    }
 #endif
 }
 

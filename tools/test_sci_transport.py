@@ -276,7 +276,10 @@ int main(void) {
     assert(sci2.msg->csr==RS485_STA_IDLE && !direction);
     /* Real power functions: boundary, repeated edges, UART isolation, CRC
      * rejection, P12 success, wraparound, partial frame and active TX. */
-    init(&sci1); init(&sci2); s_rs485Ready=1;
+    init(&sci1); init(&sci2);
+    s_rs485Ready=0; Sci_RS485WakeFromISR();
+    assert(!Sci_RS485PowerIsOn() && !power);
+    s_rs485Ready=1;
     assert(!Sci_RS485PowerIsOn() && !power);
     s_rs485Tick10ms=100; Sci_RS485WakeFromISR();
     assert(power && s_rs485LastActivity==100);
