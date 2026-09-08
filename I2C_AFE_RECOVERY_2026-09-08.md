@@ -51,7 +51,7 @@ TIM17每个1ms节拍调用AFE_I2C_Tick1ms。等待使用无符号毫秒差计算
 - 单字节读取复用块读取，统一边界和错误行为。
 - AFE配置写入或读回失败不再比较未初始化的数据；增益读取失败不继续计算。采样读取失败保留上一份数据，不继续计算或更新滤波。
 - AFE关机序列任一步写失败立即返回失败，不再固定报告成功。
-- 硬件错误置位保持锁存，不让8位旧错误计数因连续报错回绕；MonitorAFE在原有失败/唤醒计数归零、通信恢复后清除AFE1通信错误。
+- 硬件错误置位保持锁存，不让8位旧错误计数因连续报错回绕；后续MonitorAFE简化为连续3次完整采样成功后清除AFE1通信错误，具体策略见[AFE监控简化说明](AFE_MONITOR_SIMPLIFICATION_2026-09-08.md)。
 
 通过AFE_I2C_GetDiagnostics读取只读诊断记录：lastError、lastStage、recoveryError、failureCount、recoveryCount。lastError/lastStage保留最近一次失败，成功访问不会清掉证据；recoveryError记录最近一次恢复的结果。公共收发接口仍返回0成功、1失败，兼容原有调用代码。
 

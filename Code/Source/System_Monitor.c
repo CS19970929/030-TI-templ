@@ -347,3 +347,38 @@ UINT8 System_ERROR_UserCallback(enum SYSTEM_ERROR_COMMAND errorCode)
 
 	return result;
 }
+
+/* 独立于AFE采样调度；三个故障源分别计算连续持续时间。 */
+#define SYSTEM_FAULT_SLEEP_10MS  30000u
+
+void App_CommunicationFaultSleep(void)
+{
+    static UINT16 faultStart[3];
+    static UINT8 activeMask;
+    UINT16 now = sys_time.cnt_10ms;
+    UINT8 faults = 0;
+    UINT8 index;
+    if (System_ERROR_UserCallback(ERROR_STATUS_AFE1)) faults |= 1u;
+    if (System_ERROR_UserCallback(ERROR_STATUS_AFE2)) faults |= 2u;
+    if (System_ERROR_UserCallback(ERROR_STATUS_EEPROM_COM) ||
+        System_ERROR_UserCallback(ERROR_STATUS_EEPROM_STORE)) faults |= 4u;
+
+    for (index = 0; index < 3; ++index)
+    {
+        UINT8 bit = (UINT8)(1u << index);
+        if (!(faults & bit))
+            activeMask &= (UINT8)~bit;
+        else if (!(activeMask & bit))
+        {
+            activeMask |= bit;
+            faultStart[index] = now;
+        }
+        else if ((UINT16)(now - faultStart[index]) >= SYSTEM_FAULT_SLEEP_10MS)
+        {
+            /* 一轮只请求一次休眠；返回后仍故障则重新计时。 */
+            activeMask = 0;
+            entersleep(DEEP_MODE);
+            return;
+        }
+    }
+}

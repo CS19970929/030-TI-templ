@@ -243,6 +243,7 @@ void InitSystemMonitorData_EEPROM(void);
 void SystemMonitorResetData_EEPROM(void);
 
 UINT8 System_ERROR_UserCallback(enum SYSTEM_ERROR_COMMAND errorCode);
+void App_CommunicationFaultSleep(void);
 StartUp_Status System_FUNC_StartUp(enum SYSTEM_FUNC_STARTUP_COMMAND SystemFunction);
 void System_Limits(void);
 

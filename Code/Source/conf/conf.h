@@ -124,7 +124,7 @@ typedef struct
   uint16_t  cnt_10ms5;
 
   uint16_t cnt_10ms_test_iocontrol;
-  uint16_t  cnt_10ms;
+  volatile uint16_t  cnt_10ms;
   uint16_t   test_sizeof_g_tParam;
   uint16_t cnt_enter_chg_open;
   uint16_t cnt_enter_dsg_open;

@@ -52,6 +52,7 @@ int main(void)
 		App_SysTime();
 		App_Sci();
 		App_AFEGet();
+		App_CommunicationFaultSleep();
 		// ganhuangguan_Logi();
 		App_WarnCtrl();
 		App_MOS_Relay_Ctrl();

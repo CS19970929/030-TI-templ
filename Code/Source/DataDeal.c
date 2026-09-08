@@ -1,10 +1,5 @@
 #include "main.h"
 
-UINT8 u8IICFaultcnt1 = 0;
-UINT8 u8WakeCnt1 = 0;
-UINT8 u8IICFaultcnt2 = 0;
-UINT8 u8WakeCnt2 = 0;
-
 UINT16 g_u16CalibCoefK[KB_NUM];
 INT16 g_i16CalibCoefB[KB_NUM];
 
@@ -14,28 +9,6 @@ UINT16 CopperLoss_Num[CompensateNUM];
 UINT32 g_u32CS_Res_AFE = 0;
 
 struct OTHER_ELEMENT OtherElement;
-
-void Init_Registers(UINT8 num)
-{
-	UINT8 j;
-	switch (num)
-	{
-	case 0:
-		for (j = 0; j < 40; j++)
-		{
-			*(&(Registers_AFE1.VCell1.VCell1Byte.VC1_HI) + j) = 0;
-		}
-		break;
-
-	case 1:
-		break;
-
-	default:
-		break;
-	}
-	// CHG_OFF;
-	// DSG_OFF;
-}
 
 void DataLoad_CellVolt_Test(void)
 {
@@ -336,130 +309,54 @@ void DataLoad_Current(void)
 #endif
 }
 
-void MonitorAFE(UINT8 num, UINT8 Result)
+/* AFE业务恢复策略；单笔I2C错误和总线解锁由传输层处理。 */
+#define AFE_RETRY_INTERVAL_10MS  600u
+#define AFE_RECOVERY_SAMPLES     3u
+
+typedef struct {
+    UINT16 retryTime;
+    UINT8 successCount;
+    UINT8 recovering;
+} AFE_MONITOR_STATE;
+
+static AFE_MONITOR_STATE afeMonitor;
+
+static void MonitorAFE(UINT8 result)
 {
-	static UINT16 su16_Sleep_DelayT1 = 0;
-	static UINT16 su16_Sleep_DelayT2 = 0;
-	static UINT16 su16_Sleep_DelayT3 = 0;
+    UINT16 now = sys_time.cnt_10ms;
+    /* 其他AFE寄存器访问报错时，也重新开始恢复确认。 */
+    if (!afeMonitor.recovering && (result || System_ErrFlag.u8ErrFlag_Com_AFE1))
+    {
+        afeMonitor.recovering = 1;
+        afeMonitor.successCount = 0;
+        afeMonitor.retryTime = now;
+        SystemStatus.bits.b1Status_AFE1 = 0;
+    }
+    if (result != 0)
+    {
+        afeMonitor.successCount = 0;
+        SystemStatus.bits.b1Status_AFE1 = 0;
+        if (!System_ErrFlag.u8ErrFlag_Com_AFE1)
+            System_ERROR_UserCallback(ERROR_AFE1);
+        if ((UINT16)(now - afeMonitor.retryTime) >= AFE_RETRY_INTERVAL_10MS)
+        {
+            App_WakeUpAFE();
+            InitAFE1();
+            /* 初始化不等于采样恢复，仍需后续完整采样确认。 */
+            afeMonitor.retryTime = sys_time.cnt_10ms;
+        }
+        return;
+    }
 
-	switch (num)
-	{
-	case 0:
-		if (Result != 0)
-		{
-			++u8IICFaultcnt1;
-			if (u8IICFaultcnt1 > 60)
-			{ // 20次1s
-				Init_Registers(num);
-				u8IICFaultcnt1 = 0;
-				if (!System_ErrFlag.u8ErrFlag_Com_AFE1)
-					System_ERROR_UserCallback(ERROR_AFE1); // 这里调用便可
-			}
-			if (u8IICFaultcnt1 == 30 && u8WakeCnt1 <= 20)
-			{
-				App_WakeUpAFE(); // 因为这两个会使两个AFE垮掉
-				InitAFE1();
-				// InitialisebqMaximo(DEVICE_ADDR_AFE1);
-				++u8WakeCnt1;
-			}
-			SystemStatus.bits.b1Status_AFE1 = 0;
-		}
-		else
-		{
-			if (u8IICFaultcnt1 > 0)
-			{
-				u8IICFaultcnt1--;
-			}
-			if (u8WakeCnt1 > 0)
-			{
-				u8WakeCnt1--;
-			}
-
-			if (u8IICFaultcnt1 == 0 && u8WakeCnt1 == 0)
-			{
-				SystemStatus.bits.b1Status_AFE1 = 1;
-				// MCUO_WAKEUP_AFE = 0;
-				System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
-			}
-		}
-		break;
-
-	case 1:
-		if (Result != 0)
-		{
-			++u8IICFaultcnt2;
-			if (u8IICFaultcnt2 > 60)
-			{
-				Init_Registers(num);
-				u8IICFaultcnt2 = 0;
-				System_ERROR_UserCallback(ERROR_AFE2); // 这里调用便可
-			}
-			if (u8IICFaultcnt2 == 30 && u8WakeCnt2 <= 20)
-			{
-				App_WakeUpAFE(); // 因为这两个会使两个AFE垮掉
-				// InitialisebqMaximo(DEVICE_ADDR_AFE1);
-				// InitialisebqMaximo2(DEVICE_ADDR_AFE1);
-				++u8WakeCnt2;
-			}
-			SystemStatus.bits.b1Status_AFE2 = 0;
-		}
-		else
-		{
-			if (u8IICFaultcnt2 > 0)
-			{
-				u8IICFaultcnt2--;
-			}
-			if (u8WakeCnt2 > 0)
-			{
-				u8WakeCnt2--;
-			}
-			SystemStatus.bits.b1Status_AFE2 = 1;
-			// System_ERROR_UserCallback(ERROR_REMOVE_AFE2);
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (System_ERROR_UserCallback(ERROR_STATUS_AFE1))
-	{
-		if (++su16_Sleep_DelayT1 >= 20 * 60 * 5)
-		{ // 等待5min后进入休眠
-			su16_Sleep_DelayT1 = 0;
-			entersleep(DEEP_MODE);
-		}
-	}
-	else
-	{
-		su16_Sleep_DelayT1 = 0;
-	}
-
-	if (System_ERROR_UserCallback(ERROR_STATUS_AFE2))
-	{
-		if (++su16_Sleep_DelayT2 >= 20 * 60 * 5)
-		{ // 等待5min后进入休眠
-			su16_Sleep_DelayT2 = 0;
-			entersleep(DEEP_MODE);
-		}
-	}
-	else
-	{
-		su16_Sleep_DelayT2 = 0;
-	}
-
-	// 暂时寄存这里
-	if (System_ERROR_UserCallback(ERROR_STATUS_EEPROM_COM) || System_ERROR_UserCallback(ERROR_STATUS_EEPROM_STORE))
-	{
-		if (++su16_Sleep_DelayT3 >= 20 * 60 * 5)
-		{ // 等待5min后进入休眠
-			su16_Sleep_DelayT3 = 0;
-			entersleep(DEEP_MODE);
-		}
-	}
-	else
-	{
-		su16_Sleep_DelayT3 = 0;
-	}
+    if (afeMonitor.successCount < AFE_RECOVERY_SAMPLES)
+        ++afeMonitor.successCount;
+    if (afeMonitor.successCount == AFE_RECOVERY_SAMPLES)
+    {
+        afeMonitor.recovering = 0;
+        SystemStatus.bits.b1Status_AFE1 = 1;
+        if (System_ErrFlag.u8ErrFlag_Com_AFE1)
+            System_ERROR_UserCallback(ERROR_REMOVE_AFE1);
+    }
 }
 
 void test_Autocurrent_cycle(void)
@@ -510,12 +407,6 @@ void test_Autocurrent_cycle(void)
 
 void App_AFEGet(void)
 {
-	static UINT8 ts_u8TempSel = 0;
-
-	// if (0 == g_st_SysTimeFlag.bits.b1Sys50msFlag )
-	// {
-	// 	return;
-	// }
 	if (0 == gu8_200msAccClock_Flag)
 	{
 		return;
@@ -531,10 +422,7 @@ void App_AFEGet(void)
 		return;
 	}
 
-	// MonitorAFE(0, UpdateVoltageFromBqMaximo_Partition(DEVICE_ADDR_AFE1, ts_u8TempSel++));
-	MonitorAFE(0, UpdateVoltageFromBqMaximo(DEVICE_ADDR_AFE1));
-	// if (ts_u8TempSel >= 4)
-	// 	ts_u8TempSel = 0;
+	MonitorAFE(UpdateVoltageFromBqMaximo(DEVICE_ADDR_AFE1));
 
 	DataLoad_CellVolt();
 	// DataLoad_CellVolt_Test();
