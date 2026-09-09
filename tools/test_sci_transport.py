@@ -30,16 +30,18 @@ def main():
     constants = "\n".join(line for line in header.splitlines() if re.match(r"#define\s+(RS485_(?:STA_|ACK_|ERROR_|SLAVE_ADDR|BROADCAST_ADDR|MAX_BUFFER_SIZE)|SCI_TX_|P12_)", line))
     declarations = "\n".join(re.findall(r"enum (?:RS485_CMD_E|SCI_FRAME_PROTOCOL_E)\s*\{.*?\};|struct RS485MSG\s*\{.*?\};", header, re.S))
     port = re.search(r"typedef struct \{.*?\} SciPort;", source, re.S).group()
-    names = ["Sci_ClearFrameState", "Sci_ResetFrameState", "Sci_SetTxDirection", "Sci_RS485PowerIsOn", "Sci_RS485WakeFromISR", "Sci_RS485ValidRequest", "Sci_RS485PowerService", "Sci_IsValidWriteRegsByteCount", "Sci_StartTx", "Sci_FinishTx", "Sci_AbortTx", "Sci_TxWatchdog", "Sci_Tick10ms", "Sci_TxISR_Deal", "Sci_FaultChk", "Sci_RxISR_Deal", "Sci_ProcessRequest", "Sci_PrepareResponse", "Sci_Service"]
+    names = ["Sci_StartDirectionTimer", "Sci_ClearFrameState", "Sci_ResetFrameState", "Sci_SetTxDirection", "Sci_RS485PowerIsOn", "Sci_RS485WakeFromISR", "Sci_RS485ValidRequest", "Sci_RS485PowerService", "Sci_IsValidWriteRegsByteCount", "Sci_StartTx", "Sci_FinishTx", "Sci_TransmissionComplete", "Sci_DirectionDelayElapsed", "Sci_DirectionTimerIRQ", "Sci_AbortTx", "Sci_TxWatchdog", "Sci_Tick10ms", "Sci_TxISR_Deal", "Sci_FaultChk", "Sci_RxISR_Deal", "Sci_ProcessRequest", "Sci_PrepareResponse", "Sci_Service"]
     code = PRELUDE + constants + "\n" + declarations + "\n" + port + STUBS
+    code += "\n" + "\n".join(re.findall(r"^#define SCI_TX_PHASE_.*", source, re.M)) + "\n"
     code += "\n".join(function(source, name) for name in names) + TESTS
     (OUT / "test.c").write_text(code, encoding="utf-8")
     vcvars = Path(r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat")
     if not vcvars.exists():
         raise SystemExit("未找到 Visual Studio vcvars64.bat")
-    (OUT / "build.cmd").write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /utf-8 /W3 /Od test.c /Fe:test.exe\nexit /b %errorlevel%\n', encoding="utf-8")
-    subprocess.run(["cmd", "/c", str(OUT / "build.cmd")], cwd=OUT, check=True)
-    subprocess.run([str(OUT / "test.exe")], cwd=OUT, check=True)
+    (OUT / "build.cmd").write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /utf-8 /W3 /Od %* test.c /Fe:test.exe\nexit /b %errorlevel%\n', encoding="utf-8")
+    for setup, hold in [(0,1000),(0,0),(100,50000),(65535,65535)]:
+        subprocess.run(["cmd", "/c", str(OUT / "build.cmd"), f"/DRS485_TX_SETUP_US={setup}u", f"/DRS485_TX_HOLD_US={hold}u"], cwd=OUT, check=True)
+        subprocess.run([str(OUT / "test.exe")], cwd=OUT, check=True)
 
 
 PRELUDE = r'''
@@ -86,6 +88,25 @@ static void USART_ClearFlag(USART_TypeDef *u, UINT32 flags) { u->ICR=flags; }
 #define PIN_M_STB 2
 #define SCI_RX_TIMEOUT_TICKS 3u
 #define SCI_TX_TIMEOUT_TICKS 20u
+#ifndef RS485_TX_SETUP_US
+#define RS485_TX_SETUP_US 0u
+#endif
+#ifndef RS485_TX_HOLD_US
+#define RS485_TX_HOLD_US 1000u
+#endif
+#define TIM14 14
+#define TIM_IT_Update 1
+#define TIM_EventSource_Update 1
+static unsigned timerArr, timerCount, timerElapsed;
+static int timerEnabled, timerPending;
+static void TIM_Cmd(int t,int enable) { timerEnabled=enable; }
+static void TIM_SetAutoreload(int t,unsigned value) { timerArr=value; }
+static void TIM_SetCounter(int t,unsigned value) { timerCount=value; timerElapsed=0; }
+static void TIM_GenerateEvent(int t,int event) { timerPending=1; }
+static void TIM_ClearITPendingBit(int t,int flag) { timerPending=0; }
+static int TIM_GetITStatus(int t,int flag) { return timerPending; }
+static void advanceUs(unsigned us) { if(timerEnabled) { timerElapsed+=us; if(timerElapsed>=timerArr+1) timerPending=1; } }
+
 static int direction, requestCount, disableCount;
 static UINT8 u8FlashUpdateE2PROM, u8FlashUpdateFlag;
 static UINT32 irqMask;
@@ -118,6 +139,7 @@ STUBS = r'''
 #define _COMMOM_UPPER_SCI1
 #define _COMMOM_UPPER_SCI2
 static struct RS485MSG globalMsg1, globalMsg2;
+static void Sci_DirectionDelayElapsed(SciPort *port);
 static SciPort sci1={USART1,&globalMsg1,0,0,0,0}, sci2={USART2,&globalMsg2,1,0,0,0};
 /* 主循环业务分发用桩记录调用；寄存器读写、P12内容本身不是本测试覆盖范围。 */
 static UINT8 P12_VerifyFrame(struct RS485MSG *s) { return !rejectFrame; }
@@ -138,6 +160,7 @@ static void init(SciPort *p) {
     p->usart->CR1 |= USART_CR1_UE;
     direction = 0;
     disableCount = 0;
+    u8FlashUpdateFlag=0;
     g_st_SysTimeFlag.bits.b1Sys10msFlag1 = 0;
 }
 static void feed(SciPort *p, const UINT8 *data, int len) {
@@ -148,12 +171,33 @@ static void feed(SciPort *p, const UINT8 *data, int len) {
         Sci_RxISR_Deal(p);
     }
 }
+static void start(SciPort *p) {
+    Sci_StartTx(p);
+    if (p->usart==USART2 && p->msg->csr==RS485_STA_TX_BUSY && RS485_TX_SETUP_US) {
+        assert(direction && !(p->usart->CR1 & USART_CR1_TXEIE));
+        advanceUs(RS485_TX_SETUP_US-1);Sci_TxWatchdog(p);
+        assert(!(p->usart->CR1 & USART_CR1_TXEIE));
+        advanceUs(1);Sci_DirectionDelayElapsed(p);
+        assert(p->usart->CR1 & USART_CR1_TXEIE);
+    }
+}
+static void finishDelay(SciPort *p) {
+    if (p->usart==USART2 && RS485_TX_HOLD_US) {
+        assert(direction && !(p->usart->CR1 & (USART_CR1_RE|USART_CR1_RXNEIE|USART_CR1_TCIE)));
+        assert(p->msg->csr==RS485_STA_TX_BUSY && !u8FlashUpdateFlag);
+        advanceUs(RS485_TX_HOLD_US-1);
+        Sci_TxWatchdog(p);assert(direction && p->msg->csr==RS485_STA_TX_BUSY);
+        Sci_TxISR_Deal(p);assert(direction); /* stale TC must not restart delay */
+        advanceUs(1);Sci_TxWatchdog(p); /* fallback requires actual timer expiry */
+        assert(!timerEnabled);
+    }
+}
 static void tx(SciPort *p, int length) {
     int i;
     init(p);
     p->msg->AckLenth = (UINT8)length;
     for(i=0;i<length;i++) p->msg->u16Buffer[i]=(UINT8)(i^0x55);
-    Sci_StartTx(p);
+    start(p);
     assert(direction == (p->usart == USART2));
     assert(!(p->usart->CR1 & USART_CR1_RE));
     for(i=0;i<length;i++) {
@@ -172,6 +216,7 @@ static void tx(SciPort *p, int length) {
     u8FlashUpdateE2PROM=1;u8FlashUpdateFlag=0;
     p->usart->ISR=USART_ISR_TC;
     Sci_TxISR_Deal(p);
+    finishDelay(p);
     assert(direction == 0);
     assert(p->msg->csr == RS485_STA_IDLE);
     assert(u8FlashUpdateFlag && !u8FlashUpdateE2PROM);
@@ -183,7 +228,7 @@ static void tx(SciPort *p, int length) {
 }
 static void watchdog(SciPort *p) {
     int i;
-    init(p);p->msg->AckLenth=8;Sci_StartTx(p);
+    init(p);p->msg->AckLenth=8;start(p);
     /* 模拟TXE中断完全不来：主循环也不运行，定时看门狗仍能恢复。 */
     p->usart->ISR=0;u8FlashUpdateFlag=0;u8FlashUpdateE2PROM=0;
     for(i=0;i<SCI_TX_TIMEOUT_TICKS-1;i++) Sci_TxWatchdog(p);
@@ -194,16 +239,17 @@ static void watchdog(SciPort *p) {
     assert((p->usart->CR1 & (USART_CR1_UE|USART_CR1_RE|USART_CR1_RXNEIE)) == (USART_CR1_UE|USART_CR1_RE|USART_CR1_RXNEIE));
     assert(!(p->usart->CR1 & (USART_CR1_TE|USART_CR1_TXEIE|USART_CR1_TCIE)));
     /* 恢复后的第一帧可正常发送。 */
-    p->msg->AckLenth=1;Sci_StartTx(p);assert(p->usart->CR1 & USART_CR1_TE);
+    p->msg->AckLenth=1;start(p);assert(p->usart->CR1 & USART_CR1_TE);
     p->usart->ISR=USART_ISR_TXE;Sci_TxISR_Deal(p);
     /* 末字节已写入但TC一直不来，仍按失败中止。 */
     for(i=0;i<SCI_TX_TIMEOUT_TICKS;i++) Sci_TxWatchdog(p);
     assert(disableCount==2 && p->msg->csr==RS485_STA_IDLE);
-    init(p);p->msg->AckLenth=1;Sci_StartTx(p);
+    init(p);p->msg->AckLenth=1;start(p);
     p->usart->ISR=USART_ISR_TXE;Sci_TxISR_Deal(p);
     p->usart->ISR=USART_ISR_TC;u8FlashUpdateE2PROM=1;
     /* TC已发生但TC中断未执行，补做正常完成而不是复位USART。 */
     for(i=0;i<SCI_TX_TIMEOUT_TICKS;i++) Sci_TxWatchdog(p);
+    finishDelay(p);
     assert(!disableCount && p->msg->csr==RS485_STA_IDLE && u8FlashUpdateFlag);
     /* 空闲不会累计超时或清掉下一帧。 */
     p->usart->RDR=1;Sci_RxISR_Deal(p);
@@ -248,8 +294,8 @@ int main(void) {
         g_st_SysTimeFlag.bits.b1Sys10msFlag1=0;
         feed(p,frame,8);p->rxFault=1;requestCount=0;Sci_Service(p);
         assert(requestCount==0 && p->msg->csr==RS485_STA_IDLE);
-        p->msg->AckLenth=0;Sci_StartTx(p);assert(!direction && p->msg->csr==RS485_STA_IDLE);
-        p->msg->AckLenth=252;Sci_StartTx(p);assert(!direction && p->msg->csr==RS485_STA_IDLE);
+        p->msg->AckLenth=0;start(p);assert(!direction && p->msg->csr==RS485_STA_IDLE);
+        p->msg->AckLenth=252;start(p);assert(!direction && p->msg->csr==RS485_STA_IDLE);
     }
     /* P12仅串口2启用；最短及最大帧、错误帧头、超长数据。 */
     init(&p1);frame[0]=0x21;feed(&p1,frame,1);assert(m1.ptr_no==0);
@@ -268,7 +314,7 @@ int main(void) {
     assert(m1.csr==RS485_STA_RX_COMPLETE && m2.csr==RS485_STA_RX_COMPLETE);
     /* 验证公开定时入口确实服务两路，且USART2未超时时不被USART1影响。 */
     init(&sci1);init(&sci2);sci1.msg->AckLenth=8;sci2.msg->AckLenth=8;
-    Sci_StartTx(&sci1);Sci_StartTx(&sci2);uart1.ISR=0;uart2.ISR=0;
+    start(&sci1);start(&sci2);uart1.ISR=0;uart2.ISR=0;
     sci1.txTimeoutTick=SCI_TX_TIMEOUT_TICKS-1;
     Sci_Tick10ms();
     assert(sci1.msg->csr==RS485_STA_IDLE && sci2.msg->csr==RS485_STA_TX_BUSY && direction);
@@ -306,6 +352,19 @@ int main(void) {
     s_rs485Tick10ms=0xfffffff0u; Sci_RS485WakeFromISR();
     s_rs485Tick10ms=0xfffffff0u+2999u; Sci_RS485PowerService(); assert(power);
     s_rs485Tick10ms++; Sci_RS485PowerService(); assert(!power);
+    /* Exercise the public TIM14 IRQ and ensure hold cannot be cut by watchdog. */
+    init(&sci2);sci2.msg->AckLenth=1;start(&sci2);
+    uart2.ISR=USART_ISR_TXE;Sci_TxISR_Deal(&sci2);
+    uart2.ISR=USART_ISR_TC;Sci_TxISR_Deal(&sci2);
+    if (RS485_TX_HOLD_US) {
+        for(n=0;n<SCI_TX_TIMEOUT_TICKS+1;n++) Sci_TxWatchdog(&sci2);
+        assert(direction && sci2.txPhase==SCI_TX_PHASE_HOLD);
+        advanceUs(RS485_TX_HOLD_US-1);Sci_DirectionTimerIRQ();assert(direction);
+        advanceUs(1);Sci_DirectionTimerIRQ();
+    }
+    assert(!direction && sci2.msg->csr==RS485_STA_IDLE);
+    Sci_DirectionTimerIRQ();assert(!direction);
+    printf("PASS: direction setup=%u us, hold=%u us, timer IRQ, watchdog fallback, TC repeat protection\n", RS485_TX_SETUP_US,RS485_TX_HOLD_US);
     puts("PASS: RS485 power window, valid activity, rejection, repeat edges, partial RX, TX deferral, wraparound");
     puts("PASS: immediate RX, TX watchdog abort/recovery, TXE/TC direction, 1/8/251-byte TX, RX bounds, timeout, faults, dispatch, dual-port isolation");
     return 0;

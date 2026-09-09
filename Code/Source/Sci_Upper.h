@@ -563,6 +563,20 @@ void InitUSART_CommonUpper(void);
 void App_CommonUpper(void);
 void Sci_Tick10ms(void);
 
+/* USART2/PB1 direction delays in microseconds; 0 disables that delay. */
+#ifndef RS485_TX_SETUP_US
+#define RS485_TX_SETUP_US 0u
+#endif
+#ifndef RS485_TX_HOLD_US
+#define RS485_TX_HOLD_US 1000u
+#endif
+#if (RS485_TX_SETUP_US < 0) || (RS485_TX_SETUP_US > 65535u) || \
+    (RS485_TX_HOLD_US < 0) || (RS485_TX_HOLD_US > 65535u)
+#error RS485_direction_delay_must_be_0_to_65535_us
+#endif
+void Sci_DirectionTimerIRQ(void);
+
+
 /* Configurable inactivity window, seconds; compile-time override supported. */
 #ifndef RS485_POWER_WINDOW_SECONDS
 #define RS485_POWER_WINDOW_SECONDS 30u

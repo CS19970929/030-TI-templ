@@ -219,3 +219,8 @@ void USART2_IRQHandler(void)
   }
 #endif
 }
+
+void TIM14_IRQHandler(void)
+{
+    Sci_DirectionTimerIRQ();
+}

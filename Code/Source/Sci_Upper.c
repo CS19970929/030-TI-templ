@@ -12,6 +12,7 @@ typedef struct {
     volatile UINT8 rxFault;       /* 只需记录本帧是否出错，无需累计次数。 */
     volatile UINT8 rxTimeoutTick;
     volatile UINT8 txTimeoutTick; /* 仅TX_BUSY时由10ms定时中断递增。 */
+    volatile UINT8 txPhase;
 } SciPort;
 
 #ifdef _COMMOM_UPPER_SCI1
@@ -20,6 +21,11 @@ static SciPort sci1 = { USART1, &g_stCurrentMsgPtr_SCI1, 0, 0, 0, 0 };
 #ifdef _COMMOM_UPPER_SCI2
 static SciPort sci2 = { USART2, &g_stCurrentMsgPtr_SCI2, 1, 0, 0, 0 };
 #endif
+
+#define SCI_TX_PHASE_IDLE   0u
+#define SCI_TX_PHASE_SETUP  1u
+#define SCI_TX_PHASE_ACTIVE 2u
+#define SCI_TX_PHASE_HOLD   3u
 
 #define SCI_TX_TIMEOUT_TICKS 20u /* 最短约190ms，大于251字节/19200/8N1的131ms。 */
 #define SCI_RX_TIMEOUT_TICKS 3u  /* 保留原有三个10ms调度节拍超时。 */
@@ -73,6 +79,48 @@ static void Sci_ResetFrameState(SciPort *port);
 static UINT8 Sci_IsValidWriteRegsByteCount(struct RS485MSG *s);
 static void Sci_StartTx(SciPort *port);
 static void Sci_TxISR_Deal(SciPort *port);
+
+static void Sci_FinishTx(SciPort *port);
+static void Sci_DirectionDelayElapsed(SciPort *port);
+
+/* Dedicated TIM14, 1 MHz. APB timer clock doubles when APB is divided. */
+static void Sci_InitDirectionTimer(void)
+{
+    RCC_ClocksTypeDef clocks;
+    TIM_TimeBaseInitTypeDef timer;
+    NVIC_InitTypeDef nvic;
+    UINT32 timerClock;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+    RCC_GetClocksFreq(&clocks);
+    timerClock = clocks.PCLK_Frequency;
+    if (clocks.PCLK_Frequency != clocks.HCLK_Frequency)
+        timerClock *= 2u;
+    TIM_Cmd(TIM14, DISABLE);
+    TIM_TimeBaseStructInit(&timer);
+    timer.TIM_Prescaler = (UINT16)(timerClock / 1000000u - 1u);
+    timer.TIM_Period = 65535u;
+    TIM_TimeBaseInit(TIM14, &timer);
+    TIM_ClearITPendingBit(TIM14, TIM_IT_Update);
+    TIM_ITConfig(TIM14, TIM_IT_Update, ENABLE);
+    nvic.NVIC_IRQChannel = TIM14_IRQn;
+    nvic.NVIC_IRQChannelPriority = 0;
+    nvic.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvic);
+}
+
+static void Sci_StartDirectionTimer(UINT16 delayUs)
+{
+    UINT32 primask = __get_PRIMASK();
+    __disable_irq();
+    TIM_Cmd(TIM14, DISABLE);
+    TIM_SetAutoreload(TIM14, (UINT16)(delayUs - 1u));
+    /* Reload the prescaler as well: the delay starts with a fresh 1us tick. */
+    TIM_GenerateEvent(TIM14, TIM_EventSource_Update);
+    TIM_ClearITPendingBit(TIM14, TIM_IT_Update);
+    TIM_SetCounter(TIM14, 0);
+    TIM_Cmd(TIM14, ENABLE);
+    __set_PRIMASK(primask);
+}
 
 void Sci_DataInit(struct RS485MSG *s)
 {
@@ -491,6 +539,13 @@ static void Sci_ClearFrameState(struct RS485MSG *s)
 static void Sci_ResetFrameState(SciPort *port)
 {
     USART_TypeDef *usart = port->usart;
+    if (port->usart == USART2 &&
+        (port->txPhase == SCI_TX_PHASE_SETUP || port->txPhase == SCI_TX_PHASE_HOLD))
+    {
+        TIM_Cmd(TIM14, DISABLE);
+        TIM_ClearITPendingBit(TIM14, TIM_IT_Update);
+    }
+    port->txPhase = SCI_TX_PHASE_IDLE;
     usart->CR1 &= ~(USART_CR1_RXNEIE | USART_CR1_TXEIE | USART_CR1_TCIE);
     Sci_ClearFrameState(port->msg);
     port->rxTimeoutTick = 0;
@@ -637,7 +692,14 @@ static void Sci_StartTx(SciPort *port)
     usart->CR1 |= USART_CR1_TE;
     usart->ICR = USART_ICR_TCCF;
     /* 首字节也由TXE搬运，避免两份发送/末字节判断逻辑。 */
-    usart->CR1 |= USART_CR1_TXEIE;
+    port->txPhase = SCI_TX_PHASE_ACTIVE;
+    if (usart == USART2 && RS485_TX_SETUP_US != 0u)
+    {
+        port->txPhase = SCI_TX_PHASE_SETUP;
+        Sci_StartDirectionTimer((UINT16)RS485_TX_SETUP_US);
+    }
+    else
+        usart->CR1 |= USART_CR1_TXEIE;
 }
 
 /* TC确认后立即准备接收，再释放485方向；主循环不再二次清帧。 */
@@ -650,6 +712,44 @@ static void Sci_FinishTx(SciPort *port)
     }
     Sci_ResetFrameState(port);
     Sci_SetTxDirection(port, 0);
+}
+
+/* TC starts the hold interval; only expiry releases PB1 and enables RX. */
+static void Sci_TransmissionComplete(SciPort *port)
+{
+    if (port->txPhase != SCI_TX_PHASE_ACTIVE)
+        return;
+    port->usart->CR1 &= ~(USART_CR1_TXEIE | USART_CR1_TCIE);
+    USART_ClearITPendingBit(port->usart, USART_IT_TC);
+    if (port->usart == USART2 && RS485_TX_HOLD_US != 0u)
+    {
+        port->txPhase = SCI_TX_PHASE_HOLD;
+        Sci_StartDirectionTimer((UINT16)RS485_TX_HOLD_US);
+    }
+    else
+        Sci_FinishTx(port);
+}
+
+static void Sci_DirectionDelayElapsed(SciPort *port)
+{
+    TIM_Cmd(TIM14, DISABLE);
+    TIM_ClearITPendingBit(TIM14, TIM_IT_Update);
+    if (port->txPhase == SCI_TX_PHASE_SETUP)
+    {
+        port->txPhase = SCI_TX_PHASE_ACTIVE;
+        port->txTimeoutTick = 0;
+        port->usart->CR1 |= USART_CR1_TXEIE;
+    }
+    else if (port->txPhase == SCI_TX_PHASE_HOLD)
+        Sci_FinishTx(port);
+}
+
+void Sci_DirectionTimerIRQ(void)
+{
+#ifdef _COMMOM_UPPER_SCI2
+    if (TIM_GetITStatus(TIM14, TIM_IT_Update) != RESET)
+        Sci_DirectionDelayElapsed(&sci2);
+#endif
 }
 
 /* 超时是故障中止，不是正常完成；不能仅清TE后立即释放方向。
@@ -669,14 +769,23 @@ static void Sci_AbortTx(SciPort *port)
 
 static void Sci_TxWatchdog(SciPort *port)
 {
+    if (port->txPhase == SCI_TX_PHASE_SETUP || port->txPhase == SCI_TX_PHASE_HOLD)
+    {
+        /* A missed timer IRQ can only complete a delay after hardware expiry. */
+        if (TIM_GetITStatus(TIM14, TIM_IT_Update) != RESET)
+            Sci_DirectionDelayElapsed(port);
+        return;
+    }
+
     if ((RS485_STA_TX_BUSY == port->msg->csr) &&
+        (port->txPhase == SCI_TX_PHASE_ACTIVE) &&
         (++port->txTimeoutTick >= SCI_TX_TIMEOUT_TICKS))
     {
         /* 末字节已装载且TC确实置位：补做丢失的完成中断，不误判失败。 */
         if ((port->msg->ptr_no == port->msg->AckLenth) &&
             (port->msg->AckLenth != 0) &&
             ((port->usart->ISR & USART_ISR_TC) != RESET))
-            Sci_FinishTx(port);
+            Sci_TransmissionComplete(port);
         else
             Sci_AbortTx(port);
     }
@@ -722,7 +831,7 @@ static void Sci_TxISR_Deal(SciPort *port)
     if (((usart->CR1 & USART_CR1_TCIE) != RESET) &&
         ((usart->ISR & USART_ISR_TC) != RESET))
     {
-        Sci_FinishTx(port);
+        Sci_TransmissionComplete(port);
     }
 }
 
@@ -1816,6 +1925,7 @@ void InitSCI1_CommonUpper(void)
 	sci1.rxFault = 0;
 	sci1.rxTimeoutTick = 0;
 	sci1.txTimeoutTick = 0;
+    sci1.txPhase = SCI_TX_PHASE_IDLE;
 	Sci_SetTxDirection(&sci1, 0);
 	USART_Cmd(USART1, ENABLE);					   // 使能串口1
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE); // 使能接收中断
@@ -1881,6 +1991,7 @@ void InitSCI2_CommonUpper(void)
 	sci2.rxFault = 0;
 	sci2.rxTimeoutTick = 0;
 	sci2.txTimeoutTick = 0;
+    sci2.txPhase = SCI_TX_PHASE_IDLE;
 	Sci_SetTxDirection(&sci2, 0);
 	USART_Cmd(USART2, ENABLE);					   // 使能串口1
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); // 使能接收中断
@@ -2594,6 +2705,7 @@ void InitUSART_CommonUpper(void)
 #endif
 
 #ifdef _COMMOM_UPPER_SCI2
+    Sci_InitDirectionTimer();
 	InitSCI2_CommonUpper();
     USART2->CR1 &= ~(USART_CR1_RE | USART_CR1_RXNEIE);
     s_rs485Ready = 1;
