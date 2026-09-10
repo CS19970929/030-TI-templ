@@ -213,7 +213,7 @@ void App_DI1_Switch(void)
 
 	if (0 == MCUI_ENI_DI1)
 	{
-		if (++su16_AntiShake_Cnt2 >= 200)
+		if (++su16_AntiShake_Cnt2 >= (5 * 3))
 		{
 			su16_AntiShake_Cnt2 = 0;
 			entersleep(DEEP_MODE);
@@ -250,11 +250,6 @@ void InitMosRelay_DOx(void)
 
 void App_MOS_Relay_Ctrl(void)
 {
-	if (0 == g_st_SysTimeFlag.bits.b1Sys10msFlag1)
-	{
-		return;
-	}
-
 	sys_time.cnt_10ms_test_iocontrol++;
 
 	App_DI1_Switch();

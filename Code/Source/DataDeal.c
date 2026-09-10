@@ -433,6 +433,7 @@ void App_AFEGet(void)
 	// test_Autocurrent_cycle();
 	App_SOC();
 	App_BQ769X0_Monitor();
+	App_MOS_Relay_Ctrl();
 
 	gu8_200msAccClock_Flag = 0;
 }

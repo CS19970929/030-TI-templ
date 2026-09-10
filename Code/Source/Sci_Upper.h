@@ -568,7 +568,7 @@ void Sci_Tick10ms(void);
 #define RS485_TX_SETUP_US 0u
 #endif
 #ifndef RS485_TX_HOLD_US
-#define RS485_TX_HOLD_US 1000u
+#define RS485_TX_HOLD_US 2000u
 #endif
 #if (RS485_TX_SETUP_US < 0) || (RS485_TX_SETUP_US > 65535u) || \
     (RS485_TX_HOLD_US < 0) || (RS485_TX_HOLD_US > 65535u)

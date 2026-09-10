@@ -38,7 +38,7 @@ void lowpower_enter_sleep(void)
 // #define _DEBUG_CODE
 int main(void)
 {
-	InitDevice(); // 初始化外设，这两个函数的位置需要斟酌一下，现在换回去先
+	InitDevice(); // 初始化外设，这两个函数的位置需要斟酌一下，现在换回去先r
 	InitVar();	  // 初始化变量
 
 	while (1)
@@ -55,7 +55,6 @@ int main(void)
 		App_CommunicationFaultSleep();
 		// ganhuangguan_Logi();
 		App_WarnCtrl();
-		App_MOS_Relay_Ctrl();
 		App_AnlogCal();
 		App_E2promDeal();
 		// App_RTC();
@@ -127,8 +126,8 @@ void InitDevice(void)
 	LoadParam();
 
 	InitAFE1();
-	BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
-	BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
+	// BQ769X0_DriverMos_Ctrl(GPIO_CHG, 1);
+	// BQ769X0_DriverMos_Ctrl(GPIO_DSG, 1);
 
 #ifdef wdog_enable
 	Init_IWDG();

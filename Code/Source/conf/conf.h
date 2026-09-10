@@ -6,7 +6,7 @@
 #include "conf_gpio.h"
 #include "stdbool.h"
 
-#define EEPROM_VALUE_BEGIN_FLAG				0x1424		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
+#define EEPROM_VALUE_BEGIN_FLAG				0x0909		//Ĭ��0x1133������Լ����?ˢһ�飬���Լ������ٸĻ�0x1133
 
 #define  wdog_enable
 // #define __FUNC__HEAT__
@@ -16,7 +16,7 @@
 #define __FUNC__LED__
 // #define __FUNC_RTC__
 
-//#define TERNARYLI		//ï¿½ï¿½Ôªï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò?
+// #define TERNARYLI		//ï¿½ï¿½Ôªï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò?
 #define LIFEPO			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï®µï¿½Ø£ï¿½ï¿½ï¿½Ñ¡Ò?
 
 

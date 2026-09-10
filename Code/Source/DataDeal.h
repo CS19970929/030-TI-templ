@@ -140,7 +140,7 @@ struct OTHER_ELEMENT {
 #define  BMS_SOFTWARE_VERDION_DEFAULT   "a002-20260608-D005"  //32
 #define  BMS_SERIAL_NUMBER_DEFAULT  	"123456789"
 
-#define SNum 			8
+#define SNum 			12
 
 
 

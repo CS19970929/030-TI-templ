@@ -195,6 +195,20 @@ void IOstatus_Base(void)
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_Init(GPIO_M_CTR, &GPIO_InitStructure);
 
+	GPIO_WriteBit(GPIO_BLE_EN, PIN_BLE_EN, 0);
+	GPIO_InitStructure.GPIO_Pin = PIN_BLE_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_BLE_EN, &GPIO_InitStructure);
+
+	GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, 0);
+	GPIO_InitStructure.GPIO_Pin = PIN_SWT_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIO_SWT_EN, &GPIO_InitStructure);
+
 	// __delay_ms(100);
 }
 
