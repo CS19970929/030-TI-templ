@@ -50,7 +50,7 @@ static UINT8 IsSleepWakeupValid(void)
 		MCU_RESET();
 	}
 
-	if (IsPA0WakeupActive() && is_open_gan1())
+	if (IsPA0WakeupActive())
 	{
 		WakeDisplay_RequestChargerWake();
 		EXTI_ClearITPendingBit(EXTI_Line0);
