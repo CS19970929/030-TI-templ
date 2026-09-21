@@ -9,6 +9,7 @@ bool is_water_in(void);
 bool is_charger_online(void);
 
 void ganhuangguan_Logi(void);
+UINT8 ganhuangguan_IsOutputBlocked(void);
 UINT8 ganhuangguan_IsChargeLatched(void);
 void ganhuangguan_WaitGan3ReleaseBeforeLongPress(void);
 

@@ -18,7 +18,8 @@ void RefreshData_Drivers(void)
 	Driver_Element.u16_CurDsg = g_stCellInfoReport.u16IDischg;
 
 	Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_KEEP_MODE;
-	ganhuangguan_Logi();
+	if (ganhuangguan_IsOutputBlocked())
+		Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE;
 
 	// protection overrides reed-switch business state
 	if (SystemStatus.bits.b1Status_BnCloseIO || SystemStatus.bits.b1Status_HeatCloseIO || SystemStatus.bits.b1Status_CBCCloseIO 
@@ -228,6 +229,12 @@ void App_DI1_Switch(void)
 
 void Drivers_External_Ctrl(void)
 {
+    /* A later driver refresh must not reopen MOS during alarm/shutdown. */
+    if (ganhuangguan_IsOutputBlocked())
+    {
+        Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG = 0;
+        Driver_Element.MosRelay_Status.bits.b1Status_MOS_DSG = 0;
+    }
 	if (Driver_Element.u8_DriverCtrl_Right)
 	{
 		if (SystemStatus.bits.b1Status_MOS_CHG != Driver_Element.MosRelay_Status.bits.b1Status_MOS_CHG)

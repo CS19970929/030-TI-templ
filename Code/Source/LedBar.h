@@ -23,6 +23,8 @@ void LedBar_RequestShutdownAnimation(void);
 void LedBar_SetDischargeDisplay(UINT8 enable);
 void LedBar_SetChargeDisplay(UINT8 enable);
 void LedBar_SetWaterAlarm(UINT8 enable);
+UINT8 LedBar_IsWaterAlarmActive(void);
+void LedBar_ForceOff(void);
 UINT8 LedBar_IsShutdownAnimationActive(void);
 
 #define MCUI_SOC_KEY 		(PORT_IN_GPIOB->bit14)

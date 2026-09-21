@@ -5,12 +5,15 @@
 #define GAN3_SOC_TICKS_10MS ((UINT16)100)
 #define GAN3_POWER_TICKS_10MS ((UINT16)300)
 #define WATER_SLEEP_TICKS_10MS ((UINT16)12000)
+#define MOS_CLOSE_RETRY_TICKS_10MS ((UINT16)20)
 #define CHARGER_LOST_TICKS_10MS ((UINT16)100)
 #define CHARGE_CURRENT_MIN_0P1A ((UINT16)2)
 
 static UINT16 s_gan1_off_ticks = 0;
-static UINT16 s_gan2_off_ticks = 0;
-static UINT16 s_water_ticks = 0;
+static UINT16 s_gan2_off_start_tick = 0;
+static UINT16 s_water_start_tick = 0;
+static UINT8 s_gan2_off_timing = 0;
+static UINT8 s_water_timing = 0;
 static UINT16 s_water_gan3_hold_ticks = 0;
 static UINT16 s_charger_lost_ticks = 0;
 static UINT16 s_gan3_hold_ticks = 0;
@@ -109,6 +112,11 @@ static UINT8 Gan_IsChargerLostCondition(UINT8 charge_current_active)
                    (!Gan_IsPackAtSoc100Voltage()));
 }
 
+UINT8 ganhuangguan_IsOutputBlocked(void)
+{
+    return (UINT8)(s_sleep_requested || LedBar_IsWaterAlarmActive());
+}
+
 static void Gan_RequestSleep(void)
 {
     if (s_sleep_requested)
@@ -118,6 +126,7 @@ static void Gan_RequestSleep(void)
 
     s_sleep_requested = 1;
     Gan_SetDriverClose();
+    LedBar_ForceOff();
     LedBar_SetChargeDisplay(0);
     LedBar_SetDischargeDisplay(0);
     LedBar_SetWaterAlarm(0);
@@ -132,7 +141,19 @@ static void Gan_SetDriverKeep(void)
 
 static void Gan_SetDriverClose(void)
 {
+    static UINT8 close_sent = 0;
+    static UINT16 last_close_tick = 0;
+    UINT16 now = sys_time.cnt_10ms;
+
     Driver_Element.DriverForceExt.bits.b2_DriverOFF_Flag = FORCE_CLOSE_MODE;
+    /* Do not depend on AFE sampling being scheduled; retry at its normal rate. */
+    if (!close_sent || (UINT16)(now - last_close_tick) >= MOS_CLOSE_RETRY_TICKS_10MS)
+    {
+        close_sent = 1;
+        last_close_tick = now;
+        BQ769X0_DriverMos_Ctrl(GPIO_CHG, 0);
+        BQ769X0_DriverMos_Ctrl(GPIO_DSG, 0);
+    }
 }
 
 static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
@@ -148,12 +169,13 @@ static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
         return;
     }
 
-    if (s_water_ticks < WATER_SLEEP_TICKS_10MS)
+    if (!s_water_timing)
     {
-        ++s_water_ticks;
+        s_water_timing = 1;
+        s_water_start_tick = sys_time.cnt_10ms;
     }
 
-    if (s_water_ticks >= WATER_SLEEP_TICKS_10MS)
+    if ((UINT16)(sys_time.cnt_10ms - s_water_start_tick) >= WATER_SLEEP_TICKS_10MS)
     {
         Gan_RequestSleep();
     }
@@ -161,7 +183,7 @@ static void Gan_ProcessWater(UINT8 gan1_on, UINT8 gan2_on)
 
 static void Gan_ClearWater(void)
 {
-    s_water_ticks = 0;
+    s_water_start_tick = 0;
     s_water_gan3_hold_ticks = 0;
     LedBar_SetWaterAlarm(0);
     GPIO_WriteBit(GPIO_SWT_EN, PIN_SWT_EN, Bit_SET);
@@ -316,11 +338,12 @@ static void Gan_ProcessDischarge(UINT8 gan1_on, UINT8 gan2_on)
     if (!gan2_on)
     {
         Gan_SetDriverKeep();
-        if (s_gan2_off_ticks < GAN2_OFF_SLEEP_TICKS_10MS)
+        if (!s_gan2_off_timing)
         {
-            ++s_gan2_off_ticks;
+            s_gan2_off_timing = 1;
+            s_gan2_off_start_tick = sys_time.cnt_10ms;
         }
-        if (s_gan2_off_ticks >= GAN2_OFF_SLEEP_TICKS_10MS)
+        if ((UINT16)(sys_time.cnt_10ms - s_gan2_off_start_tick) >= GAN2_OFF_SLEEP_TICKS_10MS)
         {
             LedBar_SetDischargeDisplay(0);
             Gan_RequestSleep();
@@ -328,16 +351,24 @@ static void Gan_ProcessDischarge(UINT8 gan1_on, UINT8 gan2_on)
         return;
     }
 
-    s_gan2_off_ticks = 0;
+    s_gan2_off_start_tick = 0;
+    s_gan2_off_timing = 0;
     Gan_SetDriverKeep();
     LedBar_SetDischargeDisplay(1);
 }
 
 void ganhuangguan_Logi(void)
 {
-    UINT8 gan1_on = is_open_gan1() ? 1 : 0;
-    UINT8 gan2_on = is_open_gan2() ? 1 : 0;
+    static UINT16 last_tick = 0;
+    UINT16 now = sys_time.cnt_10ms;
+    UINT8 gan1_on;
+    UINT8 gan2_on;
     UINT8 charge_path_active = 0;
+
+    if (SystemStatus.bits.b1StartUpBMS || now == last_tick) return;
+    last_tick = now;
+    gan1_on = is_open_gan1() ? 1 : 0;
+    gan2_on = is_open_gan2() ? 1 : 0;
 
     if (s_sleep_requested)
     {
@@ -347,7 +378,7 @@ void ganhuangguan_Logi(void)
 
     
 
-    if (is_water_in())
+    if (is_water_in() || LedBar_IsWaterAlarmActive())
     {
         s_charge_latched = 0;
         Gan_ProcessWater(gan1_on, gan2_on);

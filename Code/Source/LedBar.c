@@ -37,7 +37,8 @@ static UINT16 s_temp_soc = 0;
 static UINT16 s_temp_duration_ticks = LEDBAR_SOC_TEMP_TICKS_100MS;
 static UINT8 s_discharge_display_enable = 0;
 static UINT8 s_charge_display_enable = 0;
-static UINT8 s_water_alarm_enable = 0;
+static volatile UINT8 s_water_alarm_enable = 0;
+static volatile UINT8 s_force_off = 0;
 static UINT8 s_water_alarm_on = 0;
 static UINT8 s_water_alarm_ticks = 0;
 static UINT8 s_charge_blink_on = 1;
@@ -89,6 +90,7 @@ static UINT8 LedBar_GetLiveSocMask(void)
 
 static void LedBar_SetByMask(UINT8 mask)
 {
+    if (s_force_off) mask = 0;
     MCUO_SOC_20 = (mask & 0x01) ? 1 : 0;
     MCUO_SOC_40 = (mask & 0x02) ? 1 : 0;
     MCUO_SOC_60 = (mask & 0x04) ? 1 : 0;
@@ -166,6 +168,7 @@ void LedBar_RequestBootAnimation(UINT16 soc)
 
 void LedBar_RequestShutdownAnimation(void)
 {
+    if (s_force_off || s_water_alarm_enable) return;
     if (s_led_ui_mode == LED_UI_SHUTDOWN_ANIM)
     {
         return;
@@ -192,6 +195,17 @@ void LedBar_SetChargeDisplay(UINT8 enable)
         s_charge_blink_on = 1;
         s_charge_blink_ticks = 0;
     }
+}
+
+void LedBar_ForceOff(void)
+{
+    s_force_off = 1;
+    LedBar_SetAllOff();
+}
+
+UINT8 LedBar_IsWaterAlarmActive(void)
+{
+    return s_water_alarm_enable;
 }
 
 void LedBar_SetWaterAlarm(UINT8 enable)
@@ -553,15 +567,8 @@ void APP_LedBar(void)
 
     if (s_water_alarm_enable)
     {
-        if (s_led_ui_mode != LED_UI_SHUTDOWN_ANIM)
-        {
-            LedBar_RunWaterAlarm();
-            return;
-        }
-        else
-        {
-            LedBar_SetAllOff();
-        }
+        LedBar_RunWaterAlarm();
+        return;
     }
 
     switch (s_led_ui_mode)

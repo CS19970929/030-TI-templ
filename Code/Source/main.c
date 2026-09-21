@@ -51,9 +51,10 @@ int main(void)
 #else
 		App_SysTime();
 		App_Sci();
+		ganhuangguan_Logi();
 		App_AFEGet();
 		App_CommunicationFaultSleep();
-		// ganhuangguan_Logi();
+
 		App_WarnCtrl();
 		App_AnlogCal();
 		App_E2promDeal();
