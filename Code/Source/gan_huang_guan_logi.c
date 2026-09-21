@@ -26,7 +26,8 @@ static void Gan_SetDriverClose(void);
 
 bool is_open_gan1(void)
 {
-    return 0 == GPIO_ReadInputDataBit(GPIO_GAN1, PIN_GAN1);
+    // return 0 == GPIO_ReadInputDataBit(GPIO_GAN1, PIN_GAN1);
+    return 1;
 }
 
 bool is_open_gan2(void)
