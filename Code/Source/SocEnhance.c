@@ -9,15 +9,15 @@
 #define E2P_ADDR_CYCLE_TIMES (E2P_ADDR_E2POS_ENHANCE_SOC + 2 + 2)
 // #define E2P_ADDR_CYCLE_TIMES	(E2P_ADDR_E2POS_ENHANCE_SOC + 2 + 2)
 
-#define SOC_VIRTUAL_CURRENT_CHG (UINT16)2 // A*10£¬1ºÍ2¶¼ÈÏÎªÊÇ0£¬´ø=ºÅ£¬0.2¾Í¿ªÊ¼ËãÁË
-#define SOC_VIRTUAL_CURRENT_DSG (UINT16)2 // A*10£¬1ºÍ2¶¼ÈÏÎªÊÇ0£¬Õâ¸ö²»ÄÜÎª0µÄÍ¬Ê±£¬°Ñ=ºÅÅĞ¶ÏÉÏÈ¥£¬²»È»¾Í»á¿¨ÔÚDSGÄÇÀï¼ÆËã³ö²»À´¡£
+#define SOC_VIRTUAL_CURRENT_CHG (UINT16)2 // A*10ï¼Œ1å’Œ2éƒ½è®¤ä¸ºæ˜¯0ï¼Œå¸¦=å·ï¼Œ0.2å°±å¼€å§‹ç®—äº†
+#define SOC_VIRTUAL_CURRENT_DSG (UINT16)2 // A*10ï¼Œ1å’Œ2éƒ½è®¤ä¸ºæ˜¯0ï¼Œè¿™ä¸ªä¸èƒ½ä¸º0çš„åŒæ—¶ï¼ŒæŠŠ=å·åˆ¤æ–­ä¸Šå»ï¼Œä¸ç„¶å°±ä¼šå¡åœ¨DSGé‚£é‡Œè®¡ç®—å‡ºä¸æ¥ã€‚
 
-// #define CHG_CUR_1C							2100	//A*10ºãÁ÷³äµçÎª1C£¬ºãÑ¹³äµçÎª1C-0.1C(SOC=95%)£¬ä¸Á÷³äµçÒ²Îª0.1C
+// #define CHG_CUR_1C							2100	//A*10æ’æµå……ç”µä¸º1Cï¼Œæ’å‹å……ç”µä¸º1C-0.1C(SOC=95%)ï¼Œæ¶“æµå……ç”µä¹Ÿä¸º0.1C
 #define EEPROM_VALUE_POWEROFF_FLAG ((UINT16)0x5678)
 #define EEPROM_VALUE_DATA_UPDATE_FLAG ((UINT16)0x9ABC)
 #define EEPROM_VALUE_STORE_RESET ((UINT16)0xFFFF)
 
-// ³äµç¿ÉÒÔÌáÇ°³äÂú£¬µ«ÊÇ²»ÄÜ¿¨ËÀ
+// å……ç”µå¯ä»¥æå‰å……æ»¡ï¼Œä½†æ˜¯ä¸èƒ½å¡æ­»
 // #define _CAL_SLOW_DOWN_CHG
 
 // typedef enum _CUR
@@ -43,38 +43,38 @@ enum EEPROM_COMMAND
 
 struct SOC_CALCULATE_ELEMENT
 {
-	// InitSOC_IntEnhance¸³ÖµÀàĞÍ
-	UINT32 u32CapFactory;	// µç³Ø³õÊ¼×ÜÈİÁ¿(³ö³§ÈİÁ¿)As*10 =        Ah*3600*10
-	UINT32 u32CycleT_Limit; // ¿ÉÑ­»·´ÎÊı
-	// ÒÔÏÂÖÃÁã
-	UINT32 u32CapChange;	  // µç³ØÈİÁ¿±ä»¯	   As*10£¬µş¼ÓÀàĞÍ
-	UINT8 u8OCV_Cali_Flag;	  // ¿ªÂ·µçÑ¹·¨¿ÉÊ¹ÓÃ±êÖ¾
-	UINT8 u8CHG_AHCalcu_Flag; // ³äµç°²Ê±»ı·Ö¿ÉÊ¹ÓÃ±êÖ¾
-	UINT8 u8DSG_AHCalcu_Flag; // ·Åµç°²Ê±»ı·Ö¿ÉÊ¹ÓÃ±êÖ¾
+	// InitSOC_IntEnhanceèµ‹å€¼ç±»å‹
+	UINT32 u32CapFactory;	// ç”µæ± åˆå§‹æ€»å®¹é‡(å‡ºå‚å®¹é‡)As*10 =        Ah*3600*10
+	UINT32 u32CycleT_Limit; // å¯å¾ªç¯æ¬¡æ•°
+	// ä»¥ä¸‹ç½®é›¶
+	UINT32 u32CapChange;	  // ç”µæ± å®¹é‡å˜åŒ–	   As*10ï¼Œå åŠ ç±»å‹
+	UINT8 u8OCV_Cali_Flag;	  // å¼€è·¯ç”µå‹æ³•å¯ä½¿ç”¨æ ‡å¿—
+	UINT8 u8CHG_AHCalcu_Flag; // å……ç”µå®‰æ—¶ç§¯åˆ†å¯ä½¿ç”¨æ ‡å¿—
+	UINT8 u8DSG_AHCalcu_Flag; // æ”¾ç”µå®‰æ—¶ç§¯åˆ†å¯ä½¿ç”¨æ ‡å¿—
 
-	// InitSOC_IntEnhance¸³Öµ£¬ÆäºóSOC_Update_StartUpÔÙ´Î¸³ÖµÀàĞÍ
-	UINT8 u8SOC_Now;	   // µ±Ç°µç³ØSOC     0¡ª100 ÎªÏà¶ÔÈİÁ¿°Ù·Ö±È
-	UINT32 u32CapNow;	   // µç³ØÊ£Óà×ÜÈİÁ¿As*10
-	UINT8 u8DSG_SOC_Int;   // Ñ­»·´ÎÊıÖ»Ëã·ÅµçÁ¿£¬ÒÑ·ÅµçÁ¿»ıÀÛÁ¿°Ù·Ö±È£¬90%ËãÒ»¸öÑ­»·
-	UINT32 u32Cycle_times; // Ñ­»·´ÎÊı*100£¬±¾À´Ö»´òËãÓÃÓÃÒ»¸ö±äÁ¿Ö±½Óµş¼ÓÈ¥´¦Àí£¬µ«ÊÇÌ«ËğºÄEEPROM·¢ÏÖ²»ĞĞ
-	UINT32 u32CapFull;	   // µç³ØË¥¼õºó×ÜÈİÁ¿As*10(SOH)£¬ÎÒµÄÏÔÊ¾SOHÒª¸ÄÒ»¸Ä£¬Ëã´íÁË
+	// InitSOC_IntEnhanceèµ‹å€¼ï¼Œå…¶åSOC_Update_StartUpå†æ¬¡èµ‹å€¼ç±»å‹
+	UINT8 u8SOC_Now;	   // å½“å‰ç”µæ± SOC     0â€”100 ä¸ºç›¸å¯¹å®¹é‡ç™¾åˆ†æ¯”
+	UINT32 u32CapNow;	   // ç”µæ± å‰©ä½™æ€»å®¹é‡As*10
+	UINT8 u8DSG_SOC_Int;   // å¾ªç¯æ¬¡æ•°åªç®—æ”¾ç”µé‡ï¼Œå·²æ”¾ç”µé‡ç§¯ç´¯é‡ç™¾åˆ†æ¯”ï¼Œ90%ç®—ä¸€ä¸ªå¾ªç¯
+	UINT32 u32Cycle_times; // å¾ªç¯æ¬¡æ•°*100ï¼Œæœ¬æ¥åªæ‰“ç®—ç”¨ç”¨ä¸€ä¸ªå˜é‡ç›´æ¥å åŠ å»å¤„ç†ï¼Œä½†æ˜¯å¤ªæŸè€—EEPROMå‘ç°ä¸è¡Œ
+	UINT32 u32CapFull;	   // ç”µæ± è¡°å‡åæ€»å®¹é‡As*10(SOH)ï¼Œæˆ‘çš„æ˜¾ç¤ºSOHè¦æ”¹ä¸€æ”¹ï¼Œç®—é”™äº†
 
-	// ÔËĞĞ¹ı³Ì³¤ÆÚĞŞ¸ÄÀàĞÍ
-	UINT8 u8SOC_Old; // ³õÊ¼SOC    0-100 ÎªÏà¶ÔÈİÁ¿°Ù·Ö±È
-	// UINT8   u8a_BurnIn;         //ÀÏ»¯ÒòËØ¦ÁµÄĞŞÕıÏµÊı£¬ÏµÊı³ËÒÔ100
-	// UINT8   u8b_CapC;      		//µç³ØÈİÁ¿ĞŞÕıÒò×Ó¦Ä£¬Óë³ä·ÅµçÑ­»·´ÎÊıÏà¹Ø¦Ä = f(Cycle_times)
-	UINT8 u8_DataUpdateOK;	  // ¸üĞÂ¼ÇÂ¼
-	UINT32 u32CapFull_Cal_As; // ³¤ÆÚÔËĞĞ£¬¸üĞÂÈİÁ¿£¬As*10
+	// è¿è¡Œè¿‡ç¨‹é•¿æœŸä¿®æ”¹ç±»å‹
+	UINT8 u8SOC_Old; // åˆå§‹SOC    0-100 ä¸ºç›¸å¯¹å®¹é‡ç™¾åˆ†æ¯”
+	// UINT8   u8a_BurnIn;         //è€åŒ–å› ç´ Î±çš„ä¿®æ­£ç³»æ•°ï¼Œç³»æ•°ä¹˜ä»¥100
+	// UINT8   u8b_CapC;      		//ç”µæ± å®¹é‡ä¿®æ­£å› å­Î´ï¼Œä¸å……æ”¾ç”µå¾ªç¯æ¬¡æ•°ç›¸å…³Î´ = f(Cycle_times)
+	UINT8 u8_DataUpdateOK;	  // æ›´æ–°è®°å½•
+	UINT32 u32CapFull_Cal_As; // é•¿æœŸè¿è¡Œï¼Œæ›´æ–°å®¹é‡ï¼ŒAs*10
 };
 
-struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;			   // ¶ÔÍâ½»»¥½á¹¹Ìå,libÎÄ¼şµÄÇÅÁº
-struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element;		   // ÄÚ²¿¼ÆËã½á¹¹Ìå
-struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element_backup; // ÄÚ²¿¼ÆËã½á¹¹Ìå
+struct SOC_ENHANCE_ELEMENT SOC_Enhance_Element;			   // å¯¹å¤–äº¤äº’ç»“æ„ä½“,libæ–‡ä»¶çš„æ¡¥æ¢
+struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element;		   // å†…éƒ¨è®¡ç®—ç»“æ„ä½“
+struct SOC_CALCULATE_ELEMENT SOC_Calculate_Element_backup; // å†…éƒ¨è®¡ç®—ç»“æ„ä½“
 
-enum SOC_CALI_STATE SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER; // ÂèµÄ£¬ÍüÁËÕâ¸ö£¿		SOC¼ÆËã×´Ì¬»ú£¬¼ÇµÃ³õÊ¼»¯
+enum SOC_CALI_STATE SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER; // å¦ˆçš„ï¼Œå¿˜äº†è¿™ä¸ªï¼Ÿ		SOCè®¡ç®—çŠ¶æ€æœºï¼Œè®°å¾—åˆå§‹åŒ–
 
 void SOC_DealEEPROM_Data(enum EEPROM_COMMAND Command);
-// ¹ÅÈğÍßÌØ
+// å¤ç‘ç“¦ç‰¹
 const UINT16 SOC_Table_LiFePO[SOC_Size_LiFePO] = {
 	3336,
 	100,
@@ -120,7 +120,7 @@ const UINT16 SOC_Table_LiFePO[SOC_Size_LiFePO] = {
 	0,
 };
 
-// µ¥Î»ÎªmVºÍSOC
+// å•ä½ä¸ºmVå’ŒSOC
 const UINT16 SocTable_TernaryLi[SOC_Size_TernaryLi] = {
 	4126,
 	100,
@@ -166,7 +166,7 @@ const UINT16 SocTable_TernaryLi[SOC_Size_TernaryLi] = {
 	0,
 };
 
-// µ¥Î»ÎªmVºÍSOC
+// å•ä½ä¸ºmVå’ŒSOC
 const UINT16 SocTable_LiFePO2[SOC_Size_LiFePO2] = {
 	3650,
 	100,
@@ -216,7 +216,7 @@ void soc_factory_param_init_first(void)
 {
 	SOC_Enhance_Element.u16_SOC_CycleT_Ever = OtherElement.u16Soc_Cycle_times;
 
-	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // È¥µô*10;¸Äµ¥Î»ÕâÀï½øÀ´µÄµ¥Î»ÉÔÎ¢ĞŞ¸ÄÒ»ÏÂ±ã¿É£¬Èç´Ë¿ì½İ
+	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // å»æ‰*10;æ”¹å•ä½è¿™é‡Œè¿›æ¥çš„å•ä½ç¨å¾®ä¿®æ”¹ä¸€ä¸‹ä¾¿å¯ï¼Œå¦‚æ­¤å¿«æ·
 	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
 	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
 
@@ -228,23 +228,23 @@ void soc_factory_param_init_first(void)
 void soc_param_lib_init(void)
 {
 
-	// Íâ²¿»ñÈ¡µÄÊı¾İ³õÊ¼»¯
-	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // È¥µô*10;¸Äµ¥Î»ÕâÀï½øÀ´µÄµ¥Î»ÉÔÎ¢ĞŞ¸ÄÒ»ÏÂ±ã¿É£¬Èç´Ë¿ì½İ
+	// å¤–éƒ¨è·å–çš„æ•°æ®åˆå§‹åŒ–
+	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // å»æ‰*10;æ”¹å•ä½è¿™é‡Œè¿›æ¥çš„å•ä½ç¨å¾®ä¿®æ”¹ä¸€ä¸‹ä¾¿å¯ï¼Œå¦‚æ­¤å¿«æ·
 	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
 	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
 
 	SOC_Calculate_Element.u32CapChange = 0;
-	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // µÚÒ»´ÎĞ´ÖÃ1³öÏÖÁË¿ª»úÑÏÖØ´íÎóµÄÎÊÌâ
+	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // ç¬¬ä¸€æ¬¡å†™ç½®1å‡ºç°äº†å¼€æœºä¸¥é‡é”™è¯¯çš„é—®é¢˜
 	SOC_Calculate_Element.u8CHG_AHCalcu_Flag = 0;
 	SOC_Calculate_Element.u8DSG_AHCalcu_Flag = 0;
 
-	SOC_Calculate_Element.u8SOC_Now = 0; // ÒÔÉÏ¾ùÎª0£¬ÒòÎªÄ£ÄâÇ°¶Ë»¹Ã»¶Á»ØµçÑ¹
+	SOC_Calculate_Element.u8SOC_Now = 0; // ä»¥ä¸Šå‡ä¸º0ï¼Œå› ä¸ºæ¨¡æ‹Ÿå‰ç«¯è¿˜æ²¡è¯»å›ç”µå‹
 	SOC_Calculate_Element.u32CapNow = 0;
 	SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 	SOC_Calculate_Element.u32CapFull = 0;
 
 	SOC_DealEEPROM_Data(EEPROM_DATA_READ);
-	SOC_Enhance_Element.u16_SOC_InitOver = 1; // Soc³õÊ¼»¯Íê±Ï
+	SOC_Enhance_Element.u16_SOC_InitOver = 1; // Socåˆå§‹åŒ–å®Œæ¯•
 
 	{
 		SOC_Enhance_Element.u8_SOC = SOC_Calculate_Element.u8SOC_Now;
@@ -261,7 +261,7 @@ void soc_param_lib_init(void)
 		SOC_Enhance_Element.u16_CapacityFactory = SOC_Calculate_Element.u32CapFactory * 1 / 360;
 		SOC_Enhance_Element.u16_Cycle_times = SOC_Calculate_Element.u32Cycle_times / 100;
 
-		SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // Áô×Å£¬×Ô¼ºÖªµÀ
+		SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // ç•™ç€ï¼Œè‡ªå·±çŸ¥é“
 	}
 
 	// extern void GetData_SOC(void);
@@ -292,9 +292,9 @@ UINT8 Get_OpenCircuit_Value(void)
 	return result;
 }
 
-// Ä©¶ËĞ£×¼
-// ÒÔï®ÖÇ»ÛÎª·¶±¾
-// »ùÓÚµÚÒ»¸öÄ©¶ËSOCÖµ×Ü³ä²»Âú£¬Ç°ÌáÌõ¼ş£¬Ğ£×¼ºóµÄµçÁ÷Öµ£¬ÄşÔ¸Æ«´óÒ²²»ÄÜÆ«Ğ¡
+// æœ«ç«¯æ ¡å‡†
+// ä»¥é”‚æ™ºæ…§ä¸ºèŒƒæœ¬
+// åŸºäºç¬¬ä¸€ä¸ªæœ«ç«¯SOCå€¼æ€»å……ä¸æ»¡ï¼Œå‰ææ¡ä»¶ï¼Œæ ¡å‡†åçš„ç”µæµå€¼ï¼Œå®æ„¿åå¤§ä¹Ÿä¸èƒ½åå°
 void CorrectionTerminal_CV(enum _CUR CurrentType)
 {
 	static UINT16 su16_SocChgCal_L1_Tcnt = 0;
@@ -309,12 +309,12 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 	switch (CurrentType)
 	{
 	case CurCHG:
-		// SOCÊµ¼ÊÈÏÎªÊÇ100%µÄµã£¬½Ó½ü¹ı³ä±£»¤µÄÊ±ºò
-		// ±¾À´Ïë°ÑÄÚ»·Ğ£×¼Öµ¼ÓÉÏÈ¥µÄ£¬µ«ÊÇÏëÏëÕâ¸öÏµÊı²»¿É¿Ø£¬ËãÁËËãÁË£¬Ö±½ÓÆ­¡£
-		// ÒÔÏÂÕâ¸öµã£¬¼ÙÉèÎÒSOCÏà¶Ô²»×¼£¬ÀıÈç£¬´ó¼Ò¶¼´Ó0%¿ªÊ¼¼ÆËã£¬ÎÒ×îºóËãµÃSOCÓĞ90%(µçÁ÷²»×¼+°å×Ó±¾Éí¹¦ºÄ+Ê±ĞòÓĞµãÎó²î)
-		// µ«Êµ¼ÊÒÑ¾­ÂúÁË£¬Õâ¸öµãÒ»Ö±Ã»·¨´¦Àí¡£
+		// SOCå®é™…è®¤ä¸ºæ˜¯100%çš„ç‚¹ï¼Œæ¥è¿‘è¿‡å……ä¿æŠ¤çš„æ—¶å€™
+		// æœ¬æ¥æƒ³æŠŠå†…ç¯æ ¡å‡†å€¼åŠ ä¸Šå»çš„ï¼Œä½†æ˜¯æƒ³æƒ³è¿™ä¸ªç³»æ•°ä¸å¯æ§ï¼Œç®—äº†ç®—äº†ï¼Œç›´æ¥éª—ã€‚
+		// ä»¥ä¸‹è¿™ä¸ªç‚¹ï¼Œå‡è®¾æˆ‘SOCç›¸å¯¹ä¸å‡†ï¼Œä¾‹å¦‚ï¼Œå¤§å®¶éƒ½ä»0%å¼€å§‹è®¡ç®—ï¼Œæˆ‘æœ€åç®—å¾—SOCæœ‰90%(ç”µæµä¸å‡†+æ¿å­æœ¬èº«åŠŸè€—+æ—¶åºæœ‰ç‚¹è¯¯å·®)
+		// ä½†å®é™…å·²ç»æ»¡äº†ï¼Œè¿™ä¸ªç‚¹ä¸€ç›´æ²¡æ³•å¤„ç†ã€‚
 		if (SOC_Enhance_Element.u16_VCellMax >= SOC_Enhance_Element.u16_SOC_100_Vol - 100 && SOC_Enhance_Element.u16_VCellMax < SOC_Enhance_Element.u16_SOC_100_Vol && SOC_Calculate_Element.u8SOC_Now < 95)
-		{ // ºÍ·ÅµçµçÁ÷¶ÔÓ¦£¬µÚÒ»¶Î£¬±ØĞëÀ­µ½95%ÒÔÄÚ
+		{ // å’Œæ”¾ç”µç”µæµå¯¹åº”ï¼Œç¬¬ä¸€æ®µï¼Œå¿…é¡»æ‹‰åˆ°95%ä»¥å†…
 			if (++su16_SocChgCal_L1_Tcnt >= 10)
 			{
 				su16_SocChgCal_L1_Tcnt = 0;
@@ -344,7 +344,7 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 			}
 		}
 
-		// ÕâÊÇ»ùÓÚ³äµç±ØĞëÄÜ´ïµ½100%µÄÖÕ¼«×ö·¨£¬2S + 1%
+		// è¿™æ˜¯åŸºäºå……ç”µå¿…é¡»èƒ½è¾¾åˆ°100%çš„ç»ˆæåšæ³•ï¼Œ2S + 1%
 		if (SOC_Enhance_Element.u16_VCellMax >= SOC_Enhance_Element.u16_SOC_100_Vol + 50 && SOC_Calculate_Element.u8SOC_Now < 100)
 		{
 			if (++su16_SocChgCal_L4_Tcnt >= 2)
@@ -356,14 +356,14 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 		}
 
 #ifdef _CAL_SLOW_DOWN_CHG
-		// ÕâÀï»á³öÏÖ»ØÍËµÄÏÖÏó£¬¾ÍÊÇÄ©¶Ë£¬¶Ï¿ª¹Ü×ÓË²¼ä£¬µçÑ¹ÏÂ½µ200mV(ÀàËÆ)£¬´ËÊ±SOCÒÑ¾­100%£¬
-		// µ«ÊÇÓÉÓÚµçÁ÷¼ÆËãÊÇÓĞÈ¨ÖØµÄ£¬±äÎª0¿ÉÄÜĞèÒª¼¸Ãë£¬´ËÊ±»á»ØÍËµ½98£¬Ò²¼´´Ó100-98
-		// Èç¹ûÖ´ĞĞÒÔÉÏµÄ¼¸¸öÇé¿ö£¬Õâ¸ö¾Í²»»áÖ´ĞĞ£¬
+		// è¿™é‡Œä¼šå‡ºç°å›é€€çš„ç°è±¡ï¼Œå°±æ˜¯æœ«ç«¯ï¼Œæ–­å¼€ç®¡å­ç¬é—´ï¼Œç”µå‹ä¸‹é™200mV(ç±»ä¼¼)ï¼Œæ­¤æ—¶SOCå·²ç»100%ï¼Œ
+		// ä½†æ˜¯ç”±äºç”µæµè®¡ç®—æ˜¯æœ‰æƒé‡çš„ï¼Œå˜ä¸º0å¯èƒ½éœ€è¦å‡ ç§’ï¼Œæ­¤æ—¶ä¼šå›é€€åˆ°98ï¼Œä¹Ÿå³ä»100-98
+		// å¦‚æœæ‰§è¡Œä»¥ä¸Šçš„å‡ ä¸ªæƒ…å†µï¼Œè¿™ä¸ªå°±ä¸ä¼šæ‰§è¡Œï¼Œ
 		if (SOC_Calculate_Element.u8SOC_Now >= 98 && SOC_Enhance_Element.u16_VCellMax < SOC_Enhance_Element.u16_SOC_100_Vol)
 		{
 			// SOC_Calculate_Element.u8SOC_Now = 98;
-			SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u8SOC_Now; // SOC±£³Ö²»±ä
-			SOC_Calculate_Element.u32CapChange = 0;							   // °ÑÕâ¸öÀÛ¼ÓÁ¿ÇåÁã±ã¿É£¬»¹ÓĞÕâ¸öÂ©¶´£¬»á»ØÍË1
+			SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u8SOC_Now; // SOCä¿æŒä¸å˜
+			SOC_Calculate_Element.u32CapChange = 0;							   // æŠŠè¿™ä¸ªç´¯åŠ é‡æ¸…é›¶ä¾¿å¯ï¼Œè¿˜æœ‰è¿™ä¸ªæ¼æ´ï¼Œä¼šå›é€€1
 			SOC_Calculate_Element.u32CapNow = (UINT32)SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
 		}
 #endif
@@ -382,27 +382,27 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 		if (SOC_Enhance_Element.u16_VCellMin <= SOC_Enhance_Element.u16_SOC_0_Vol + 100 && SOC_Enhance_Element.u16_VCellMin > SOC_Enhance_Element.u16_SOC_0_Vol && SOC_Calculate_Element.u8SOC_Now > 5)
 		{
 			if (++su16_SocDsgCal_L1_Tcnt >= 10)
-			{ // µÚÒ»¼¶Ğ£×¼
+			{ // ç¬¬ä¸€çº§æ ¡å‡†
 				su16_SocDsgCal_L1_Tcnt = 0;
 				SOC_Calculate_Element.u8SOC_Now -= 1;
 				SOC_Calculate_Element.u32CapNow -= SOC_Calculate_Element.u32CapFactory / 100;
 			}
 		}
 		else if (SOC_Enhance_Element.u16_VCellMin <= SOC_Enhance_Element.u16_SOC_0_Vol && SOC_Calculate_Element.u8SOC_Now > 0)
-		{ // ÎÒÒ²²»ÖªµÀÎªÊ²Ã´Òª5%£¬ÏëÏë£¬Ö±½Ó0%£¬ÓëÏÂÃæÁ½¸öĞĞ³É±ÕÑ­»·
+		{ // æˆ‘ä¹Ÿä¸çŸ¥é“ä¸ºä»€ä¹ˆè¦5%ï¼Œæƒ³æƒ³ï¼Œç›´æ¥0%ï¼Œä¸ä¸‹é¢ä¸¤ä¸ªè¡Œæˆé—­å¾ªç¯
 			if (SOC_Calculate_Element.u8SOC_Now < 5)
-			{ // µÚ¶ş¼¶Ğ£×¼
+			{ // ç¬¬äºŒçº§æ ¡å‡†
 				if (++su16_SocDsgCal_L2_Tcnt >= 8)
-				{										  // µç¿Æ´óµçÁ÷»¹ÊÇÓĞÒ»¶¨µÄ¸ÅÂÊÁôÏÂ1%£¬´Ó10¸ÄÎª8°É¡£
-					su16_SocDsgCal_L2_Tcnt = 0;			  // µ«ÊÇ¼æ¹ËĞ¡µçÁ÷ÄÜ·Å¾ÃÒ»Ğ©£¬²»ÄÜ¸ÄÎª6
-					SOC_Calculate_Element.u8SOC_Now -= 1; // ¿Í»§ºÃÏñ¶Ô·ÅµçÄ©¶Ë£¬Èç¹ûÖ»Ê£2%ÒÔÄÚÃ²ËÆ¿ÉÒÔ½ÓÊÜ£¬µ«ÊÇ³äµç±ØĞë100%
+				{										  // ç”µç§‘å¤§ç”µæµè¿˜æ˜¯æœ‰ä¸€å®šçš„æ¦‚ç‡ç•™ä¸‹1%ï¼Œä»10æ”¹ä¸º8å§ã€‚
+					su16_SocDsgCal_L2_Tcnt = 0;			  // ä½†æ˜¯å…¼é¡¾å°ç”µæµèƒ½æ”¾ä¹…ä¸€äº›ï¼Œä¸èƒ½æ”¹ä¸º6
+					SOC_Calculate_Element.u8SOC_Now -= 1; // å®¢æˆ·å¥½åƒå¯¹æ”¾ç”µæœ«ç«¯ï¼Œå¦‚æœåªå‰©2%ä»¥å†…è²Œä¼¼å¯ä»¥æ¥å—ï¼Œä½†æ˜¯å……ç”µå¿…é¡»100%
 					SOC_Calculate_Element.u32CapNow -= SOC_Calculate_Element.u32CapFactory / 100;
 				}
 			}
 			else
-			{ // ¿ìÃ»µçÁË£¬»¹ÓĞºÜ´óµÄSOC
+			{ // å¿«æ²¡ç”µäº†ï¼Œè¿˜æœ‰å¾ˆå¤§çš„SOC
 				if (++su16_SocDsgCal_L3_Tcnt >= 4)
-				{ // µÚÈı¼¶Ğ£×¼
+				{ // ç¬¬ä¸‰çº§æ ¡å‡†
 					su16_SocDsgCal_L3_Tcnt = 0;
 					SOC_Calculate_Element.u8SOC_Now -= 1;
 					SOC_Calculate_Element.u32CapNow -= SOC_Calculate_Element.u32CapFactory / 100;
@@ -410,8 +410,8 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 			}
 		}
 
-		// ÕâÊÇ»ùÓÚ·Åµç±ØĞëÄÜ´ïµ½0%µÄÖÕ¼«×ö·¨£¬2S - 1%
-		// µ«Êµ¼ÊÉÏ·ÅµçÒªÇóÃ»³äµç¸ß
+		// è¿™æ˜¯åŸºäºæ”¾ç”µå¿…é¡»èƒ½è¾¾åˆ°0%çš„ç»ˆæåšæ³•ï¼Œ2S - 1%
+		// ä½†å®é™…ä¸Šæ”¾ç”µè¦æ±‚æ²¡å……ç”µé«˜
 		if (SOC_Enhance_Element.u16_VCellMin <= SOC_Enhance_Element.u16_SOC_0_Vol - 50 && SOC_Calculate_Element.u8SOC_Now > 0)
 		{
 			if (++su16_SocDsgCal_L4_Tcnt >= 2)
@@ -425,8 +425,8 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 		if (SOC_Calculate_Element.u8SOC_Now <= 1 && SOC_Enhance_Element.u16_VCellMin > SOC_Enhance_Element.u16_SOC_0_Vol)
 		{
 			// SOC_Calculate_Element.u8SOC_Now = 2;
-			SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u8SOC_Now; // SOC±£³Ö²»±ä
-			SOC_Calculate_Element.u32CapChange = 0;							   // °ÑÕâ¸öÀÛ¼ÓÁ¿ÇåÁã±ã¿É£¬»¹ÓĞÕâ¸öÂ©¶´£¬»á»ØÍË1
+			SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u8SOC_Now; // SOCä¿æŒä¸å˜
+			SOC_Calculate_Element.u32CapChange = 0;							   // æŠŠè¿™ä¸ªç´¯åŠ é‡æ¸…é›¶ä¾¿å¯ï¼Œè¿˜æœ‰è¿™ä¸ªæ¼æ´ï¼Œä¼šå›é€€1
 			SOC_Calculate_Element.u32CapNow = (UINT32)SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
 		}
 
@@ -445,9 +445,9 @@ void CorrectionTerminal_CV(enum _CUR CurrentType)
 	}
 }
 
-// Ä©¶Ë´óµçÁ÷ºãÁ÷³ä£¬µ÷ÓÃµÄº¯Êı
-// ±¾À´´òËãºÏ³ÉÒ»¸öº¯Êı£¬µ«ÊÇÏëÏëºóĞø¿ÉÄÜ»áÓĞ²»Í¬µÄ²ßÂÔ£¬¾ö¶¨·Ö¿ª
-// ¶à¼¶±£»¤£¬ÓĞ¸öBUG£¬¾ÍÊÇµçÑ¹ÉÏÕÇÌ«¿ì£¬Ëã²»¹ıÀ´
+// æœ«ç«¯å¤§ç”µæµæ’æµå……ï¼Œè°ƒç”¨çš„å‡½æ•°
+// æœ¬æ¥æ‰“ç®—åˆæˆä¸€ä¸ªå‡½æ•°ï¼Œä½†æ˜¯æƒ³æƒ³åç»­å¯èƒ½ä¼šæœ‰ä¸åŒçš„ç­–ç•¥ï¼Œå†³å®šåˆ†å¼€
+// å¤šçº§ä¿æŠ¤ï¼Œæœ‰ä¸ªBUGï¼Œå°±æ˜¯ç”µå‹ä¸Šæ¶¨å¤ªå¿«ï¼Œç®—ä¸è¿‡æ¥
 void CorrectionTerminal_CC(enum _CUR CurrentType)
 {
 }
@@ -509,7 +509,7 @@ void SOC_Cont_AH_Int_CHG(void)
 	else
 	{
 		if (++s_u8_Transfer200msCnt >= 2)
-		{ // ·ÀÖ¹Ë²¼äÌø¶¯ÎÊÌâ
+		{ // é˜²æ­¢ç¬é—´è·³åŠ¨é—®é¢˜
 			s_u8_Transfer200msCnt = 0;
 			s_u8_CHG200msCnt = 0;
 			SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
@@ -518,16 +518,16 @@ void SOC_Cont_AH_Int_CHG(void)
 		--s_u8_CHG200msCnt;
 	}
 
-#if 1 // Ô­À´µÄ¼ÆËã·½Ê½×ÅÊµÌ«ÍÏí³£¬ÏÂÃæµÄÈı¾ä¸ã¶¨£¬»¹ÇåÎúÃ÷ÁË£¬ÀıÈç£¬ÈİÁ¿Ã»µ½100%Ç°£¬¶¼ÊÇ99%£¬µ½´ïÄÇÒ»Ë²¼ä²ÅÊÇ100%
-	  // Õâ¸öµÄĞ§¹ûºÍÓÅ»¯µÄÃ»É¶²î±ğ£¬»ùÓÚ·ÅµçÃ»²Ù×÷£¬Õâ¸öÒ²²»¸ÄÁË°É¡£
+#if 1 // åŸæ¥çš„è®¡ç®—æ–¹å¼ç€å®å¤ªæ‹–æ²“ï¼Œä¸‹é¢çš„ä¸‰å¥æå®šï¼Œè¿˜æ¸…æ™°æ˜äº†ï¼Œä¾‹å¦‚ï¼Œå®¹é‡æ²¡åˆ°100%å‰ï¼Œéƒ½æ˜¯99%ï¼Œåˆ°è¾¾é‚£ä¸€ç¬é—´æ‰æ˜¯100%
+	  // è¿™ä¸ªçš„æ•ˆæœå’Œä¼˜åŒ–çš„æ²¡å•¥å·®åˆ«ï¼ŒåŸºäºæ”¾ç”µæ²¡æ“ä½œï¼Œè¿™ä¸ªä¹Ÿä¸æ”¹äº†å§ã€‚
 	if (SOC_Calculate_Element.u8CHG_AHCalcu_Flag)
 	{
 		Correction_Terminal(CurCHG);
 		SOC_Calculate_Element.u8SOC_Old = SOC_Calculate_Element.u8SOC_Now;
-		// SOC_Calculate_Element.u32CapChange += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Ichg * 1+50)/100;	//As*10*100(¿âÂ×Ğ§ÂÊ100)
-		// SOC_Calculate_Element.u32CapNow += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Ichg * 1+50)/100;  			//Ê£ÓàÈİÁ¿ÊµÊ±¸ú×Ù
-		SOC_Calculate_Element.u32CapChange += (UINT32)SOC_Enhance_Element.u16_Ichg * 1; // As*10*100(¿âÂ×Ğ§ÂÊ100)
-		SOC_Calculate_Element.u32CapNow += (UINT32)SOC_Enhance_Element.u16_Ichg * 1;	// Ê£ÓàÈİÁ¿ÊµÊ±¸ú×Ù
+		// SOC_Calculate_Element.u32CapChange += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Ichg * 1+50)/100;	//As*10*100(åº“ä¼¦æ•ˆç‡100)
+		// SOC_Calculate_Element.u32CapNow += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Ichg * 1+50)/100;  			//å‰©ä½™å®¹é‡å®æ—¶è·Ÿè¸ª
+		SOC_Calculate_Element.u32CapChange += (UINT32)SOC_Enhance_Element.u16_Ichg * 1; // As*10*100(åº“ä¼¦æ•ˆç‡100)
+		SOC_Calculate_Element.u32CapNow += (UINT32)SOC_Enhance_Element.u16_Ichg * 1;	// å‰©ä½™å®¹é‡å®æ—¶è·Ÿè¸ª
 
 		if (SOC_Calculate_Element.u32CapNow > SOC_Calculate_Element.u32CapFactory)
 			SOC_Calculate_Element.u32CapNow = SOC_Calculate_Element.u32CapFactory;
@@ -538,7 +538,7 @@ void SOC_Cont_AH_Int_CHG(void)
 		SOC_Calculate_Element.u32CapChange = (((SOC_Calculate_Element.u32CapChange * 100) % SOC_Calculate_Element.u32CapFactory) + 50) / 100;
 		SOC_Calculate_Element.u8CHG_AHCalcu_Flag = 0;
 
-		// ¼ÆËãÊµ¼ÊÈİÁ¿×¨ÓÃÖµ¡£
+		// è®¡ç®—å®é™…å®¹é‡ä¸“ç”¨å€¼ã€‚
 		SOC_Calculate_Element.u32CapFull_Cal_As += (UINT32)SOC_Enhance_Element.u16_Ichg * 1;
 	}
 #endif
@@ -571,14 +571,14 @@ void SOC_Cont_AH_Int_DSG(void)
 		--s_u8_DSG200msCnt;
 	}
 
-#if 1 // Õâ¸ö¼ÆËã·½Ê½»¹ÊÇÍ×Ò»Ğ©£¬Âú¼õ1%£¬SOC²ÅÏÔÊ¾99£¬¿Í»§ÌåÑé»á¸üºÃÒ»Ğ©
+#if 1 // è¿™ä¸ªè®¡ç®—æ–¹å¼è¿˜æ˜¯å¦¥ä¸€äº›ï¼Œæ»¡å‡1%ï¼ŒSOCæ‰æ˜¾ç¤º99ï¼Œå®¢æˆ·ä½“éªŒä¼šæ›´å¥½ä¸€äº›
 	if (SOC_Calculate_Element.u8DSG_AHCalcu_Flag)
 	{
 		Correction_Terminal(CurDSG);
 
 		SOC_Calculate_Element.u8SOC_Old = SOC_Calculate_Element.u8SOC_Now;
-		// SOC_Calculate_Element.u32CapChange += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Idsg * 1 + 50)/100; //As*10*100(¿âÂ×Ğ§ÂÊ100)
-		// SOC_Calculate_Element.u32CapNow-= ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Idsg * 1 + 50)/100; 	//Ê£ÓàÈİÁ¿ÊµÊ±¸ú×Ù
+		// SOC_Calculate_Element.u32CapChange += ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Idsg * 1 + 50)/100; //As*10*100(åº“ä¼¦æ•ˆç‡100)
+		// SOC_Calculate_Element.u32CapNow-= ((UINT32)SOC_Calculate_Element.u8n_CoulombicEff * SOC_Enhance_Element.u16_Idsg * 1 + 50)/100; 	//å‰©ä½™å®¹é‡å®æ—¶è·Ÿè¸ª
 		SOC_Calculate_Element.u32CapChange += (UINT32)SOC_Enhance_Element.u16_Idsg * 1;
 		SOC_Calculate_Element.u32CapNow -= (UINT32)SOC_Enhance_Element.u16_Idsg * 1;
 
@@ -588,12 +588,12 @@ void SOC_Cont_AH_Int_DSG(void)
 		SOC_Calculate_Element.u8SOC_Now = SOC_Calculate_Element.u8SOC_Old - C_change_per;
 		if (SOC_Calculate_Element.u8SOC_Now > 100)
 			SOC_Calculate_Element.u8SOC_Now = 0;
-		SOC_Calculate_Element.u32CapChange = (((SOC_Calculate_Element.u32CapChange * 100) % SOC_Calculate_Element.u32CapFactory) + 50) / 100; // ËÄÉáÎåÈë£¬¹Ø¼ü
+		SOC_Calculate_Element.u32CapChange = (((SOC_Calculate_Element.u32CapChange * 100) % SOC_Calculate_Element.u32CapFactory) + 50) / 100; // å››èˆäº”å…¥ï¼Œå…³é”®
 		SOC_Calculate_Element.u8DSG_AHCalcu_Flag = 0;
 
-		// Ñ­»·´ÎÊıÍ³¼Æ
-		// Èç¹ûÊÇSOC=0»¹ÔÚ·è¿ñ¼õµÄ»°£¬ÔÚĞ£×¼ÆÚ¼ä»á³öÏÖÑ­»·´ÎÊıÍ³¼Æ³ö´í£¬ÌØ±ğÊÇ±ê³ÆÈİÁ¿Ğ¡£¬Êµ¼ÊÈİÁ¿ÌØ±ğ´óµÄÊ±ºò
-		// ÉÏÃæµÄÒ²ÊÇÒ»¸öBUG£¬Í¨¹ıÑ­»·´ÎÊı±©Â¶³öÀ´ÁË¡£
+		// å¾ªç¯æ¬¡æ•°ç»Ÿè®¡
+		// å¦‚æœæ˜¯SOC=0è¿˜åœ¨ç–¯ç‹‚å‡çš„è¯ï¼Œåœ¨æ ¡å‡†æœŸé—´ä¼šå‡ºç°å¾ªç¯æ¬¡æ•°ç»Ÿè®¡å‡ºé”™ï¼Œç‰¹åˆ«æ˜¯æ ‡ç§°å®¹é‡å°ï¼Œå®é™…å®¹é‡ç‰¹åˆ«å¤§çš„æ—¶å€™
+		// ä¸Šé¢çš„ä¹Ÿæ˜¯ä¸€ä¸ªBUGï¼Œé€šè¿‡å¾ªç¯æ¬¡æ•°æš´éœ²å‡ºæ¥äº†ã€‚
 		if (SOC_Calculate_Element.u8SOC_Now != 0)
 		{
 			SOC_Calculate_Element.u8DSG_SOC_Int += C_change_per;
@@ -684,14 +684,14 @@ void SOC_Update_StartUp(void)
 		SOC_Calculate_Element.u8SOC_Now = Get_OpenCircuit_Value();
 		break;
 
-	case 2: // SOC¹éÁãÀàĞÍ£¬¸ÄÎªÑ­»·´ÎÊı¹é³õÊ¼»¯
-			// Ìí¼ÓÈİÁ¿³õÊ¼»¯
+	case 2: // SOCå½’é›¶ç±»å‹ï¼Œæ”¹ä¸ºå¾ªç¯æ¬¡æ•°å½’åˆå§‹åŒ–
+			// æ·»åŠ å®¹é‡åˆå§‹åŒ–
 		// SOC_Calculate_Element.u8SOC_Now = 0;
 		SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 		SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
 		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
 		SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
-		// ÉÏÃæSOC_Calculate_Element.u32CapFactoryÒÑ¾­³õÊ¼»¯
+		// ä¸Šé¢SOC_Calculate_Element.u32CapFactoryå·²ç»åˆå§‹åŒ–
 		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
 		break;
 
@@ -709,20 +709,20 @@ void SOC_Update_StartUp(void)
 }
 
 /*
-1£¬´æSOCÖµ£¬±ä»¯1%¼´´æ
-2£¬Ñ­»·´ÎÊıÏÂ½µÊıÖµ£¬ÉÙ1%¼´´æ
-3£¬Ñ­»·´ÎÊı£¬¶àÒ»¸öÑ­»·¼´´æ
-4£¬¹ØÓÚÕâĞ©EEPROMµÄÊıÖµµÄÎÊÌâ
-   A£¬Èç¹ûÊÇµÚÒ»´ÎÓÃÕâ¸öEEPROMÔõÃ´´¦Àí£¿
-   B£¬Èç¹ûÆÚ¼ä»»µç³ØÁËÄØ£¿
-5£¬Ä¿Ç°¾ÍÕâÈı¸öĞèÒª´¦Àí£¬ºóĞø¹ØÓÚÔËĞĞÆÚ¼äµôµçÔõÃ´´¦ÀíºóĞøÔÙËµ£¬ÏµÊıÖ®ÀàµÄÒ»¶¨Òª´æµÄ
+1ï¼Œå­˜SOCå€¼ï¼Œå˜åŒ–1%å³å­˜
+2ï¼Œå¾ªç¯æ¬¡æ•°ä¸‹é™æ•°å€¼ï¼Œå°‘1%å³å­˜
+3ï¼Œå¾ªç¯æ¬¡æ•°ï¼Œå¤šä¸€ä¸ªå¾ªç¯å³å­˜
+4ï¼Œå…³äºè¿™äº›EEPROMçš„æ•°å€¼çš„é—®é¢˜
+   Aï¼Œå¦‚æœæ˜¯ç¬¬ä¸€æ¬¡ç”¨è¿™ä¸ªEEPROMæ€ä¹ˆå¤„ç†ï¼Ÿ
+   Bï¼Œå¦‚æœæœŸé—´æ¢ç”µæ± äº†å‘¢ï¼Ÿ
+5ï¼Œç›®å‰å°±è¿™ä¸‰ä¸ªéœ€è¦å¤„ç†ï¼Œåç»­å…³äºè¿è¡ŒæœŸé—´æ‰ç”µæ€ä¹ˆå¤„ç†åç»­å†è¯´ï¼Œç³»æ•°ä¹‹ç±»çš„ä¸€å®šè¦å­˜çš„
 */
 void SOC_EEPROM_Deal_Monitor(void)
 {
 	static UINT8 su8_TimeCnt = 0;
 
 	if (!SOC_Enhance_Element.u16_SOC_InitOver)
-	{ // ³õÊ¼»¯Íê²Å¿ªÊ¼Õâ¸öº¯Êı
+	{ // åˆå§‹åŒ–å®Œæ‰å¼€å§‹è¿™ä¸ªå‡½æ•°
 		return;
 	}
 
@@ -738,7 +738,7 @@ void SOC_EEPROM_Deal_Monitor(void)
 		WriteEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int, SOC_Calculate_Element.u8DSG_SOC_Int);
 	}
 
-	if ((UINT16)(SOC_Calculate_Element.u32Cycle_times) != SOC_Calculate_Element_backup.u32Cycle_times)
+	if (SOC_Calculate_Element.u32Cycle_times != SOC_Calculate_Element_backup.u32Cycle_times)
 	{
 		SOC_Calculate_Element_backup.u32Cycle_times = SOC_Calculate_Element.u32Cycle_times;
 		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, SOC_Calculate_Element.u32Cycle_times / 100);
@@ -766,8 +766,8 @@ void SOC_RefreshData_Monitor(void)
 
 	case 1:
 		if (SOC_Calculate_Element.u8_DataUpdateOK == 1)
-		{											   // 3¸öµØ·½³õÊ¼»¯
-			SOC_Calculate_Element.u8_DataUpdateOK = 0; // Õâ¸öË¼Â·Áô×Å¡£²»¸Ä
+		{											   // 3ä¸ªåœ°æ–¹åˆå§‹åŒ–
+			SOC_Calculate_Element.u8_DataUpdateOK = 0; // è¿™ä¸ªæ€è·¯ç•™ç€ã€‚ä¸æ”¹
 			SOC_Enhance_Element.u16_RefreshData_Flag = 0;
 			su8_DataRefreshFlag = 0;
 		}
@@ -800,7 +800,7 @@ void SOC_Result_Pass(void)
 	SOC_Enhance_Element.u16_CapacityFactory = SOC_Calculate_Element.u32CapFactory * 1 / 360;
 	SOC_Enhance_Element.u16_Cycle_times = SOC_Calculate_Element.u32Cycle_times / 100;
 
-	SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // Áô×Å£¬×Ô¼ºÖªµÀ
+	SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // ç•™ç€ï¼Œè‡ªå·±çŸ¥é“
 }
 
 void SOC_Data_Filter(void)
@@ -812,10 +812,10 @@ void SOC_Data_Filter(void)
 	static UINT16 su16_VcellMax_hold = 0;
 	static UINT16 su16_Vcellmin_hold = 0;
 
-	// µçÑ¹Í»±äÂË²¨¡£ÀıÈç5VºÍ500mV£¬ÔòÏÂÃæ¼ÆËã¾Í³öÎÊÌâÁË£¬ÂúµçÈİÁ¿±ä0»òÕßºÜĞ¡µÄÖµ¡£
-	// Èç¹ûÕæµÄÊÇµÄ»°£¬ÏÂÃæ¼ÆËãË²¼äÈÃÂúµçÈİÁ¿ºÍµ±Ç°ÈİÁ¿Îª0£¬ÎÊÌâ²»´ó¡£
-	// Èç¹ûÄÜÍ¨¹ıÕâ¸öÂË²¨ÕâÖÖÇé¿öÒ»°ãÖ»»áÔÚµçÈİ±¬µô£¬É¶µÄ£¬Ó²¼ş³öÎÊÌâ¡£
-	// Èç¹ûÍ¨²»¹ı£¬¾ÍÊÇË²¼ä±ä»¯£¬¹ıÂËµô²»ĞèÒª¹Ü¡£(ÓĞ¿ÉÄÜÊÇ²ÉÑù£¬»òÕßAFE³öÎÊÌâ£¬º£³Ïhs012³öÏÖ)
+	// ç”µå‹çªå˜æ»¤æ³¢ã€‚ä¾‹å¦‚5Vå’Œ500mVï¼Œåˆ™ä¸‹é¢è®¡ç®—å°±å‡ºé—®é¢˜äº†ï¼Œæ»¡ç”µå®¹é‡å˜0æˆ–è€…å¾ˆå°çš„å€¼ã€‚
+	// å¦‚æœçœŸçš„æ˜¯çš„è¯ï¼Œä¸‹é¢è®¡ç®—ç¬é—´è®©æ»¡ç”µå®¹é‡å’Œå½“å‰å®¹é‡ä¸º0ï¼Œé—®é¢˜ä¸å¤§ã€‚
+	// å¦‚æœèƒ½é€šè¿‡è¿™ä¸ªæ»¤æ³¢è¿™ç§æƒ…å†µä¸€èˆ¬åªä¼šåœ¨ç”µå®¹çˆ†æ‰ï¼Œå•¥çš„ï¼Œç¡¬ä»¶å‡ºé—®é¢˜ã€‚
+	// å¦‚æœé€šä¸è¿‡ï¼Œå°±æ˜¯ç¬é—´å˜åŒ–ï¼Œè¿‡æ»¤æ‰ä¸éœ€è¦ç®¡ã€‚(æœ‰å¯èƒ½æ˜¯é‡‡æ ·ï¼Œæˆ–è€…AFEå‡ºé—®é¢˜ï¼Œæµ·è¯šhs012å‡ºç°)
 	if (ModulusSub(SOC_Enhance_Element.u16_VCellMax, SOC_Enhance_Element.u16_VCellMin) < 600)
 	{
 		su16_VcellMax_hold = SOC_Enhance_Element.u16_VCellMax;
@@ -827,9 +827,9 @@ void SOC_Data_Filter(void)
 	else
 	{
 		if (++su16_Filter_Tcnt1 < 5 * 10)
-		{ // ÑÓÊ±10s
+		{ // å»¶æ—¶10s
 			if (!su8_StartUp_Flag)
-			{ // Èç¹û¿ª¾Ö¾Í½øÀ´ÕâÀï£¬Ôò¸³ÖµÒ»ÏÂ¡£
+			{ // å¦‚æœå¼€å±€å°±è¿›æ¥è¿™é‡Œï¼Œåˆ™èµ‹å€¼ä¸€ä¸‹ã€‚
 				su16_VcellMax_hold = SOC_Enhance_Element.u16_VCellMax;
 				su16_Vcellmin_hold = SOC_Enhance_Element.u16_VCellMin;
 			}
@@ -843,29 +843,29 @@ void SOC_Data_Filter(void)
 	}
 
 	// TODO
-	// »¹ÓĞÁ½ÖÖÍ»±ä¡£
-	// 1£¬Í»È»ÕûÌå±©ÕÇ¼¸°ÙmV¡£»»µç³Ø¡£ÄÇµÃÖØĞÂÑ­»·Ñ§Ï°¾ÍºÃ¡£
-	// 2£¬µçÁ÷Í»±ä£¬Õâ¸öÕı³£¡£
+	// è¿˜æœ‰ä¸¤ç§çªå˜ã€‚
+	// 1ï¼Œçªç„¶æ•´ä½“æš´æ¶¨å‡ ç™¾mVã€‚æ¢ç”µæ± ã€‚é‚£å¾—é‡æ–°å¾ªç¯å­¦ä¹ å°±å¥½ã€‚
+	// 2ï¼Œç”µæµçªå˜ï¼Œè¿™ä¸ªæ­£å¸¸ã€‚
 }
 
 void InitSOC_IntEnhance(void)
 {
-	// Íâ²¿»ñÈ¡µÄÊı¾İ³õÊ¼»¯
-	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // È¥µô*10;¸Äµ¥Î»ÕâÀï½øÀ´µÄµ¥Î»ÉÔÎ¢ĞŞ¸ÄÒ»ÏÂ±ã¿É£¬Èç´Ë¿ì½İ
+	// å¤–éƒ¨è·å–çš„æ•°æ®åˆå§‹åŒ–
+	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // å»æ‰*10;æ”¹å•ä½è¿™é‡Œè¿›æ¥çš„å•ä½ç¨å¾®ä¿®æ”¹ä¸€ä¸‹ä¾¿å¯ï¼Œå¦‚æ­¤å¿«æ·
 	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
 	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
 
 	SOC_Calculate_Element.u32CapChange = 0;
-	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // µÚÒ»´ÎĞ´ÖÃ1³öÏÖÁË¿ª»úÑÏÖØ´íÎóµÄÎÊÌâ
+	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // ç¬¬ä¸€æ¬¡å†™ç½®1å‡ºç°äº†å¼€æœºä¸¥é‡é”™è¯¯çš„é—®é¢˜
 	SOC_Calculate_Element.u8CHG_AHCalcu_Flag = 0;
 	SOC_Calculate_Element.u8DSG_AHCalcu_Flag = 0;
 
-	SOC_Calculate_Element.u8SOC_Now = 0; // ÒÔÉÏ¾ùÎª0£¬ÒòÎªÄ£ÄâÇ°¶Ë»¹Ã»¶Á»ØµçÑ¹
+	SOC_Calculate_Element.u8SOC_Now = 0; // ä»¥ä¸Šå‡ä¸º0ï¼Œå› ä¸ºæ¨¡æ‹Ÿå‰ç«¯è¿˜æ²¡è¯»å›ç”µå‹
 	SOC_Calculate_Element.u32CapNow = 0;
 	SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 	SOC_Calculate_Element.u32CapFull = 0;
 
-	SOC_Enhance_Element.u16_SOC_InitOver = 0; // ¶ÔÍâ±êÖ¾Î»³õÊ¼»¯
+	SOC_Enhance_Element.u16_SOC_InitOver = 0; // å¯¹å¤–æ ‡å¿—ä½åˆå§‹åŒ–
 	SOC_Cali_Flag = SOC_CALI_STATE_TRANSFER;
 }
 
@@ -885,7 +885,7 @@ UINT8 isDSG(void)
 void soc_cali(void)
 {
 	static uint8_t dsg_soc0_delay = 0;
-// todo ÊµÊ±Ğ£×¼ ´ıÍêÉÆ
+// todo å®æ—¶æ ¡å‡† å¾…å®Œå–„
 #ifdef _SOC_OCV_Fix2_func_
 	SOC_OCV_Fix2();
 #endif
@@ -922,12 +922,12 @@ void soc_cali(void)
 	}
 }
 /*
->>ºó¼Ç£º
-1£¬Õâ¸ö×ö·¨»á³öÏÖÒ»¸öÎÊÌâ£¬SOC¼ÓËÙ£¬ÈİÁ¿ÅòÕÍ£¬È»ºó¾²ÖÃÖ®ºó£¬SOC±£³Ö²»±ä£¬µ«ÊÇÂúµçÈİÁ¿¼õÉÙ(ÒòÎªÂúµçÈİÁ¿ÊÇÊµ´òÊµ¼ÆËãµÄ)¡£
-   ÕâÑù£¬Ê£ÓàÈİÁ¿¾ÍÍ»È»¼õÉÙÁË£¬»áÓĞ·ÖÆç¡£Èç¹û´ËÊ±SOC¼ÆËã»¹Ã»ÓĞ100%(²î¾à¹ı´ó£¬µ±Ç°ÂúµçÈİÁ¿Ì«´ó)£¬Ö±µ½40%Õâ¸öÑù×Ó£¬Ê£ÓàÈİÁ¿»á¸üÉÙ¡£
-2£¬»Øµ½Êµ¼ÊÇé¿ö£¬ÓÃ¾ÃË¥¼õµÄµç³Ø£¬Ò²»á³öÏÖÍ¬ÑùµÄÇé¿ö£¬µ«ÊÇÄ©¶ËÒ»¶¨ÒªĞ¡µçÁ÷²Ù×÷£¬Ê¹Æä³äµ½100%¡£
-   ÕâÑùµÄ»°£¬µ±Ç°ÈİÁ¿ËäÈ»¼õÉÙÁË£¬µ«ÊÇ³ËÒÔ100%£¬Ò²²î¾à²»»áÌ«´ó¡£
-3£¬½áºÏ1ºÍ2£¬ÈİÁ¿×îºÃ²»ÒªÏÔÊ¾£¬Ö»ÏÔÊ¾SOC£¬SOHºÍ³ö³§ÈİÁ¿ÎªÃî¡£
+>>åè®°ï¼š
+1ï¼Œè¿™ä¸ªåšæ³•ä¼šå‡ºç°ä¸€ä¸ªé—®é¢˜ï¼ŒSOCåŠ é€Ÿï¼Œå®¹é‡è†¨èƒ€ï¼Œç„¶åé™ç½®ä¹‹åï¼ŒSOCä¿æŒä¸å˜ï¼Œä½†æ˜¯æ»¡ç”µå®¹é‡å‡å°‘(å› ä¸ºæ»¡ç”µå®¹é‡æ˜¯å®æ‰“å®è®¡ç®—çš„)ã€‚
+   è¿™æ ·ï¼Œå‰©ä½™å®¹é‡å°±çªç„¶å‡å°‘äº†ï¼Œä¼šæœ‰åˆ†æ­§ã€‚å¦‚æœæ­¤æ—¶SOCè®¡ç®—è¿˜æ²¡æœ‰100%(å·®è·è¿‡å¤§ï¼Œå½“å‰æ»¡ç”µå®¹é‡å¤ªå¤§)ï¼Œç›´åˆ°40%è¿™ä¸ªæ ·å­ï¼Œå‰©ä½™å®¹é‡ä¼šæ›´å°‘ã€‚
+2ï¼Œå›åˆ°å®é™…æƒ…å†µï¼Œç”¨ä¹…è¡°å‡çš„ç”µæ± ï¼Œä¹Ÿä¼šå‡ºç°åŒæ ·çš„æƒ…å†µï¼Œä½†æ˜¯æœ«ç«¯ä¸€å®šè¦å°ç”µæµæ“ä½œï¼Œä½¿å…¶å……åˆ°100%ã€‚
+   è¿™æ ·çš„è¯ï¼Œå½“å‰å®¹é‡è™½ç„¶å‡å°‘äº†ï¼Œä½†æ˜¯ä¹˜ä»¥100%ï¼Œä¹Ÿå·®è·ä¸ä¼šå¤ªå¤§ã€‚
+3ï¼Œç»“åˆ1å’Œ2ï¼Œå®¹é‡æœ€å¥½ä¸è¦æ˜¾ç¤ºï¼Œåªæ˜¾ç¤ºSOCï¼ŒSOHå’Œå‡ºå‚å®¹é‡ä¸ºå¦™ã€‚
 */
 void SOC_IntEnhance_Ctrl(void)
 {
@@ -954,8 +954,8 @@ void SOC_IntEnhance_Ctrl(void)
 	}
 	soc_cali();
 
-	// Õâ¼¸¸öº¯ÊıµÄĞ´·¨ÕæµÄÄÑ£¬ÒòÎªº¦ÅÂ³¤ÆÚÑ­»·ËùÒÔÔËĞĞÒ»´Î±ØĞë²»ÄÜÔÙ±»ÔËĞĞÒ»´ÎµÄ¹æ±Ü
+	// è¿™å‡ ä¸ªå‡½æ•°çš„å†™æ³•çœŸçš„éš¾ï¼Œå› ä¸ºå®³æ€•é•¿æœŸå¾ªç¯æ‰€ä»¥è¿è¡Œä¸€æ¬¡å¿…é¡»ä¸èƒ½å†è¢«è¿è¡Œä¸€æ¬¡çš„è§„é¿
 	SOC_EEPROM_Deal_Monitor();
-	SOC_RefreshData_Monitor(); // ÓĞË³Ğò£¬·Å×îºó>>Ó¦¸ÃÃ»Ë³ĞòÁË
+	SOC_RefreshData_Monitor(); // æœ‰é¡ºåºï¼Œæ”¾æœ€å>>åº”è¯¥æ²¡é¡ºåºäº†
 	SOC_Result_Pass();
 }
