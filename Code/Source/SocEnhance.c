@@ -56,7 +56,7 @@ struct SOC_CALCULATE_ELEMENT
 	UINT8 u8SOC_Now;	   // 当前电池SOC     0—100 为相对容量百分比
 	UINT32 u32CapNow;	   // 电池剩余总容量As*10
 	UINT8 u8DSG_SOC_Int;   // 循环次数只算放电量，已放电量积累量百分比，90%算一个循环
-	UINT32 u32Cycle_times; // 循环次数*100，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
+	UINT32 u32Cycle_times; // 循环次数*1  ，本来只打算用用一个变量直接叠加去处理，但是太损耗EEPROM发现不行
 	UINT32 u32CapFull;	   // 电池衰减后总容量As*10(SOH)，我的显示SOH要改一改，算错了
 
 	// 运行过程长期修改类型
@@ -217,8 +217,8 @@ void soc_factory_param_init_first(void)
 	SOC_Enhance_Element.u16_SOC_CycleT_Ever = OtherElement.u16Soc_Cycle_times;
 
 	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
-	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever;
+	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit;
 
 	SOC_Calculate_Element.u8SOC_Now = 60;
 	SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
@@ -230,8 +230,8 @@ void soc_param_lib_init(void)
 
 	// 外部获取的数据初始化
 	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
-	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever;
+	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit;
 
 	SOC_Calculate_Element.u32CapChange = 0;
 	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // 第一次写置1出现了开机严重错误的问题
@@ -259,7 +259,7 @@ void soc_param_lib_init(void)
 		SOC_Enhance_Element.u16_CapacityNow = SOC_Calculate_Element.u32CapNow * 1 / 360;
 		SOC_Enhance_Element.u16_CapacityFull = SOC_Calculate_Element.u32CapFull * 1 / 360;
 		SOC_Enhance_Element.u16_CapacityFactory = SOC_Calculate_Element.u32CapFactory * 1 / 360;
-		SOC_Enhance_Element.u16_Cycle_times = SOC_Calculate_Element.u32Cycle_times / 100;
+		SOC_Enhance_Element.u16_Cycle_times = (UINT16)SOC_Calculate_Element.u32Cycle_times;
 
 		SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // 留着，自己知道
 	}
@@ -601,7 +601,7 @@ void SOC_Cont_AH_Int_DSG(void)
 			if (SOC_Calculate_Element.u8DSG_SOC_Int >= 80)
 			{
 				SOC_Calculate_Element.u8DSG_SOC_Int = 0;
-				SOC_Calculate_Element.u32Cycle_times += 100;
+				SOC_Calculate_Element.u32Cycle_times += 1;
 			}
 		}
 	}
@@ -659,12 +659,12 @@ void SOC_DealEEPROM_Data(enum EEPROM_COMMAND Command)
 	case EEPROM_DATA_REFRESH:
 		WriteEEPROM_Word_NoZone(E2P_ADDR_SOC, SOC_Calculate_Element.u8SOC_Now);
 		WriteEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int, SOC_Calculate_Element.u8DSG_SOC_Int);
-		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, SOC_Calculate_Element.u32Cycle_times / 100);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, (UINT16)SOC_Calculate_Element.u32Cycle_times);
 		break;
 	case EEPROM_DATA_READ:
 		SOC_Calculate_Element.u8SOC_Now = (UINT8)ReadEEPROM_Word_NoZone(E2P_ADDR_SOC);
 		SOC_Calculate_Element.u8DSG_SOC_Int = (UINT8)ReadEEPROM_Word_NoZone(E2P_ADDR_DSG_SOC_Int);
-		SOC_Calculate_Element.u32Cycle_times = (UINT32)ReadEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES) * 100;
+		SOC_Calculate_Element.u32Cycle_times = (UINT32)ReadEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES);
 		SOC_Calculate_Element.u32CapFull = (UINT32)SOC_Calculate_Element.u32CapFactory;
 
 		SOC_Calculate_Element.u32CapNow = SOC_Calculate_Element.u8SOC_Now * SOC_Calculate_Element.u32CapFactory / 100;
@@ -689,8 +689,8 @@ void SOC_Update_StartUp(void)
 		// SOC_Calculate_Element.u8SOC_Now = 0;
 		SOC_Calculate_Element.u8DSG_SOC_Int = 0;
 		SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600;
-		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-		SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+		SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever;
+		SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit;
 		// 上面SOC_Calculate_Element.u32CapFactory已经初始化
 		SOC_Calculate_Element.u32CapFull = SOC_Calculate_Element.u32CapFactory;
 		break;
@@ -741,7 +741,7 @@ void SOC_EEPROM_Deal_Monitor(void)
 	if (SOC_Calculate_Element.u32Cycle_times != SOC_Calculate_Element_backup.u32Cycle_times)
 	{
 		SOC_Calculate_Element_backup.u32Cycle_times = SOC_Calculate_Element.u32Cycle_times;
-		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, SOC_Calculate_Element.u32Cycle_times / 100);
+		WriteEEPROM_Word_NoZone(E2P_ADDR_CYCLE_TIMES, (UINT16)SOC_Calculate_Element.u32Cycle_times);
 	}
 }
 
@@ -798,7 +798,7 @@ void SOC_Result_Pass(void)
 	SOC_Enhance_Element.u16_CapacityNow = SOC_Calculate_Element.u32CapNow * 1 / 360;
 	SOC_Enhance_Element.u16_CapacityFull = SOC_Calculate_Element.u32CapFull * 1 / 360;
 	SOC_Enhance_Element.u16_CapacityFactory = SOC_Calculate_Element.u32CapFactory * 1 / 360;
-	SOC_Enhance_Element.u16_Cycle_times = SOC_Calculate_Element.u32Cycle_times / 100;
+	SOC_Enhance_Element.u16_Cycle_times = (UINT16)SOC_Calculate_Element.u32Cycle_times;
 
 	SOC_Enhance_Element.u8_SOC_OCV_Cali = SOC_Calculate_Element.u8DSG_SOC_Int; // 留着，自己知道
 }
@@ -852,8 +852,8 @@ void InitSOC_IntEnhance(void)
 {
 	// 外部获取的数据初始化
 	SOC_Calculate_Element.u32CapFactory = (UINT32)SOC_Enhance_Element.u16_SOC_Ah * 3600; // 去掉*10;改单位这里进来的单位稍微修改一下便可，如此快捷
-	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever * 100;
-	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit * 100;
+	SOC_Calculate_Element.u32Cycle_times = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Ever;
+	SOC_Calculate_Element.u32CycleT_Limit = (UINT32)SOC_Enhance_Element.u16_SOC_CycleT_Limit;
 
 	SOC_Calculate_Element.u32CapChange = 0;
 	SOC_Calculate_Element.u8OCV_Cali_Flag = 0; // 第一次写置1出现了开机严重错误的问题
